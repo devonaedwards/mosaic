@@ -824,3 +824,60 @@ the game's crew veterancy being a bigger lever than its tech tree.
 Russian vehicle losses fell to their lowest in 46 months — because the vehicles
 stopped being used. Anyone tuning balance against a loss-rate chart would draw
 exactly the wrong conclusion.
+
+## 29. Nothing blocks anything. There is no line of sight at all.
+
+The largest structural gap in the project, and it went unnoticed through five
+separate sensor research passes, an offline propagation tool, and twenty-eight
+findings — because every one of those was about how *far* a sensor reaches and
+none was about whether anything is in the way.
+
+Verified in code rather than assumed:
+
+- `Terrain.BlocksGroundSight()` is **defined and never called**. Zero callers.
+- `World.cs`, which contains every line of detection code, makes **zero** calls
+  to `Terrain`. Detection is range, times sensor arc, times target signature.
+  Nothing occludes anything, ever.
+- There is **no elevation model**. `HeightTiles` and `HeightMetres` are the map's
+  y-dimension, not altitude. The terrain is a flat grid of seven tile classes:
+  Open, Road, Forest, PowerLine, Rubble, Water, Impassable. No trench, no tunnel,
+  no hill, no building.
+- Forest exists but does not block sight. It affects fiber-tether snag rate and
+  whether a vehicle can drive there. Nothing else.
+
+So every number produced by the sensor work — five channels, the aperture model,
+the decibel radar scale, the reworked acoustic table, the propagation tool with
+its four validated field anchors — **is computed as though the ground were a
+billiard table**. A gun mount sees a drone through a hill.
+
+The research knew and the game could not listen. `acoustic.md` §5a specifies a
+terrain diffraction term of 8 dB at low frequency rising to 22 dB above a
+kilohertz, and the game has no way to supply the flag it keys off.
+
+### Why it hid
+
+Because it is an absence rather than an error. Every previous finding here was a
+wrong number, a wrong law, or a wrong assumption — all of which are visible in
+something. This one is a system that was never written, in a codebase where a
+function with the right name exists and is never called, which reads as
+completed work to anyone skimming.
+
+The tell, in hindsight, was available cheaply: `grep` for callers. A defined
+function with zero callers is the single strongest signal of unfinished work in a
+codebase, and it costs one command to check. That belongs in the same category as
+item 27's lesson about search counts — **cheap mechanical checks catch things
+that careful reading does not.**
+
+### What it does not mean
+
+Not that the sensor work was wasted. Reach and occlusion are independent terms
+and the reach work stands. But it does mean every detection figure is an upper
+bound, and the flat-ground assumption has been silently underwriting every
+balance conclusion drawn so far — including, probably, some of the turret
+findings in items 13 through 16.
+
+Research is commissioned. The open question it has to answer is not "what does
+terrain do" but **whether a tactical game on a phone can afford to know** —
+detection is already the most expensive thing per tick, and a per-pair,
+per-channel visibility test may simply not fit. A cheaper abstraction that
+captures most of the behaviour would be a legitimate answer.
