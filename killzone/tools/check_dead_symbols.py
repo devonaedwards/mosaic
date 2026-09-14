@@ -221,8 +221,7 @@ class SourceFile(object):
     def __init__(self, root, path, text):
         self.path = path
         self.rel = os.path.relpath(path, root)
-        self.clean = strip_noise(text)
-        self.lines = self.clean.split("\n")
+        self.lines = strip_noise(text).split("\n")
         parts = self.rel.split(os.sep)
         self.project = parts[1] if len(parts) > 1 else "?"
         self.is_sim = self.project == "KZ.Sim"
@@ -700,7 +699,8 @@ def check_write_only(files, index, decls, already):
         for sf, lineno in refs:
             line = sf.lines[lineno - 1]
             for m in re.finditer(r"\b%s\b" % re.escape(d.name), line):
-                if re.match(r"\s*=(?!=)", line[m.end():]):
+                # `X = v`, and `X[i] = v` - an array slot written is still a write.
+                if re.match(r"\s*(?:\[[^\]]*\])?\s*=(?!=)", line[m.end():]):
                     writes.append((sf, lineno))
                 else:
                     reads += 1

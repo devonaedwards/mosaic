@@ -70,6 +70,8 @@ write-only      AutonomyState.BoxMax
 write-only      AutonomyState.BoxMin
 write-only      AutonomyState.HasBox
 write-only      DecoyState.Mimics
+write-only      EntityTable.HpMax
+write-only      EntityTable.Velocity
 write-only      JamEmitter.Source
 write-only      MeshNode.IsRepeater
 write-only      MineState.LaidByTeam

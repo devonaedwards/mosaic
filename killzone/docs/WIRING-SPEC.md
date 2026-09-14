@@ -90,6 +90,25 @@ without a reason is a bug being suppressed.
 This is `[opus]` because the allowlist design is a judgement call and a checker
 that cries wolf will be disabled within a week.
 
+**Landed.** `tools/check_dead_symbols.py`, run by `./build.sh` after the tests.
+It checks the six above plus four more — a `UnitDef` field no unit sets, a field
+exactly one unit sets (the gun mount's traverse rate is not unreferenced, it is
+carried by one unit and read behind a zero guard), a field written everywhere and
+read nowhere, and, loudest, a symbol only `src/KZ.Tests` touches. That last is a
+category rather than an allowlist reason on purpose: green tests with no
+production caller is the failure that produced FINDINGS 30, and it deserves to be
+named rather than excused.
+
+**It does not fail the build on the backlog it found, and that is deliberate.**
+The first honest run found 86 symbols. Failing on all of them would have stopped
+every other task in this document for a backlog nobody in this session caused,
+and a build step that does that is deleted within a week. So it is a ratchet: the
+86 are recorded in `tools/dead-symbols-baseline.txt` and warn; **anything not in
+that file fails the build, in every category, immediately**. The promotion
+condition is not a date — it is the baseline reaching zero, one line at a time,
+as the tasks below land. Full reading, per-category counts, and what the checker
+cannot see: `docs/DEAD-SYMBOLS.md`.
+
 ### 0.2 The harness lies  `[sonnet]`  — audit F33, F34
 
 Three balance experiments overwrite the Gun Mount's range back to **550**, the
