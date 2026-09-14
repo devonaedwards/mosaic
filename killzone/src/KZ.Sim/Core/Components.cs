@@ -116,6 +116,29 @@ namespace KZ.Sim
         public int CreatedTick;
     }
 
+    /// <summary>
+    /// A mine, laid remotely by a heavy drone.
+    ///
+    /// This is the grim, cheap, effective answer to ground that cannot be held by
+    /// standing on it. You cannot shoot down a minefield, it does not need a
+    /// crew, a link or a pilot, and it does not stop being there when you stop
+    /// paying attention to it. It is the only thing in the roster that denies
+    /// ground rather than destroying something on it.
+    ///
+    /// It also does not care whose vehicle drives over it. Mines here are armed
+    /// against everyone, including the side that laid them - not as a gameplay
+    /// punishment but because that is what a mine is, and a game about this
+    /// subject should not pretend otherwise.
+    /// </summary>
+    public struct MineState
+    {
+        public Fix Damage;
+        public DamageType Type;
+        public Fix TriggerRadiusMetres;
+        public int ArmedAtTick;
+        public byte LaidByTeam;
+    }
+
     public struct DecoyState
     {
         public TargetKind Mimics;

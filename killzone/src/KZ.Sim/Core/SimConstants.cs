@@ -148,6 +148,17 @@ namespace KZ.Sim
         /// <summary>Optical sensors collapse at night unless the player has bought thermal.</summary>
         public static readonly Fix NightOpticalDetectionScale = Fix.FromDoubleContentOnly(0.35);
 
+        // ---- mines -----------------------------------------------------------
+
+        /// <summary>
+        /// A short arming delay, so a bomber cannot drop a mine directly onto a
+        /// vehicle and have it go off in the same instant.
+        /// </summary>
+        public const int MineArmingTicks = 48;   // 1.5 s
+
+        /// <summary>How far apart a stick of mines is spaced when laid from the air.</summary>
+        public const int MineSpacingMetres = 26;
+
         // ---- autonomy --------------------------------------------------------
 
         /// <summary>

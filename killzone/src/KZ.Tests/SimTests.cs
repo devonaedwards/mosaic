@@ -30,6 +30,7 @@ namespace KZ.Tests
             RegisterAutonomy(r);
             RegisterCrews(r);
             RegisterDamage(r);
+            RegisterMinesAndNight(r);
         }
 
         // ------------------------------------------------------------------
@@ -618,6 +619,136 @@ namespace KZ.Tests
         static void SetHome(CrewPool pool, int crewId, EntityHandle quarters)
         {
             pool.SetHomeQuarters(crewId, quarters);
+        }
+
+        // ------------------------------------------------------------------
+
+        static void RegisterMinesAndNight(TestRunner r)
+        {
+            r.Group("mines and darkness");
+
+            r.Run("a mine waits, then goes off under whatever drives over it", delegate
+            {
+                World w = MakeWorld(60);
+                w.Spawn(Catalog.IdOf("Command Post"), 2, P(900, 900));
+                EntityHandle truck = w.Spawn(Catalog.IdOf("Supply Truck"), 2, P(900, 1000));
+                w.SpawnMine(1, P(1100, 1000), F(600));
+                w.Enqueue(Command.MoveTo(2, truck, P(1300, 1000)));
+
+                for (int i = 0; i < 60 * SimConstants.TicksPerSecond; i++)
+                {
+                    w.Step();
+                    if (!w.Entities.IsAlive(truck)) break;
+                }
+                Assert.False(w.Entities.IsAlive(truck), "the truck drove into it");
+            });
+
+            r.Run("a mine does not care whose vehicle arrives first", delegate
+            {
+                // Laid by team one, triggered by a team one vehicle. This is not a
+                // gameplay punishment, it is what a mine is.
+                World w = MakeWorld(61);
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(900, 900));
+                EntityHandle friendly = w.Spawn(Catalog.IdOf("Supply Truck"), 1, P(900, 1000));
+                w.SpawnMine(1, P(1100, 1000), F(600));
+                w.Enqueue(Command.MoveTo(1, friendly, P(1300, 1000)));
+
+                for (int i = 0; i < 60 * SimConstants.TicksPerSecond; i++)
+                {
+                    w.Step();
+                    if (!w.Entities.IsAlive(friendly)) break;
+                }
+                Assert.False(w.Entities.IsAlive(friendly), "it went off under its own side");
+            });
+
+            r.Run("a mine ignores aircraft", delegate
+            {
+                World w = MakeWorld(62);
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(1000, 1000));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("Scout Quad"), 1, P(1100, 1000));
+                w.SpawnMine(2, P(1100, 1000), F(600));
+                for (int i = 0; i < 200; i++) w.Step();
+                Assert.True(w.Entities.IsAlive(drone), "a drone flies over a minefield");
+            });
+
+            r.Run("a mine needs a moment to arm", delegate
+            {
+                World w = MakeWorld(63);
+                w.Spawn(Catalog.IdOf("Command Post"), 2, P(900, 900));
+                EntityHandle truck = w.Spawn(Catalog.IdOf("Supply Truck"), 2, P(1100, 1000));
+                w.SpawnMine(1, P(1100, 1000), F(600));
+
+                w.Step();
+                Assert.True(w.Entities.IsAlive(truck), "not instantly");
+
+                for (int i = 0; i < SimConstants.MineArmingTicks + 4; i++)
+                {
+                    w.Step();
+                    if (!w.Entities.IsAlive(truck)) break;
+                }
+                Assert.False(w.Entities.IsAlive(truck), "but a second and a half later, yes");
+            });
+
+            r.Run("a heavy drone will not fly in daylight", delegate
+            {
+                Terrain t = new Terrain(2048, 2048);
+                t.Fill(TileClass.Open);
+
+                World day = new World(t, 256, 16, 64, 2, 0);
+                day.Spawn(Catalog.IdOf("Command Post"), 1, P(1000, 1000));
+                day.Player(1).Materiel = Fix.FromInt(20000);
+                EntityHandle h;
+                Assert.Equal((long)LaunchResult.DaylightRefused,
+                             (long)SortieSystem.Launch(day, 1, Catalog.IdOf("Night Bomber"),
+                                                       P(1000, 1000), EntityHandle.None, 0, out h),
+                             "refused by day");
+
+                World night = new World(t, 256, 16, 64, 2, 8000);
+                night.Spawn(Catalog.IdOf("Command Post"), 1, P(1000, 1000));
+                night.Player(1).Materiel = Fix.FromInt(20000);
+                Assert.Equal((long)LaunchResult.Launched,
+                             (long)SortieSystem.Launch(night, 1, Catalog.IdOf("Night Bomber"),
+                                                       P(1000, 1000), EntityHandle.None, 0, out h),
+                             "flies after dark");
+            });
+
+            r.Run("darkness shortens what an optical sensor can see", delegate
+            {
+                Terrain t = new Terrain(2048, 2048);
+                t.Fill(TileClass.Open);
+
+                World day = new World(t, 256, 16, 65, 2, 0);
+                EntityHandle gunDay = day.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle droneDay = day.Spawn(Catalog.IdOf("Scout Quad"), 2, P(1400, 1000));
+                day.Step();
+                Assert.True(day.IsDetectedBy(1, droneDay), "seen at 400 m in daylight");
+
+                World night = new World(t, 256, 16, 65, 2, 8000);
+                night.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle droneNight = night.Spawn(Catalog.IdOf("Scout Quad"), 2, P(1400, 1000));
+                night.Step();
+                Assert.False(night.IsDetectedBy(1, droneNight), "not at the same range after dark");
+
+                EntityHandle close = night.Spawn(Catalog.IdOf("Scout Quad"), 2, P(1100, 1000));
+                night.Step();
+                Assert.True(night.IsDetectedBy(1, close), "but seen at 100 m");
+            });
+
+            r.Run("a weapon cannot shoot what its side cannot see", delegate
+            {
+                // The third pillar, enforced rather than assumed. Without it the
+                // reconnaissance layer is decoration and night means nothing.
+                Terrain t = new Terrain(2048, 2048);
+                t.Fill(TileClass.Open);
+                World w = new World(t, 256, 16, 66, 2, 8000);
+
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("Scout Quad"), 2, P(1400, 1000));
+
+                // Inside the gun's 550 m reach, outside its 210 m night vision.
+                for (int i = 0; i < 200; i++) w.Step();
+                Assert.True(w.Entities.IsAlive(drone), "unseen and therefore unshot");
+            });
         }
 
         // ------------------------------------------------------------------

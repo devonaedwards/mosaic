@@ -20,7 +20,8 @@ namespace KZ.Sim
         NoUplinkCapacity = 2,
         NoTetherAvailable = 3,
         InsufficientMateriel = 4,
-        EntityCapacityReached = 5
+        EntityCapacityReached = 5,
+        DaylightRefused = 6
     }
 
     public static class SortieSystem
@@ -36,6 +37,16 @@ namespace KZ.Sim
             spawned = EntityHandle.None;
             UnitDef def = Catalog.Get(defId);
             PlayerState player = w.Player(team);
+
+            // A heavy multirotor in daylight is not a weapon, it is a target: slow,
+            // loud, and the size of a small car. They fly at night or not at all,
+            // which is what gives the clock its weight.
+            if (def.NightOnly && !w.IsNight)
+            {
+                w.Events.Push(SimEventKind.SortieRefusedDaylight, w.Tick, EntityHandle.None,
+                              EntityHandle.None, team, defId);
+                return LaunchResult.DaylightRefused;
+            }
 
             if (player.Materiel < Fix.FromInt(def.CostMateriel))
             {
@@ -136,6 +147,39 @@ namespace KZ.Sim
                 limit = System.Math.Min(limit, player.UplinkCapacity - player.UplinkInUse);
             if (limit < 0) limit = 0;
             return limit;
+        }
+
+        /// <summary>
+        /// Lay a stick of mines along a line, from a heavy drone.
+        ///
+        /// This is the answer to ground you cannot hold by standing on it, and it
+        /// is the least glamorous thing in the game: no pilot skill, no timing, no
+        /// counter-play in the moment. You put it there at night and it is still
+        /// there in the morning, and it does not ask whose vehicle arrives first.
+        /// </summary>
+        public static int LayMines(World w, EntityHandle bomber, Fix2 from, Fix2 to)
+        {
+            if (!w.Entities.IsAlive(bomber)) return 0;
+            int i = bomber.Index;
+            int defId = w.Entities.DefId[i];
+            if (defId < 0) return 0;
+
+            UnitDef def = Catalog.Get(defId);
+            if (def.MinesCarried <= 0) return 0;
+
+            byte team = w.Entities.Team[i];
+            Fix2 axis = to - from;
+            Fix length = axis.Magnitude();
+            Fix2 step = length.Raw > 0
+                ? axis / Fix.FromInt(def.MinesCarried)
+                : new Fix2(Fix.FromInt(SimConstants.MineSpacingMetres), Fix.Zero);
+
+            for (int m = 0; m < def.MinesCarried; m++)
+                w.SpawnMine(team, from + step * Fix.FromInt(m), def.MineDamage);
+
+            w.Events.Push(SimEventKind.MinesLaid, w.Tick, bomber, EntityHandle.None,
+                          team, def.MinesCarried);
+            return def.MinesCarried;
         }
 
         /// <summary>

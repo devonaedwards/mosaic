@@ -67,6 +67,14 @@ namespace KZ.Sim
         static bool CanEngage(World w, int attackerIndex, EntityHandle target)
         {
             if (!w.Entities.IsAlive(target)) return false;
+
+            // Nothing is shootable until somebody has eyes on it. This is the rule
+            // that makes reconnaissance the gate on every shot fired, and the rule
+            // that gives night its meaning: an optical sensor loses most of its
+            // reach after dark, so a gun that dominates an approach in daylight can
+            // only see a few hundred metres of it at night.
+            if (!w.IsDetectedBy(w.Entities.Team[attackerIndex], target)) return false;
+
             if (w.Entities.EntityLayer[target.Index] == Layer.Ground) return true;
 
             int defId = w.Entities.DefId[attackerIndex];
@@ -92,16 +100,33 @@ namespace KZ.Sim
                 return AutonomyClassifier.SelectTarget(w, i, out misidentified);
             }
 
-            return NearestEnemyInRange(w, i, weapon);
+            return BestTargetInRange(w, i, weapon);
         }
 
-        static EntityHandle NearestEnemyInRange(World w, int i, WeaponState weapon)
+        /// <summary>
+        /// Pick what to shoot at, by what the shot is actually worth rather than by
+        /// what is closest.
+        ///
+        /// Nearest-target selection looks reasonable and behaves stupidly. A gun
+        /// mount with a relay mast parked beside it will spend an entire engagement
+        /// chipping twenty-one damage a time off a six-hundred hit-point structure
+        /// while the drones that are about to destroy it fly past unengaged - which
+        /// is exactly what it did the first time this was run.
+        ///
+        /// So each candidate is scored by the fraction of its remaining health one
+        /// shot removes. A shot that kills outright scores full marks; a shot that
+        /// scratches paint scores almost nothing. Distance only breaks ties. The
+        /// result is a weapon that shoots at whatever it can actually hurt, which
+        /// is what a human would do and what the player will expect.
+        /// </summary>
+        static EntityHandle BestTargetInRange(World w, int i, WeaponState weapon)
         {
             byte team = w.Entities.Team[i];
             Fix2 pos = w.Entities.Position[i];
             Fix rangeSq = weapon.RangeMetres * weapon.RangeMetres;
 
             EntityHandle best = EntityHandle.None;
+            Fix bestScore = Fix.Zero;
             Fix bestDistSq = Fix.MaxValue;
 
             for (int j = 1; j < w.Entities.HighWater; j++)
@@ -118,9 +143,46 @@ namespace KZ.Sim
 
                 Fix dSq = Fix2.SqrDistance(pos, w.Entities.Position[j]);
                 if (dSq > rangeSq) continue;
-                if (dSq < bestDistSq) { bestDistSq = dSq; best = w.Entities.HandleAt(j); }
+
+                Fix score = ShotValue(w, i, j, weapon);
+                if (score.Raw <= 0) continue;
+
+                if (score > bestScore || (score == bestScore && dSq < bestDistSq))
+                {
+                    bestScore = score;
+                    bestDistSq = dSq;
+                    best = w.Entities.HandleAt(j);
+                }
             }
             return best;
+        }
+
+        /// <summary>
+        /// What fraction of a target one shot removes, capped at one - overkill
+        /// buys nothing, so a weapon does not prefer a nearly-dead target over a
+        /// live threat it can also kill.
+        /// </summary>
+        static Fix ShotValue(World w, int attackerIndex, int targetIndex, WeaponState weapon)
+        {
+            // A ram either kills what it hits or does nothing at all.
+            if (weapon.Type == DamageType.Ram)
+            {
+                ArmourClass a = w.Entities.Armour[targetIndex];
+                return (a == ArmourClass.AirRotary || a == ArmourClass.AirFixed) ? Fix.One : Fix.Zero;
+            }
+
+            bool topAttack = w.Entities.EntityLayer[attackerIndex] == Layer.Low
+                             && w.Entities.EntityLayer[targetIndex] == Layer.Ground;
+
+            Fix mult = Catalog.DamageMultiplier(weapon.Type, w.Entities.Armour[targetIndex], topAttack);
+            if (mult.Raw <= 0) return Fix.Zero;
+
+            Fix perShot = weapon.Damage * mult;
+            Fix remaining = w.Entities.Hp[targetIndex] + w.Entities.CageHp[targetIndex];
+            if (remaining.Raw <= 0) return Fix.Zero;
+
+            Fix fraction = perShot / remaining;
+            return fraction > Fix.One ? Fix.One : fraction;
         }
 
         static void ResolveDirectFire(World w, int i, EntityHandle target, ref WeaponState weapon)

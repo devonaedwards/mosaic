@@ -68,7 +68,8 @@ namespace KZ.Sim
         Salvage = 1u << 11,
         Decoy = 1u << 12,
         Structure = 1u << 13,
-        MeshRepeater = 1u << 14
+        MeshRepeater = 1u << 14,
+        Mine = 1u << 15
     }
 
     public sealed class EntityTable
@@ -108,6 +109,7 @@ namespace KZ.Sim
         public readonly MoverState[] Mover;
         public readonly SalvageState[] SalvagePile;
         public readonly DecoyState[] Decoy;
+        public readonly MineState[] Mine;
 
         public readonly int[] TetherId;
 
@@ -142,6 +144,7 @@ namespace KZ.Sim
             Mover = new MoverState[capacity];
             SalvagePile = new SalvageState[capacity];
             Decoy = new DecoyState[capacity];
+            Mine = new MineState[capacity];
             TetherId = new int[capacity];
 
             for (int i = 0; i < capacity; i++) generation[i] = 1;

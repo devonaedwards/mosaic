@@ -43,6 +43,15 @@ namespace KZ.Sim
         readonly int[] meshNodeSlotByEntity;
 
         public World(Terrain terrain, int entityCapacity, int tetherCapacity, ulong matchSeed, int playerCount)
+            : this(terrain, entityCapacity, tetherCapacity, matchSeed, playerCount, 0) { }
+
+        /// <summary>
+        /// startTick offsets where in the day and night cycle the match begins.
+        /// Missions use it to open at dawn or in darkness; experiments use it to
+        /// test the same engagement under both.
+        /// </summary>
+        public World(Terrain terrain, int entityCapacity, int tetherCapacity, ulong matchSeed,
+                     int playerCount, int startTick)
         {
             Terrain = terrain;
             Entities = new EntityTable(entityCapacity);
@@ -67,7 +76,9 @@ namespace KZ.Sim
                     Crews = new CrewPool((byte)i, SimConstants.StartingCrews, false)
                 };
             }
+            Tick = startTick;
             Phase = DayPhase.Day;
+            UpdateDayPhase();
         }
 
         public PlayerState Player(byte team) { return Players[team]; }
@@ -244,6 +255,29 @@ namespace KZ.Sim
             return h;
         }
 
+        /// <summary>
+        /// Lay one mine. It arms after a short delay so a bomber cannot mine the
+        /// ground directly beneath a vehicle it is already over.
+        /// </summary>
+        public EntityHandle SpawnMine(byte laidByTeam, Fix2 position, Fix damage)
+        {
+            EntityHandle h = Entities.Create();
+            int i = h.Index;
+            Entities.AddComponent(i, ComponentMask.Transform | ComponentMask.Mine);
+            Entities.Position[i] = position;
+            Entities.Team[i] = 0;          // a mine belongs to nobody once it is down
+            Entities.DefId[i] = -1;
+            Entities.Mine[i] = new MineState
+            {
+                Damage = damage,
+                Type = DamageType.Shaped,
+                TriggerRadiusMetres = Fix.FromInt(12),
+                ArmedAtTick = Tick + SimConstants.MineArmingTicks,
+                LaidByTeam = laidByTeam
+            };
+            return h;
+        }
+
         public EntityHandle SpawnSalvage(Fix2 position, Fix amount)
         {
             EntityHandle h = Entities.Create();
@@ -288,6 +322,7 @@ namespace KZ.Sim
             CombatSystem.Step(this);
             UpdateSalvage();
             UpdateDecoys();
+            UpdateMines();
 
             for (int t = 1; t < Players.Length; t++) Players[t].Crews.Tick(Tick, Events);
 
@@ -432,6 +467,47 @@ namespace KZ.Sim
                 Entities.SalvagePile[i].Amount -= Entities.SalvagePile[i].DecayPerTick;
                 if (Entities.SalvagePile[i].Amount.Raw <= 0)
                     pendingDeaths.Add(Entities.HandleAt(i));
+            }
+        }
+
+        /// <summary>
+        /// Mines wait. That is the whole of their behaviour and the whole of their
+        /// point: they cost nothing to maintain, cannot be jammed, cannot be shot
+        /// down, and are still there twenty minutes later.
+        ///
+        /// A mine triggers on any ground vehicle, on either side. Laying a
+        /// minefield across an approach denies it to your opponent and to you.
+        /// </summary>
+        void UpdateMines()
+        {
+            for (int m = 1; m < Entities.HighWater; m++)
+            {
+                if (!Entities.IsSlotAlive(m)) continue;
+                if (!Entities.Has(m, ComponentMask.Mine)) continue;
+                if (Tick < Entities.Mine[m].ArmedAtTick) continue;
+
+                Fix2 minePos = Entities.Position[m];
+                Fix trigger = Entities.Mine[m].TriggerRadiusMetres;
+                Fix triggerSq = trigger * trigger;
+
+                for (int v = 1; v < Entities.HighWater; v++)
+                {
+                    if (!Entities.IsSlotAlive(v)) continue;
+                    if (v == m) continue;
+                    if (Entities.EntityLayer[v] != Layer.Ground) continue;
+                    if (!Entities.Has(v, ComponentMask.Health)) continue;
+                    if (Entities.Has(v, ComponentMask.Structure)) continue;
+                    if (Entities.Team[v] == 0) continue;
+                    if (Fix2.SqrDistance(minePos, Entities.Position[v]) > triggerSq) continue;
+
+                    // A mine goes off underneath, which is where armour is thinnest.
+                    ApplyDamage(Entities.HandleAt(v), Entities.Mine[m].Damage,
+                                Entities.Mine[m].Type, true, EntityHandle.None);
+                    Events.Push(SimEventKind.MineDetonated, Tick, Entities.HandleAt(m),
+                                Entities.HandleAt(v), Entities.Team[v], 0);
+                    pendingDeaths.Add(Entities.HandleAt(m));
+                    break;
+                }
             }
         }
 
@@ -592,6 +668,45 @@ namespace KZ.Sim
                 {
                     return true;
                 }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Whether a team can currently see an entity.
+        ///
+        /// Radar sees through darkness and terrain but only detects things in the
+        /// air. Everything else is an optical or thermal footprint, and an optical
+        /// one collapses to about a third of its reach at night unless the player
+        /// has bought thermal imaging. That single fact is why night is when
+        /// armour moves and when assaults go in.
+        /// </summary>
+        public bool IsDetectedBy(byte team, EntityHandle target)
+        {
+            if (!Entities.IsAlive(target)) return false;
+            int ti = target.Index;
+            if (Entities.Team[ti] == team) return true;
+
+            Fix2 tp = Entities.Position[ti];
+            bool airborne = Entities.EntityLayer[ti] != Layer.Ground;
+
+            for (int i = 1; i < Entities.HighWater; i++)
+            {
+                if (!Entities.IsSlotAlive(i)) continue;
+                if (Entities.Team[i] != team) continue;
+                if (!Entities.Has(i, ComponentMask.Sensor)) continue;
+
+                SensorState s = Entities.Sensor[i];
+
+                if (s.RadioFrequency && airborne)
+                {
+                    Fix r = s.FootprintMetres;
+                    if (Fix2.SqrDistance(Entities.Position[i], tp) <= r * r) return true;
+                    continue;
+                }
+
+                Fix range = EffectiveSensorRange(i);
+                if (Fix2.SqrDistance(Entities.Position[i], tp) <= range * range) return true;
             }
             return false;
         }

@@ -25,6 +25,7 @@ namespace KZ.Sim
         LaunchSortie,
         DropPin,
         PlaceDecoy,
+        LayMines,
         SetAutonomyBox
     }
 
@@ -37,6 +38,7 @@ namespace KZ.Sim
         public Fix2 Point;
         public int DefId;              // for a launch: which airframe
         public int Param;              // launch index, decoy lifetime, and so on
+        public Fix2 MineEnd;           // far end of a mine-laying run
 
         public static Command MoveTo(byte team, EntityHandle subject, Fix2 point)
         {
@@ -70,6 +72,16 @@ namespace KZ.Sim
             Command c = new Command();
             c.Kind = CommandKind.LaunchSortie; c.Team = team; c.DefId = defId;
             c.Point = pad; c.Target = target; c.Param = launchIndex;
+            return c;
+        }
+
+        /// <summary>Order a heavy drone to lay its mines along a line.</summary>
+        public static Command LayMines(byte team, EntityHandle bomber, Fix2 from, Fix2 to)
+        {
+            Command c = new Command();
+            c.Kind = CommandKind.LayMines; c.Team = team; c.Subject = bomber;
+            c.Point = from; c.Target = EntityHandle.None;
+            c.MineEnd = to;
             return c;
         }
 
@@ -136,6 +148,10 @@ namespace KZ.Sim
                         MovementSystem.OrderMoveTo(w, spawned, c.Point);
                     break;
                 }
+
+                case CommandKind.LayMines:
+                    SortieSystem.LayMines(w, c.Subject, c.Point, c.MineEnd);
+                    break;
 
                 case CommandKind.PlaceDecoy:
                     w.SpawnDecoy(c.Team, c.Point, TargetKind.HighValue, c.Param);

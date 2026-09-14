@@ -4,6 +4,7 @@
 #
 #   ./build.sh              compile and run the test suite
 #   ./build.sh headless     compile and run a scripted match
+#   ./build.sh balance      run balance experiments and print the results
 #   ./build.sh build        compile only
 #
 # Works with either the .NET SDK or Mono. The simulation deliberately has no
@@ -46,6 +47,9 @@ compile() {
 
   $COMPILER -target:exe $LANGFLAG -r:"$OUT/KZ.Sim.dll" -out:"$OUT/KZ.Headless.exe" \
     $(find src/KZ.Headless -name '*.cs')
+
+  $COMPILER -target:exe $LANGFLAG -r:"$OUT/KZ.Sim.dll" -out:"$OUT/KZ.Balance.exe" \
+    $(find src/KZ.Balance -name '*.cs')
 }
 
 case "${1:-test}" in
@@ -57,6 +61,11 @@ case "${1:-test}" in
     compile
     shift || true
     $RUNNER "$OUT/KZ.Headless.exe" "$@"
+    ;;
+  balance)
+    compile
+    shift || true
+    $RUNNER "$OUT/KZ.Balance.exe" "$@"
     ;;
   test|*)
     compile

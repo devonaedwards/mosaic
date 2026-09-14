@@ -21,9 +21,13 @@ which design commitment they just broke.
 
 ---
 
-## 2. A single gun mount hard-counters every drone attack
+## 2. A single gun mount hard-counters every frontal drone attack
 
-**Not resolved. Needs a design decision.**
+**Partly resolved. The exchange rate still needs a design decision.**
+
+*Revised after measuring it properly. An earlier version of this entry said
+saturation worked at eight drones; that was the targeting bug in item 8
+flattering the attacker, and the corrected numbers are far worse.*
 
 The gun mount as specified is 550 metres of reach, fragmentation damage that
 one-shots any rotary drone, and a shot every 0.75 seconds.
@@ -52,8 +56,118 @@ Three possible answers, for whoever owns balance:
 3. **Give the attacker a suppression weapon** that outranges it. Nothing in the
    current roster does.
 
-Option 1 is the smallest change and the most defensible. It is not made here
-because it is a balance call, not an implementation detail.
+### What the numbers actually are
+
+Run `./build.sh balance`. Eight drones launched together from 1,200 m against a
+gun mount at 1,650 m:
+
+| drones sent together | reached the gun | gun destroyed | Materiel spent |
+|---|---|---|---|
+| 5 | 0 | never | 1,000 |
+| 8 | 0 | never | 1,600 |
+| 16 | 0 | never | 3,200 |
+| 24 | 7 | every time | 4,800 |
+
+It takes twenty-four drones to destroy a four-hundred-and-fifty Materiel
+structure: an exchange rate of more than ten to one. Saturation works, but only
+at a number no player will reach, because the crew ceiling caps a flight at
+roughly fourteen even with six crew quarters built.
+
+### Two things that do work
+
+**Attacking at night.** The gun finds its targets optically, and after dark that
+reach collapses to about a third. Nothing about the gun changes; it simply
+cannot begin shooting until the drones are much closer, and the seconds it does
+not get are the seconds the drones needed.
+
+| drones | destroyed it by day | destroyed it at night |
+|---|---|---|
+| 8 | never | never |
+| 12 | never | every time |
+
+Twelve at night instead of twenty-four by day. That is the counter the subject
+matter actually uses, and it costs the attacker nothing but patience.
+
+**Shortening its reach.** At 120 m of reach - about five and a half seconds of
+exposure - eight drones take it every time. This is the tuning lever, and 550 m
+remains suspicious on its own terms: at the design's roughly twelve-to-one
+compression that is six and a half kilometres of real ground.
+
+### Still open
+
+Even at twelve drones on a dark night, killing a 450 Materiel structure costs
+2,400 Materiel. Somebody needs to decide whether that is the intended price of
+walking into prepared ground, or whether the gun's reach comes down. The
+implementation is not the thing standing in the way of either answer.
+
+---
+
+## 8. Weapons shot at whatever was nearest, not at what mattered
+
+**A real bug, and the one that made item 2 look better than it was.**
+
+Target selection picked the closest enemy in range. That is a reasonable-sounding
+rule that behaves stupidly: a gun mount with a relay mast parked beside it spent
+an entire engagement chipping twenty-one damage at a time off a six-hundred
+hit-point structure while the eight drones about to destroy it flew past
+unengaged.
+
+**Resolved:** candidates are now scored by the fraction of their remaining health
+one shot removes, capped at one, with distance only breaking ties. A weapon
+shoots at what it can actually hurt.
+
+Worth noting how this was found. It was not visible in any unit test, because
+every unit test put one attacker and one target in an empty world. It showed up
+the first time an experiment was run with a realistic amount of scenery on the
+map, and the tell was a balance result that made no sense - gun range not
+mattering at all, when it obviously should.
+
+---
+
+## 9. Nothing enforced the rule that you cannot shoot what you cannot see
+
+The design's third pillar is that nothing is targetable until somebody has looked
+at it. Nothing in the code enforced it: every weapon engaged anything inside its
+range, through darkness and terrain alike.
+
+That made the reconnaissance layer decoration and made night cosmetic.
+
+**Resolved:** a weapon now requires its own side to have detection on the target.
+Radar sees through darkness but only finds things in the air; everything else is
+optical or thermal, and an optical sensor loses about two thirds of its reach
+after dark. This is what turned night from a colour change into the mechanic in
+item 2.
+
+---
+
+## 10. Mines
+
+Added, because the honest answer to ground you cannot hold by standing on it is
+not a cleverer drone.
+
+A heavy drone lays four mines on a night sortie and flies home. One kills a
+supply truck, a logistics robot or a fighting vehicle outright; a tank survives
+the first and not the second. The field costs nothing to maintain, cannot be
+jammed, cannot be shot down, needs no crew and no link, and is still there in the
+morning.
+
+It is also armed against whoever drives into it first, including the side that
+laid it, and there is a test asserting exactly that. That is not a gameplay
+penalty, it is what a mine is, and a game about this subject should not pretend
+otherwise.
+
+| vehicle | damage per mine | survives a mine | field stops it |
+|---|---|---|---|
+| Supply Truck | 780 | no | after one |
+| Logistics UGV | 780 | no | after one |
+| Fighting vehicle | 1,320 | no | after one |
+| Main Tank | 1,320 | yes, one | after two |
+
+The uncomfortable part is that this is the most cost-effective thing in the
+roster by a wide margin, and the least interesting to operate. There is no pilot
+skill in it, no timing, and no counter-play in the moment. If playtesting shows
+players reaching for it first and every time, the answer is probably a clearing
+unit and a visible-once-triggered rule, not a damage nerf.
 
 ---
 

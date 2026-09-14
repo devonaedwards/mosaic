@@ -77,6 +77,18 @@ namespace KZ.Sim
 
         public bool IsMeshRepeater;
 
+        /// <summary>
+        /// Cannot fly in daylight at all. Heavy multirotors are slow, loud and
+        /// enormous; in daylight they are simply targets. Restricting them to
+        /// darkness is what gives the day and night cycle teeth, and what makes the
+        /// player who has bought thermal imaging feel it.
+        /// </summary>
+        public bool NightOnly;
+
+        /// <summary>How many mines one sortie can lay, if any.</summary>
+        public int MinesCarried;
+        public Fix MineDamage;
+
         public override string ToString() { return Name + "#" + Id; }
     }
 
@@ -390,7 +402,8 @@ namespace KZ.Sim
 
             Add(new UnitDef
             {
-                Name = "Night Bomber", Tier = 2,
+                Name = "Night Bomber", Tier = 2, NightOnly = true,
+                MinesCarried = 4, MineDamage = M(600),
                 CostMateriel = 1100, BuildTicks = SimConstants.Seconds(34),
                 Hp = M(480), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(8.0), TurnRateDegreesPerSecond = 90,
