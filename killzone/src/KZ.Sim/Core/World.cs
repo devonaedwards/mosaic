@@ -1289,8 +1289,24 @@ namespace KZ.Sim
                 // future ticks - a mount holds it rather than re-picking - so
                 // a divergence here has to be caught here, not inferred later
                 // from whichever target ends up dead.
+                // Which target a mount is laid on (Acquiring) and where the barrel
+                // is pointing (Bearing) are the same kind of state and are hashed
+                // for the same reason: a mount now holds its lay across bursts
+                // rather than dropping it after every shot, so both persist beyond
+                // the tick that set them and both decide when the next shot lands.
+                // The magazine goes in for the third time around the same point -
+                // until the lay was held, no mount in a real engagement ever
+                // reached its second shot, let alone its fifth, so a divergence in
+                // EngagementsRemaining or in a reload timer could not previously
+                // show up here at all.
                 if (Entities.Has(i, ComponentMask.Weapon))
+                {
                     h = (h ^ (ulong)Entities.Weapon[i].CommittedTarget.Value) * Prime;
+                    h = (h ^ (ulong)Entities.Weapon[i].Acquiring.Value) * Prime;
+                    h = (h ^ (ulong)Entities.Weapon[i].Bearing) * Prime;
+                    h = (h ^ (ulong)(uint)Entities.Weapon[i].EngagementsRemaining) * Prime;
+                    h = (h ^ (ulong)(uint)Entities.Weapon[i].ReloadingUntilTick) * Prime;
+                }
             }
 
             for (int t = 1; t < Players.Length; t++)

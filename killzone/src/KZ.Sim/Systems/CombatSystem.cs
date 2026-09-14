@@ -33,12 +33,23 @@ namespace KZ.Sim
                 if (w.Tick < weapon.ReloadingUntilTick) return;
                 weapon.ReloadingUntilTick = 0;
                 weapon.EngagementsRemaining = weapon.EngagementsPerBelt;
+                // And it comes off reload laid on nothing, for the same reason the
+                // commitment is dropped below: somebody stood up in the open to
+                // feed the belt, so the mount re-lays even if it picks the same
+                // target again. The lay is held between bursts, not across a
+                // twenty-second stoppage.
+                weapon.Acquiring = EntityHandle.None;
                 w.Entities.Weapon[i] = weapon;
             }
 
+            // Nothing to shoot, or nothing in the envelope: the mount is no longer
+            // laid on anything, so the next thing it does engage pays for its own
+            // lay. Acquiring is "which target this barrel is currently tracking",
+            // and a barrel tracks nothing here.
             EntityHandle target = FindTarget(w, i, ref weapon);
             if (!w.Entities.IsAlive(target))
             {
+                weapon.Acquiring = EntityHandle.None;
                 w.Entities.Weapon[i] = weapon;
                 return;
             }
@@ -48,6 +59,7 @@ namespace KZ.Sim
             Fix range = EffectiveReach(w, i, target, weapon);
             if (Fix2.SqrDistance(myPos, targetPos) > range * range)
             {
+                weapon.Acquiring = EntityHandle.None;
                 w.Entities.Weapon[i] = weapon;
                 return;
             }
@@ -97,7 +109,28 @@ namespace KZ.Sim
             }
 
             weapon.NextFireTick = w.Tick + weapon.CooldownTicks;
-            weapon.Acquiring = EntityHandle.None;
+
+            // The mount stays laid on what it just shot at. Acquisition is the
+            // price of *getting onto* a target - WeaponState.EngagementsRemaining
+            // prices a belt in targets prosecuted, and the block above calls the
+            // cost a charge for "switching to a new target" - so clearing Acquiring
+            // here charged the whole acquisition-and-slew again for every burst at
+            // a target the barrel had never left. That is the mechanism behind
+            // FINDINGS #31: the gun mount came off its 24-tick cooldown with the
+            // drone at five metres, dead in its sights and still committed, and
+            // started a fresh 16-tick acquisition clock instead of firing. The
+            // drone arrived nine ticks later. Switching targets still pays in full,
+            // because Acquiring then no longer matches.
+            //
+            // The barrel is by definition pointing at what it just fired at, so the
+            // recorded bearing follows the target rather than staying frozen at
+            // wherever the lay began - a drone at twenty metres crosses sixty
+            // degrees a second, and a stale bearing would mis-price the next slew
+            // by more than the slew itself.
+            Fix2 aimed = w.Entities.Position[target.Index] - w.Entities.Position[i];
+            if (aimed.SqrMagnitude().Raw != 0) weapon.Bearing = Trig.Atan2(aimed.Y, aimed.X);
+            weapon.TrackingLayer = w.Entities.EntityLayer[target.Index];
+
             w.Entities.Weapon[i] = weapon;
         }
 

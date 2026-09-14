@@ -1601,6 +1601,104 @@ namespace KZ.Tests
                                   || w.Entities.Weapon[auto.Index].ReloadingUntilTick > 0;
                 Assert.True(autoFired, "CanReachHigh = true means the autocannon actually takes the shot");
             });
+
+            r.Run("consecutive bursts at one target are a cooldown apart, not a fresh acquisition", delegate
+            {
+                // FINDINGS #31 traced a Gun Mount getting exactly one shot at an
+                // incoming FPV and never a second. The trace's last two lines are
+                // the reason: the mount came off its cooldown with the drone at
+                // five metres, still detected, still committed and still dead
+                // ahead, and started a sixteen-tick acquisition clock over
+                // instead of firing. CombatSystem cleared WeaponState.Acquiring
+                // on every shot, so the acquisition-and-slew the code charges for
+                // "switching to a new target" was charged again for every burst
+                // at a target the barrel had never left - while
+                // EngagementsRemaining's own doc comment prices a belt in targets
+                // prosecuted and calls the re-lay part of the cycle, not an extra
+                // on top of it.
+                //
+                // A stationary ground target makes the arithmetic exact:
+                // ResolveDirectFire only rolls dice against something airborne,
+                // and a target that does not move adds no slew, so the gap
+                // between two bursts is the cooldown and nothing else. Before the
+                // fix it was the cooldown plus WeaponAcquisitionTicks.
+                World w = MakeWorld(903);
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1030, 1000));
+
+                UnitDef def = Catalog.Get(Catalog.IdOf("Gun Mount"));
+                int belt = def.EngagementsPerBelt;
+                int firstBurst = -1, secondBurst = -1;
+                for (int t = 0; t < 400 && secondBurst < 0; t++)
+                {
+                    w.Step();
+                    int left = w.Entities.Weapon[gun.Index].EngagementsRemaining;
+                    if (left >= belt) continue;
+                    belt = left;
+                    if (firstBurst < 0) firstBurst = w.Tick; else secondBurst = w.Tick;
+                }
+
+                Assert.True(secondBurst > 0, "the mount should get a second burst at a target it never left");
+                Assert.Equal(def.WeaponCooldownTicks, secondBurst - firstBurst,
+                             "a mount already laid on its target pays the cooldown and nothing else");
+            });
+
+            r.Run("a gun mount gets a second burst at a closing drone", delegate
+            {
+                // The FINDINGS #31 engagement itself, end to end on the
+                // production path rather than as tick arithmetic: spawn the
+                // mount, fly real FPVs at it, and count what the belt spends.
+                //
+                // The window is genuinely short and most of it is not the
+                // weapon's fault - the mount first holds the track at about
+                // seventy metres because a 120-degree head sweeping at seventy
+                // degrees a second is pointed elsewhere two thirds of the time
+                // (FINDINGS #22), and the lay costs two seconds more. What is
+                // the weapon's fault is spending the remainder re-acquiring. On
+                // sixty seeds of the balance harness's own assault, the mount
+                // took exactly 1.00 shots per attempt at every drone count
+                // before this fix and never once got a second.
+                World w = MakeWorld(904);
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                for (int d = 0; d < 3; d++)
+                {
+                    EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1150, 986 + d * 14));
+                    w.Enqueue(Command.Attack(2, drone, gun));
+                }
+
+                UnitDef def = Catalog.Get(Catalog.IdOf("Gun Mount"));
+                int belt = def.EngagementsPerBelt;
+                int lastTick = -1;
+                EntityHandle lastTarget = EntityHandle.None;
+                bool sawSecondBurst = false;
+
+                for (int t = 0; t < 600 && w.Entities.IsAlive(gun) && !sawSecondBurst; t++)
+                {
+                    w.Step();
+                    WeaponState ws = w.Entities.Weapon[gun.Index];
+                    if (ws.EngagementsRemaining >= belt) continue;
+                    belt = ws.EngagementsRemaining;
+
+                    // Two bursts at the same drone, a cooldown apart. Against a
+                    // target that is closing at twenty-two metres a second this
+                    // is only possible if the mount held its lay: re-acquiring
+                    // would put the second burst at least an acquisition later,
+                    // and by then the drone has arrived. Bursts at a *different*
+                    // drone are not evidence either way - re-laying onto one of
+                    // those is what the acquisition cost is for.
+                    if (lastTick >= 0 && ws.CommittedTarget == lastTarget)
+                    {
+                        Assert.Equal(def.WeaponCooldownTicks, w.Tick - lastTick,
+                                     "a second burst at the same closing drone is a cooldown after the first");
+                        sawSecondBurst = true;
+                    }
+                    lastTick = w.Tick;
+                    lastTarget = ws.CommittedTarget;
+                }
+
+                Assert.True(sawSecondBurst,
+                            "the mount should spend more than one engagement on a drone it has already laid on");
+            });
         }
     }
 }
