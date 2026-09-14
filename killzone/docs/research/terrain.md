@@ -1429,7 +1429,7 @@ reasoning, laid out:
 
 1. **A fast target turns badly in radius and fine in what matters.** Turn radius
    `R = v² / (g·n)` scales with the *square* of speed, so a 55-unit target turns
-   in **2.7× the radius** of a 34-unit one at the same load factor. But turn
+   in **2.6× the radius** of a 34-unit one at the same load factor. But turn
    *rate* `ω = g·n / v` scales as `1/v`, so it is only **1.6× slower in
    degrees per second**. [M, standard kinematics]
 2. **The heading change required to escape is set by `arcsin(γ)`, not by how
@@ -1500,3 +1500,405 @@ Geran-4 class [R].
    of rule 1 automatically — which is the elegant part. You do not need an
    evasion stat; you need a heading and a speed.
 
+---
+
+## 10. The design recommendation
+
+*This is the section the rest of the document exists to support, and I am going
+to be as opinionated as the brief asked for.*
+
+### 10.1 The headline answer
+
+**The game needs line of sight. It does not need ray-casting.** Those are
+different statements and conflating them is what makes line of sight look
+unaffordable.
+
+Do the arithmetic that matters. `RebuildDetection` is already
+`teams × entities × entities` per tick. At a realistic 400 live entities and two
+teams that is **~320,000 pair evaluations per tick, ~10 million per second** at
+32 Hz — and the comment in `World.cs` already flags that this is the place a
+spatial index goes when it stops being affordable.
+
+Now price the naive version of what the brief asks about. A DDA ray across a
+2 km map on the existing (unused) `VisionCellMetres = 16` grid is up to **128
+cell tests**. Three occluded channels × 320,000 pairs × 128 = **~123 million cell
+tests per tick**, ~4 billion per second. On an iPad. In fixed point. **That is
+not a tuning problem, it is three orders of magnitude out.** [M, arithmetic]
+
+**The fix is not a cheaper ray. It is fewer rays** — and the reason fewer rays
+work here is the central terrain finding of this document: occlusion in this
+theatre comes from a **small number of long, static, linear features** (tree
+lines every 800–1,600 m, settlements every 2–4 km) whose shadows **do not change
+from tick to tick**. A shadow map is worth computing once and reading many
+times.
+
+### 10.2 The recommended architecture, concretely
+
+**Step 1 — give every tile an occluder height.** One byte per tile alongside
+`TileClass`. On a 256 × 256 build-tile map that is **64 KB**. This replaces an
+elevation model entirely: you never need the ground's height because the ground
+is flat; you need the height of the thing standing on it.
+
+**Step 2 — precompute a visibility stamp per observer, by recursive
+shadowcasting on the 16 m vision grid.** Shadowcasting is *"the state-of-the-art
+field-of-view method for grids smaller than 512 × 512"* and *"improves the
+performance of visibility checks by implementing field of view instead of line
+of sight"* [R]. Octant-based shadowcasting normalises each octant's slope range
+to [0,1], which in fixed point is exact and therefore deterministic [M/I]. Cost
+is **O(cells within the sensor radius)**, once, not per target: a 1,400 m radar
+reach is 87 cells of radius, about **24,000 cell visits** — versus the 128-cell
+ray it replaces, it pays for itself after 188 targets, and there are thousands of
+pair-evaluations per observer per second.
+
+**Step 3 — store the stamp as a bitset and make the per-pair test one bit
+test.** 16,384 cells is **2 KB per observer**; sixty-four observers is 128 KB.
+The per-pair cost in `ComputeDetection` drops from a ray to a shift and a mask —
+comparable to the `Fix2.SqrDistance` already being done. [I]
+
+**Step 4 — recompute stamps lazily, not every tick.**
+
+- **Static sensors** (Radar Mast, Gun Mount, Command Post, Interceptor Battery)
+  recompute **only when terrain changes** — when a building becomes rubble, when
+  a position is built. That is most of the game's sensors and their cost is
+  effectively zero.
+- **Mobile ground sensors** (Main Tank) recompute on a round-robin, one per
+  tick, or whenever they cross a vision cell boundary. The game already accepts
+  exactly this pattern: `MeshRebuildInterval = 4` rebuilds the mesh graph every
+  four ticks, and the jamming grid is coarse at `SignalCellMetres = 32` with an
+  explicit `JamBoundaryRefineMargin = 12` to stop flicker at cell edges. **Reuse
+  that idiom.** A stamp that is up to four ticks stale is 125 ms behind on a
+  shadow cast by a tree line that has not moved since the map loaded.
+- **Air sensors** mostly do not need a stamp at all. See step 5.
+
+**Step 5 — tier by layer, which is where most of the saving is.** The shadow
+arithmetic is decisive and it is exact [M]:
+
+| Observer | Occluder | Shadow behind the occluder |
+|---|---|---|
+| 10 m mast, occluder 20 m at 1 km | 20 m tree line | **Unbounded** — the ray rises at 0.57°, so a ground target is masked to the horizon |
+| 50 m drone (Layer.Low), occluder 20 m at 200 m | 20 m tree line | **133 m** of ground shadow — substantial |
+| 500 m drone (Layer.High), occluder 20 m at 1 km | 20 m tree line | **42 m** of ground shadow — negligible |
+
+The published altitudes support the tiering directly: FPVs *"can film from half
+a metre above the ground — or 3, or 10, or 100 metres"*, while fixed-wing
+recon *"only sees from 300 metres up, at best, and usually 500–600"* [R], and
+Geran-4 class cruises at 4,000–5,000 m [R].
+
+> **[I, high] Rule: occlusion applies in full to Layer.Ground observers and
+> targets, partially to Layer.Low, and not at all to Layer.High.** A single
+> switch on the existing `Layer` enum removes occlusion from the majority of
+> airborne pairs, which are also the most numerous.
+
+**Step 6 — one stamp, five interpretations.** This is the part that makes the
+whole thing cheap. Compute visibility once; each channel reads the same bit and
+does something different with it:
+
+| Channel | Reads the bit as |
+|---|---|
+| Optical | **Hard block** |
+| Thermal | **Hard block**, plus a separate foliage term with the opposite seasonal sign |
+| Radar | **Hard block, absolute** (per `radar-rf.md` §2B.5), plus the σ0 terrain reach multiplier |
+| Acoustic | **Attenuation**: −8 / −15 / −20 dB by band, translated to a reach multiplier; never a cut |
+| Passive RF (ESM) | **Reach multiplier ≈ 0.3–0.5** [E]; never a cut |
+| Control link (Radio, Mesh) | **Hard drop**, restored by an elevated mesh node; ignored by Fibre, Satellite, Autonomy |
+
+Marginal cost of adding the fourth and fifth channels once the first three
+exist: **one bit test each**. So the honest answer to "which channels can skip
+occlusion without the player noticing" is that **none of them need to, because
+the expensive part is shared**. If forced to drop one, drop **acoustic** — its
+reliability is already 52, its ranges are the shortest on the board, and its
+correct behaviour is a multiplier rather than a cut, so its absence is the least
+visible. Do **not** drop ESM: a jammer that stays visible through terrain when
+nothing else does is one of the best reads in the game.
+
+### 10.3 How many terrain classes, and which
+
+The existing seven are `Open, Road, Forest, PowerLine, Rubble, Water,
+Impassable`. **Add three, split one, and add the height byte. Ten classes.**
+
+| Class | Status | Occluder height [E] | Why |
+|---|---|---|---|
+| `Open` | keep | 0 | — |
+| `Road` | keep | 0 | Already carries netting semantics via `ground-logistics.md` |
+| `Forest` | keep | **20 m** | Block woodland. Gains: occlusion, link-break, canopy state, concealment bonus (§5.4) |
+| **`TreeLine`** | **add** | **20 m** | **The most important addition in this table.** The shelterbelt is *narrow, linear, 19–23 m tall, spaced 800–1,600 m* [R] and it is where positions are dug [R]. It is not a forest and behaving like one is wrong: it is one tile wide, passable, and it occludes across kilometres |
+| **`Building`** | **add** (split out of `Impassable`) | **25 m** | Blocks horizontally **and overhead**; provides top-attack cover; supports the vertical interior fight [R] |
+| `Rubble` | keep, **change behaviour** | **12 m** | Blocks horizontally, **not overhead** — walls stand, roofs are gone [R, Bakhmut]. Vehicle-impassable |
+| **`Cut`** | **add** | **−15 m** (sentinel: negative) | The balka [R]. Occludes ground-to-ground across it; conceals what is in it from shallow angles; a movement corridor |
+| `PowerLine` | keep | 0 for sight, high for tether | Already correct; it is a tether hazard, not an occluder |
+| `Water` | keep | 0 | Plus the σ0 radar bonus (×1.20) from `radar-rf.md` |
+| `Impassable` | keep, **narrow** | 0 | Map boundary and genuinely untraversable ground only, now that `Building` exists |
+
+Three things deliberately **not** made tile classes:
+
+- **Berms and revetments** — they are *directional*, and a directional occluder
+  does not fit a tile grid cleanly. Make them **structures** with a facing,
+  applied as a signature modifier from screened bearings. [E]
+- **Netting** — an **overlay flag** on Road and Building tiles, not a class,
+  because it coexists with whatever is underneath. [E]
+- **Elevation** — for all the reasons in §1.
+
+### 10.4 What this buys, in gameplay terms
+
+The value of this change is not realism; it is that **eight existing systems
+that currently do nothing start doing something**:
+
+1. **`MeshRepeater` and mast height** become "restore the link over the tree
+   line" instead of "+700 m" (§2.5).
+2. **`LinkKind`'s five rungs** differentiate for the first time: Radio dies
+   behind terrain, Mesh survives if you pay for altitude, Fibre ignores terrain
+   and pays in snag, Satellite ignores it entirely, Autonomy has nothing to lose
+   (§2.5).
+3. **`Terrain.BlocksGroundSight()`**, which currently has zero callers, acquires
+   callers.
+4. **`VisionCellMetres = 16`**, currently declared and unused, acquires a
+   purpose.
+5. **The `Layer` enum** becomes a real trade — fly low to defeat detection and
+   lose your link and your own sight lines, or fly high and be seen (§10.2
+   step 5, and the "low ingress defeats radar line of sight" reporting).
+6. **Position siting** becomes a decision: in the tree line, or useless (§3.1).
+7. **Destroying a settlement** becomes a tactical act with a specific, legible
+   consequence — you have removed the enemy's overhead cover and left their
+   walls standing (§6.2).
+8. **The acoustic channel's band structure** starts paying off, because the same
+   screen costs a Shahed 8 dB and a quad 20 dB (§2.4).
+
+### 10.5 The two changes outside terrain, ranked
+
+If only two things from §8–§9 can be built:
+
+1. **The aspect gate** (§9.5 rule 1). `θ_max = arcsin(v_p/v_t)`, one dot product
+   per candidate engagement. It converts speed from a movement stat into the
+   dominant combat stat, makes decoys measurable, makes launch position a
+   decision, and it is exactly correct rather than approximately correct.
+2. **Reaction delay as a fraction of flight time** (§8.1). Without it, warning
+   time is worthless and everything §1–§7 does to detection ranges has no
+   consequence downstream. **Terrain masking and reaction delay are the same
+   feature seen from two ends, and shipping one without the other wastes
+   both.**
+
+---
+
+## 11. The near-future trajectory, 2027–28
+
+Brief, because the brief asks for it and most of it belongs in other documents.
+
+- **Fibre displaces radio further, so occlusion asymmetry grows.** Fibre range
+  is reported heading for **30–50 km** [R]. The more of the FPV fleet is
+  fibre-guided, the more terrain stops protecting anyone from the control-link
+  side while still protecting them from the sensor side. **[I]** Expect terrain
+  to become an *observation* problem rather than a *link* problem.
+- **Relays proliferate.** Ground masts at 4–6 m deployable in 1–2 minutes, and
+  airborne repeaters at 15–25 km, are already cheap [R]. **[I]** By 2028 assume
+  contested airspace has a repeater layer in it, which flattens terrain's effect
+  on links and makes the repeater itself the target.
+- **Autonomy removes the link from the equation entirely for terminal
+  guidance** — `front-2026.md` §6A already records machine-vision terminal
+  guidance as routine. **[I]** Terrain then affects only the *search* phase, not
+  the *attack* phase.
+- **Fortification hardens and the counter hardens with it.** The 2026 penetrator
+  and thermobaric munitions [R] are the leading edge of a specific answer to
+  overhead cover. **[I]** Expect cover to stop being a survivability solution
+  and become a *cost-imposition* one: it forces the attacker onto expensive
+  munitions.
+- **Interceptors go jet.** *"Jet-powered interceptors are a necessary
+  technological response"* to 500–600 km/h targets [R]. **[I]** When
+  `v_p/v_t` crosses 1 the escape cone of §9.2 vanishes and evasion reverts to
+  being about turn rate. That is a genuine regime change and would be a good
+  late-campaign technology in the game.
+
+---
+
+## 12. What is genuinely uncertain
+
+Listed so nobody later mistakes a guess for a finding.
+
+1. **Every figure in this document is snippet-derived.** I opened no sources.
+   Figures that appeared in multiple independent snippets (shelterbelt spacing,
+   ISO barrier caps, the platoon-bunker dig times, the 1.4 m sewer pipe,
+   interceptor speeds, the Bakhmut destruction percentages) I treat as
+   reasonably firm. Figures from a single snippet, and particularly from
+   aggregator sites whose editorial standards I cannot check, are flagged in
+   place — the **20–40 cm overhead cover** figure is the most load-bearing of
+   these and the least corroborated.
+2. **Trench profile dimensions for this war: not found.** I searched and got WWI
+   figures. The 20–40 cm cover figure is the only current dimensional number I
+   have, from one source.
+3. **What fraction of positions actually has overhead cover: not found.**
+   Doctrine says all; reporting on failures says many have none. My 50–70%
+   is an **[E]**, nothing more.
+4. **Whether netting degrades sensors: no evidence either way.** My "small
+   optical penalty, nothing else" is inference from materials physics.
+5. **ISO 9613-2 Table A.1 foliage attenuation per 100 m: not retrieved.** The
+   Hoover form is from one snippet and I could not check the transcription.
+6. **ITU-R P.833 dB/m values: one snippet, uncorroborated.** The in-leaf versus
+   leafless ratio appeared twice with different framings (20% at 1 GHz; 3–10 dB
+   overall) that I could not reconcile.
+7. **Reverse slope in this war: searched, nothing found.** My explanation for
+   why is inference.
+8. **The decomposition of the 76% sortie failure rate.** The 6,300/1,500
+   arithmetic is solid; *why* three in four fail is not decomposed anywhere I
+   found. My ranking in §8.5 is inference from the named causes.
+9. **Programmed weaving or corkscrewing in transit: searched, nothing found.**
+   Recorded as absent rather than estimated.
+10. **How widespread rear-camera evasion actually is.** The capability is
+    attested and dated; its *prevalence* across the Geran fleet is not. The
+    source's own hedge — *"this **may** allow evasive manoeuvring"* — is the
+    honest level of confidence.
+11. **The 100 m gully depth figure for the Donets Basin.** I believe this refers
+    to river-valley scarps rather than field gullies, but the snippet does not
+    say, and I have used the better-scoped 10–50 m balka figures instead.
+12. **The Chasiv Yar 80–100 m relative height and 12–15 km sight line.** From an
+    analytics aggregator I cannot assess. The absolute elevation (213 m) is
+    independently consistent, which is why I kept it.
+13. **Whether the `arcsin(γ)` gate is the right *game* rule as well as the right
+    *physics* rule.** It is exact, but it is also unforgiving: it makes certain
+    engagements flatly impossible, which players may read as a bug rather than a
+    mechanic. It will need a legible UI tell — an engagement cone on the
+    interceptor — or it will feel arbitrary. That is a design risk I am flagging,
+    not a factual uncertainty.
+
+---
+
+## Sources
+
+**Format note.** Everything below was seen only as search-result titles and
+snippets. I am listing publishers and article titles as they appeared so the
+material can be found and actually read; **no URL here should be treated as
+something I opened**, and no figure should be quoted onward without checking the
+original.
+
+**Terrain, relief and land cover**
+- Encyclopedia of Ukraine — *Donets Ridge*, *Donets Basin*, *Donetsk oblast*,
+  *Shelterbelt*
+- New Voice of Ukraine, summarising ISW — *How geography and urban terrain block
+  the Russian advance in Donetsk Oblast*
+- Ukraine War Analytics — *Battle of Chasiv Yar* (aggregator; low confidence)
+- The European Correspondent — *Why Europe should care about Ukraine's burning
+  windbreak forests* (shelterbelt spacing, heights, hectares)
+- *Resources* (MDPI) — *Agroforestry as a Resource for Resilience... The Case of
+  Ukraine*
+
+**Fortification**
+- ICDS — *Russia's War in Ukraine: Fortification for Drone Warfare* (Oct 2025)
+- Modern War Institute — *Digging Below the Death Zone: The Underground War in
+  Ukraine* (2026)
+- CEPA — *Trenches and Razor Wire: Ukraine's Defensive Spine*; *Ukraine's War of
+  the Treelines*; *Firefights and Fear in Ukraine's Forest War*
+- Forbes (Kirichenko) — *Excavators Are Building Ukraine's Drone-Era
+  Fortifications* (Mar 2026)
+- The Defense Post — *Ukrainian Construction Firms Build Linked Underground
+  Fortifications on Frontline* (Jan 2026)
+- UNITED24 Media — *Ukraine's New Kill-Zone Fortification System*
+- Kyiv Post — *Digging Trenches: Ukrainian Military Engineers and the Art of
+  Preparing Field Defenses*
+- Defense Express — *Ukraine Lacking a Fortified Line of Defense*
+- Defence Blog — *Ukraine develops new bunker-busting munition for drones*
+- Forbes (Hambling) — *Russians Alarmed By Ukraine's Fence Post Drone Bomb*
+  (Jun 2026); *Bunker-Busting Drones Are Rewriting The Rules Of Warfare*
+
+**Netting, screens and vehicle protection**
+- Defense Express — *russians Started Covering Trenches With Anti-Drone Screens*
+- Think Defence — *Counter Drone Nets*
+- Forbes (Axe) — *Explosive Drones Are Everywhere In Ukraine. So the Infantry
+  Head Underground, And Erect Screens.*
+- Wikipedia — *Anti-drone mesh*
+- ParaZero — *From Cope Cages to Active Protection*
+- NPR — *Ukraine strings nets over cities as killer drones turn streets into war
+  zones* (Mar 2026); *The Ukrainian town enmeshed in netting*
+
+**Urban and rubble**
+- UNITED24 Media — *Satellite Analysis Finds 97% of Bakhmut's Multi-Story
+  Housing Destroyed*
+- Forbes (Hambling) — *Drone Hide And Seek: FPVs Are Changing The Rules Of Urban
+  Warfare* (May 2026)
+- Defence Ukraine — *Black Hornet: Micro-UAVs in Ukraine's Urban Combat*
+- Irish Times, PBS — Bakhmut reporting
+
+**Sensors and propagation**
+- ISO 9613-2:2024 and commentary (Arup Strutt; ST-LINE; Datakustik CadnaA;
+  NOISE-CON 2004, *Handling of Barriers in ISO 9613-2*)
+- Maekawa diffraction references (ST-LINE wiki; *Applied Sciences*, *Calculation
+  of Noise Barrier Insertion Loss*)
+- ITU-R P.833-10 — *Attenuation in vegetation*
+- Knife-edge diffraction references (RF Essentials; GaussianWaves; RAYmaps)
+- *Radar horizon* references (Wikipedia; MATLAB `horizonrange`; RF Essentials)
+- COTS Journal — *Countering Low-Flying and One-way Attack Drones by Reducing
+  Ground Clutter Reflections and Radar Radio Multipath Fading*
+- Inside Unmanned Systems — *The Edge of Visibility: EO/IR System Design
+  Realities for Modern C-UAS*
+- Robin Radar — *The Pros and Cons of Using an Acoustic Detection System Against
+  Drones*
+- Acta Acustica (2026) — *Passive acoustic detection and localization of drones
+  using MEMS microphones and machine learning*
+- *Sensors* (MDPI) — *Estimating Departure Time Using Thermal Camera and Heat
+  Traces Tracking Technique*
+- LightPath — *What Is Long-Wave Infrared Imaging*; *Drones That See Heat*
+
+**Thermal in Ukraine**
+- Forbes (Mittal) — *Winter Enhances The Thermal Imaging Systems On Ukraine's
+  Bomber Drones* (Jan 2026)
+- UNITED24 Media — *As Ukraine Endures Extreme Cold, Soldiers Adapt Winter
+  Camouflage for a Drone-Watched Front*
+- Substack (Axe) — *Russian Troops Are Hiding from Ukraine's Deadly Night-Vision
+  Drones*; *Russians Beware: Use Thermal Camo Correctly, or Get Droned*
+- UF PRO — *Thermal Imaging Stealth: Tactics for Staying Undetected*
+
+**Control links, relays and fibre**
+- RSI Europe / defence-industry.eu / aerospace-and-defence.com — *Drone Repeater
+  Kit* reporting
+- BlueBird Tech — *Vishchun-P* aerial repeater, *Vishchun-NS1* ground station
+  (vendor)
+- Ukrainska Pravda — *Mobile masts for drone communications showcased at
+  Ukrainian defence exhibition*; NextGenDefense — *Rapid-Deploy Smart Masts*
+- The Defense Post — *Russia Pushes FPV Drone Range Beyond Line of Sight With
+  Airborne Relay System* (May 2026)
+- RFE/RL — *Fiber-Optic Drones The New Must-Have In Ukraine War*
+- Lowy Institute — *Fibre-optic drones reshape Ukraine's technological war*
+- Meduza — *Fiber-optic cables used to guide drones are blanketing Ukraine's
+  front line* (Jul 2026)
+- Oscar Liang — *Maximizing Range and Penetration* (FPV link budgets)
+
+**Interceptors, the kill chain and Geran evolution**
+- Ukrainska Pravda — *Hunting Shahed and Orlan UAVs: how interceptor drones
+  work* (Mar 2026)
+- The Defender Media — *Terminal guidance on interceptors: how it works in
+  Ukraine* (May 2026); *LITAVR drone interceptors get terminal guidance system*
+- Euromaidan Press — *Fix for Ukraine's interceptors is radar seeker head*
+  (Aug 2026)
+- UNITED24 Media — *Brave1 Tech Automates 95 Percent of Shahed Drone
+  [interception]*; *Ukraine's Interceptor Drones Destroy 1,500 Russian UAVs in
+  February Alone*; *How Ukraine's LITAVR+ Interceptor Hunts Jet-Powered Shahed
+  Drones*
+- Wild Hornets — *STING* (vendor); Zirka — *Shahed interceptor with
+  auto-guidance* (vendor)
+- Forbes (Mittal) — *New Russian Geran Drones Are Fast. Can Ukrainian
+  Interceptors Keep Up?* (Mar 2026)
+- CSIS — *From Shahed to Geran: How Russia Continues to Reinvent the One-Way
+  Attack Drone*
+- Covert Shores — *Guide To Russian Shahed / Geran Strike Drones*
+- Technology.org / voennoedelo — *Russian Geran-2s Are Now Equipped With
+  Rear-Facing Cameras* (Dec 2025)
+- The Defense News — *Russia Deploys Modified 'Seeker' Geran UAVs* (Jul 2026)
+- drone-warfare.com — *Countering the Shahed-136*; *Shahed-136 and Geran*;
+  *Geran-4*
+- Gwara Media / Frontliner — Ukrainian mobile fire group reporting
+- IDGA — *Counter-UAS for Critical Infrastructure*; The Lightning Press —
+  *C-UAS Kill Chain (F2T2EA)*
+- Wikipedia — *Tail-chase engagement*, *Head-on engagement*
+- arXiv — *Interception-Driven Inverse Reachability for Engagement Zone
+  Construction*; *Escape from an Orbiting Pursuer with a Nonzero Capture Radius*
+  (Apollonius / speed-ratio pursuit geometry)
+
+**Game-engineering**
+- Red Blob Games — *2D Visibility*
+- arXiv — *A Shadowcasting-Based Next-Best-View Planner*; *Efficient Visibility
+  Approximation for Game AI using Neural Omnidirectional Distance Fields*
+
+**Internal, cited rather than duplicated**
+- `docs/research/radar-rf.md` — finding 13, §2, §2B.2, §2B.5, §3
+- `docs/research/acoustic.md` — §4, §5, §5a
+- `docs/research/thermal-optical.md` — §3, §6, §10
+- `docs/research/ground-logistics.md` — §8, §9
+- `docs/research/front-2026.md` — §4, §6A, §10
+- `docs/research/decoys-masking.md` — checked for smoke; **contains none**
