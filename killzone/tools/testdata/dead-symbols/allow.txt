@@ -1,0 +1,3 @@
+# The corpus's own allowlist: one good entry, so the self-test proves a
+# well-formed entry suppresses its finding and nothing else.
+sim-public  World.DebugDumpState  # interface-layer: the debug overlay reads this once the interface exists

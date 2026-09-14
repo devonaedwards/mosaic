@@ -1298,6 +1298,56 @@ namespace KZ.Tests
                 for (int i = 0; i < 200; i++) w.Step();
                 Assert.True(w.Entities.IsAlive(drone), "unseen and therefore unshot");
             });
+
+            r.Run("a lost track is held for two seconds, not dropped instantly", delegate
+            {
+                // FINDINGS.md #21 describes a two-second track hold; until this was
+                // wired, SimConstants.TrackHoldTicks had zero call sites and
+                // Reaches() rerolled every fringe contact from scratch every tick
+                // (AUDIT-UNWIRED F2). This exercises the production path end to
+                // end: spawn, Step(), and watch IsDetectedBy - the same call
+                // CombatSystem.CanEngage makes - through the loss and the hold.
+                World w = MakeWorld(2100);
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1050, 1000));
+                w.Step();
+                Assert.True(w.IsDetectedBy(1, tank), "close and large - solidly detected");
+
+                // Move the target well beyond every channel's reach in one jump,
+                // rather than flying it out over many ticks - the point is to give
+                // RebuildDetection() a target with zero raw reach on every channel,
+                // starting on a known tick, not to hand-write the track state
+                // itself. Squared, this stays well inside Q31.32 range.
+                w.Entities.Position[tank.Index] = P(1000, 1000 + 20000);
+
+                for (int i = 0; i < SimConstants.TrackHoldTicks; i++)
+                {
+                    w.Step();
+                    Assert.True(w.IsDetectedBy(1, tank),
+                                "tick " + i + " into the hold - the track should still be live");
+                }
+
+                w.Step();
+                Assert.True(!w.IsDetectedBy(1, tank),
+                            "one tick past the hold - the track should finally drop");
+            });
+
+            r.Run("the hold covers losing a track, not gaining one", delegate
+            {
+                // The asymmetry the design calls for: a target that has never been
+                // solidly seen gets no grace from the hold. Getting this backwards
+                // (granting the hold on entry too) would make fringe detection
+                // stickier in both directions, which is not what the research asks
+                // for - a marginal contact should still flicker while it is being
+                // acquired.
+                World w = MakeWorld(2101);
+                w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1000, 1000 + 20000));
+
+                for (int i = 0; i < SimConstants.TrackHoldTicks * 2; i++) w.Step();
+                Assert.True(!w.IsDetectedBy(1, tank),
+                            "never in range, so never acquired, so no hold applies");
+            });
         }
 
         // ------------------------------------------------------------------

@@ -1,0 +1,7 @@
+# Four entries, each broken in a different way. The self-test expects exactly
+# four errors: this file is how the checker proves it rejects a suppression
+# that a reviewer could not judge.
+sim-public  World.DebugDumpState
+sim-public  World.DebugDumpState  # we need it
+sim-public  World.DebugDumpState  # legacy: kept around from an older design
+sim-public

@@ -765,6 +765,21 @@ namespace KZ.Sim
         int detectionCacheTick = -1;
 
         /// <summary>
+        /// The tick each team last actually reached each entity on any channel, or
+        /// -1 if never. This is the track hold's only state.
+        ///
+        /// Grain: per team, not per sensor. A track is a side's belief that
+        /// something is there, and the belief does not lapse because the one
+        /// mount that first raised it happened to blink - RebuildDetection already
+        /// collapses detection to "does this team see it at all" before anything
+        /// downstream (CanEngage, the renderer) asks, so remembering per sensor
+        /// would track state nothing reads and cost O(entities^2) doing it. Per
+        /// target, per team is O(entities x teams), the same shape as
+        /// detectionCache above.
+        /// </summary>
+        int[][] lastSeenTick;
+
+        /// <summary>
         /// Work out what each side can see, once per tick.
         ///
         /// Detection is asked about constantly - every weapon, against every
@@ -812,20 +827,43 @@ namespace KZ.Sim
             if (detectionCache == null)
             {
                 detectionCache = new bool[Players.Length][];
+                lastSeenTick = new int[Players.Length][];
                 for (int t = 0; t < Players.Length; t++)
+                {
                     detectionCache[t] = new bool[Entities.Capacity];
+                    lastSeenTick[t] = new int[Entities.Capacity];
+                    for (int i = 0; i < Entities.Capacity; i++) lastSeenTick[t][i] = -1;
+                }
             }
 
             for (byte team = 1; team < Players.Length; team++)
             {
                 bool[] seen = detectionCache[team];
+                int[] last = lastSeenTick[team];
                 for (int i = 1; i < Entities.HighWater; i++) seen[i] = false;
 
                 for (int i = 1; i < Entities.HighWater; i++)
                 {
                     if (!Entities.IsSlotAlive(i)) continue;
                     if (Entities.Team[i] == team) { seen[i] = true; continue; }
-                    seen[i] = ComputeDetection(team, i);
+
+                    if (ComputeDetection(team, i))
+                    {
+                        seen[i] = true;
+                        last[i] = Tick;
+                    }
+                    else
+                    {
+                        // Lost this tick, not gained: a track once acquired is held
+                        // for TrackHoldTicks after the sensor stops reaching it
+                        // (acoustic.md Recommendation, FINDINGS.md #21), so a
+                        // marginal contact does not strobe in and out with the
+                        // per-tick edge roll in Reaches(). A target that has never
+                        // been solidly seen (last[i] == -1) gets no such grace -
+                        // the hold protects a track from being dropped, it does not
+                        // make one easier to acquire.
+                        seen[i] = last[i] >= 0 && Tick - last[i] <= SimConstants.TrackHoldTicks;
+                    }
                 }
             }
             detectionCacheTick = Tick;
@@ -1195,6 +1233,13 @@ namespace KZ.Sim
                     if (team < Players.Length && Players[team].UplinkInUse > 0) Players[team].UplinkInUse--;
                 }
                 Entities.Destroy(h);
+
+                // A dead slot's index gets handed to whatever spawns next
+                // (EntityTable.Create reuses off the free list). Without this, a
+                // brand-new, unrelated entity could inherit a track hold that
+                // belonged to whatever used to occupy its index.
+                if (lastSeenTick != null)
+                    for (int t = 0; t < lastSeenTick.Length; t++) lastSeenTick[t][idx] = -1;
             }
             pendingDeaths.Clear();
         }
@@ -1244,6 +1289,17 @@ namespace KZ.Sim
                 h = (h ^ (ulong)Players[t].Materiel.Raw) * Prime;
                 h = (h ^ (ulong)Players[t].TaskingPoints.Raw) * Prime;
                 h = (h ^ Players[t].Crews.StateHash()) * Prime;
+
+                // The track hold's memory (RebuildDetection). It is a function of
+                // tick history rather than of this instant's positions, so unlike
+                // most of what is hashed above it would not be caught by anything
+                // else here if it drifted between platforms.
+                if (lastSeenTick != null)
+                {
+                    int[] last = lastSeenTick[t];
+                    for (int i = 1; i < Entities.HighWater; i++)
+                        h = (h ^ (ulong)(uint)last[i]) * Prime;
+                }
             }
 
             h = (h ^ Territory.StateHash()) * Prime;
