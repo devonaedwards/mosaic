@@ -64,6 +64,13 @@ namespace KZ.Sim
         public Propulsion Propulsion;
 
         /// <summary>
+        /// Which kind of autonomy this airframe carries, if any. Terminal guidance
+        /// is the routine one and keeps its crew; target selection is the
+        /// speculative one and is what frees a crew and pays for it.
+        /// </summary>
+        public AutonomyTier AutonomyTier;
+
+        /// <summary>
         /// A star tracker. Bounds heading drift rather than fixing position, and
         /// costs a quarter of a million, so it belongs on almost nothing.
         /// </summary>
@@ -443,6 +450,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "FPV Team", CanChangeAltitude = true, Tier = 1, Propulsion = Propulsion.SmallElectric,
+                AutonomyTier = AutonomyTier.TerminalGuidance,
                 CostMateriel = 200, BuildTicks = SimConstants.Seconds(8),
                 Hp = M(55), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(22.0),
@@ -458,6 +466,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Fiber FPV Team", Tier = 2, Propulsion = Propulsion.SmallElectric,
+                AutonomyTier = AutonomyTier.TerminalGuidance,
                 CostMateriel = 420, BuildTicks = SimConstants.Seconds(12),
                 Hp = M(70), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(15.0), TurnRateDegreesPerSecond = 140,
@@ -472,6 +481,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Multirole Quad", CanChangeAltitude = true, Tier = 2, Propulsion = Propulsion.SmallElectric,
+                AutonomyTier = AutonomyTier.TerminalGuidance,
                 CostMateriel = 380, BuildTicks = SimConstants.Seconds(14),
                 Hp = M(110), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(19.0),
@@ -534,6 +544,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Loitering Munition", Tier = 2, Propulsion = Propulsion.Combustion,
+                AutonomyTier = AutonomyTier.TerminalGuidance,
                 CostMateriel = 550, BuildTicks = SimConstants.Seconds(16),
                 Hp = M(90), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(24.0), TurnRateDegreesPerSecond = 70,
@@ -639,7 +650,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Autonomous Munition", Faction = FactionId.ObsidianDirectorate, Tier = 3,
-                Propulsion = Propulsion.Combustion,
+                Propulsion = Propulsion.Combustion, AutonomyTier = AutonomyTier.TargetSelection,
                 NavAid = NavAid.SceneMatching,
                 CostMateriel = 620, BuildTicks = SimConstants.Seconds(18),
                 Hp = M(110), Armour = ArmourClass.AirFixed, Layer = Layer.High,

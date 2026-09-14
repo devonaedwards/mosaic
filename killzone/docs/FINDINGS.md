@@ -728,3 +728,67 @@ evidence was absent. The tell was not in the text, it was in the search count.
 
 Worth carrying forward: **ask what a document cost to produce before trusting
 what it says.**
+
+## 28. The corpus had missed an entire war, and autonomy is settled
+
+From the second re-run. Two things, one embarrassing and one useful.
+
+### The embarrassing one
+
+`beyond-ukraine.md` — the document whose entire job is to stop this game being a
+simulation of exactly one conflict — was written on a nearly-empty search budget
+and **missed a state-on-state drone and missile campaign that had been running
+since February 2026**. Air defences in the Gulf report hundreds of drones and
+scores of ballistic missiles engaged; a Shahed reached a US tactical operations
+centre on 1 March 2026 and killed six soldiers, with the intercept failing; the
+campaign is estimated to have consumed most of a national interceptor stockpile.
+
+That is the closest published analogue to an alternative campaign for this game,
+and the corpus did not know it existed. It is a sharper version of item 27's
+lesson: the thin document was not vaguer than the others, it was *absent* on
+something central, and nothing in its prose signalled that.
+
+### The useful one: autonomy is two tiers and the world has one of them
+
+Item 23 has been open a long time. It is now settled by evidence rather than
+argument:
+
+- **Terminal guidance became routine during 2026.** Production airframes ship
+  with it; the add-on costs about a hundred dollars.
+- **Autonomous target selection did not.** Still in initial combat testing at the
+  same date, officially not fielded, one contested single-source kill claim.
+
+So the near-future this game is set in is a **terminal-guidance world**, and the
+consequence is the one that inverts the design:
+
+> **Terminal guidance keeps the crew.** It is not a step towards replacing
+> people. It is a way of making the last two seconds survivable when the link
+> dies, and it makes the shot *better*, because the hard part of an attack is the
+> final approach.
+
+The game had autonomy as one thing that saved a crew and paid an error rate.
+That description fits neither tier: the common one saves no crew and pays no
+error, and the rare one is speculative. Both tiers are now in the simulation, the
+classifier no longer runs at all for terminal guidance — a decoy screen cannot
+deceive a decision a human already made while they could see — and only one unit
+in the catalogue carries target selection, which is the correct rarity.
+
+### Three more corrections worth carrying
+
+**A fiber drone should not be invulnerable.** Its radio signature is zero and the
+game treats that as the end of the argument. A directed-energy system was
+reported killing a fiber-optic drone in January 2026. Directed energy does not
+need to hear anything — it needs line of sight. The game's point-defence model
+was researched almost entirely from one war and has no directed energy in it at
+all, which is probably the single largest piece of overfitting in the project.
+
+**Crew skill is the variable, and there is now a clean measurement of it.**
+Fiber FPVs in one theatre land about 19% of attacks; comparable hardware in
+Ukraine lands 30–60% in clean conditions. Same technology, different crews. That
+is the value of training isolated from equipment, and it is a strong argument for
+the game's crew veterancy being a bigger lever than its tech tree.
+
+**Falling vehicle losses are evidence of the drone threat, not against it.**
+Russian vehicle losses fell to their lowest in 46 months — because the vehicles
+stopped being used. Anyone tuning balance against a loss-rate chart would draw
+exactly the wrong conclusion.

@@ -255,11 +255,12 @@ namespace KZ.Sim
                 };
             }
 
-            if (def.AutonomyQuality > 0)
+            if (def.AutonomyQuality > 0 || def.AutonomyTier != AutonomyTier.None)
             {
                 Entities.AddComponent(i, ComponentMask.Autonomy);
                 Entities.Autonomy[i] = new AutonomyState
                 {
+                    Tier = def.AutonomyTier,
                     Quality = def.AutonomyQuality,
                     BoxMin = Fix2.Zero,
                     BoxMax = Fix2.Zero,

@@ -37,6 +37,20 @@ namespace KZ.Sim
         {
             misidentified = false;
 
+            // Terminal guidance does not choose anything. A person already did,
+            // while they could still see, and the machine is only flying the last
+            // couple of seconds after the link died. So there is no classification
+            // to get wrong and no decoy to fall for - the deception happened after
+            // the decision, which is too late to matter.
+            //
+            // This is the distinction the game collapsed for a long time, and
+            // collapsing it made every autonomous munition a crewless gamble when
+            // the fielded reality is the opposite: the common tier keeps its crew
+            // and is *more* accurate, not less.
+            if (w.Entities.Has(munitionIndex, ComponentMask.Autonomy)
+                && w.Entities.Autonomy[munitionIndex].Tier != AutonomyTier.TargetSelection)
+                return EntityHandle.None;
+
             byte team = w.Entities.Team[munitionIndex];
             Fix2 pos = w.Entities.Position[munitionIndex];
             Fix cone = Fix.FromInt(SimConstants.AutonomySeekerConeMetres);

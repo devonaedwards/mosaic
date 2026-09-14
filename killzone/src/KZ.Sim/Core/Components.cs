@@ -328,6 +328,14 @@ namespace KZ.Sim
 
     public struct AutonomyState
     {
+        /// <summary>
+        /// Which of the two autonomies this is. The distinction decides whether a
+        /// crew is consumed, whether decoys work, and whether accuracy goes up or
+        /// down - and those three answers differ between the tiers, which is why
+        /// one field could never carry it.
+        /// </summary>
+        public AutonomyTier Tier;
+
         public byte Quality;            // confidence; decoys drag this down
         public Fix2 BoxMin;
         public Fix2 BoxMax;

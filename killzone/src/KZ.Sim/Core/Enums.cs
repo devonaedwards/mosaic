@@ -277,6 +277,51 @@ namespace KZ.Sim
         Turbojet = 4
     }
 
+    /// <summary>
+    /// The two things that get called "autonomy", which are not the same thing and
+    /// which the game modelled as one for far too long.
+    ///
+    /// The research settles which of them the world actually has. Terminal
+    /// guidance became routine during 2026 - production airframes ship with it and
+    /// the add-on costs about a hundred dollars. Autonomous target *selection* was
+    /// still in initial combat testing at the same date, officially not fielded,
+    /// with one contested single-source claim of a kill.
+    ///
+    /// So the near-future this game is set in is a <see cref="TerminalGuidance"/>
+    /// world, and the important consequence is that terminal guidance **keeps the
+    /// crew**. It is not a step towards replacing people; it is a way of making
+    /// the last two seconds survivable when the link dies. Anyone modelling
+    /// autonomy as a crew-saving technology has the arrow pointing the wrong way.
+    /// </summary>
+    public enum AutonomyTier : byte
+    {
+        /// <summary>A person flies it all the way in. Cheapest, and jamming kills it.</summary>
+        None = 0,
+
+        /// <summary>
+        /// The machine flies the last few seconds onto a target a human already
+        /// chose. Immune to jamming once committed, because there is nothing left
+        /// to jam - and *more* accurate than a person, not less, because the hard
+        /// part of an FPV attack is the final approach.
+        ///
+        /// Still consumes a crew. Decoys do not work on it, because the decision
+        /// was made by someone who could see.
+        /// </summary>
+        TerminalGuidance = 1,
+
+        /// <summary>
+        /// The machine picks the target too. This is the one that frees a crew, and
+        /// the one that pays for it - a camera choosing its own target is beaten by
+        /// giving the camera something convincing to look at, which is what makes a
+        /// hundred-and-fifty-Materiel inflatable a good answer to a six-hundred-
+        /// Materiel munition.
+        ///
+        /// Speculative rather than fielded. It should be expensive and it should
+        /// feel like a gamble, because in 2026 that is exactly what it was.
+        /// </summary>
+        TargetSelection = 2
+    }
+
     public enum FactionId : byte
     {
         Neutral = 0,

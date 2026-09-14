@@ -1083,6 +1083,53 @@ namespace KZ.Tests
                             "deep winter opens the whole landscape up again");
             });
 
+            r.Run("the two autonomies are not the same autonomy", delegate
+            {
+                // The correction that had been pending longest. The game treated
+                // autonomy as one thing that saved a crew and paid an error rate.
+                // It is two things, and the common one does neither.
+                //
+                // Terminal guidance - the machine flying the last two seconds onto
+                // a target a person already chose - became routine on production
+                // airframes during 2026 and costs about a hundred dollars as an
+                // add-on. It keeps its crew and it makes the shot better, because
+                // the hard part of the attack is the final approach. Autonomous
+                // target selection, the one that actually frees a crew, was still
+                // in initial testing at the same date.
+                //
+                // So a decoy screen does nothing to the common tier and everything
+                // to the rare one, and the classifier must not even run for the
+                // first. The decision was made by someone who could see; deceiving
+                // the camera afterwards is too late.
+                World w = MakeWorld(601);
+                w.SpawnDecoy(2, P(1200, 1000), TargetKind.HighValue, 6000);
+                w.SpawnDecoy(2, P(1210, 1010), TargetKind.HighValue, 6000);
+                w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1220, 1020));
+
+                EntityHandle guided = w.Spawn(Catalog.IdOf("Loitering Munition"), 1, P(1150, 1000));
+                EntityHandle choosing = w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(1150, 1000));
+                w.Step();
+
+                Assert.Equal((int)AutonomyTier.TerminalGuidance,
+                             (int)w.Entities.Autonomy[guided.Index].Tier,
+                             "the routine tier");
+                Assert.Equal((int)AutonomyTier.TargetSelection,
+                             (int)w.Entities.Autonomy[choosing.Index].Tier,
+                             "and the speculative one");
+
+                bool misidentified;
+                EntityHandle guidedPick =
+                    AutonomyClassifier.SelectTarget(w, guided.Index, out misidentified);
+                Assert.True(guidedPick.IsNone,
+                            "terminal guidance chooses nothing - a person already did");
+                Assert.True(!misidentified, "so there is nothing for it to get wrong");
+
+                EntityHandle chosenPick =
+                    AutonomyClassifier.SelectTarget(w, choosing.Index, out misidentified);
+                Assert.True(!chosenPick.IsNone,
+                            "target selection does choose, and can be fooled");
+            });
+
             r.Run("a fiber drone defeats radio listening completely", delegate
             {
                 // The property that makes fiber worth its leash, and one the old
