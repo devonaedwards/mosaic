@@ -338,3 +338,139 @@ If that still reads as a spreadsheet in a playtest, the fallback is to merge
 thermal into optics as one "sight" channel and radar into passive listening as
 one "electronic" channel, leaving three. Three legible channels beat five
 accurate ones.
+
+---
+
+## 15. Guns always hit, and that was the whole problem
+
+**This overturns item 2 and both of my earlier answers about turrets.**
+
+Direct fire was deterministic. A shot that reached did exactly the table damage,
+every time, at any range, against anything. For ground fire that is a deliberate
+design choice and stays - a strategy player has to be able to count how many
+drones a tank takes. For a gun firing at a two-kilogram object crossing its front
+at eighty kilometres an hour it is simply wrong, and it was the reason a single
+turret looked unbeatable.
+
+Air defence now rolls. The chance falls as the square of fractional range, scales
+with how big the target looks, falls with how fast it crosses, and drops another
+thirty percent when shooting upward. A mount's stated reach is how far its rounds
+carry, not how far it can reliably hit.
+
+The same experiment, before and after:
+
+| drones sent together | destroyed the gun, guns always hit | destroyed the gun, guns roll |
+|---|---|---|
+| 3 | never | 10% |
+| 5 | never | **72%** |
+| 8 | never | 98% |
+| 24 | every time | every time |
+
+Five drones now take a gun position about three times in four, at 1,000 Materiel
+against a 450-Materiel structure. The exchange rate went from more than ten to
+one to about two to one, and nothing was nerfed to achieve it - the gun still
+reaches 550 m, it simply cannot hit a small fast thing out there.
+
+This also answers the jet question without any special case. A turbojet strike
+drone crossing at three times the speed of a quadcopter is not hard to shoot at,
+it is hard to hit, and the speed term does that on its own.
+
+## 16. Stacked turrets stopped mattering, which is now suspicious in the other direction
+
+| turrets | drones needed |
+|---|---|
+| 1 | 8 |
+| 2 | 8 |
+| 3 | 8 |
+| 4 | 12 |
+
+Adding the second and third turret buys almost nothing. The reason is that each
+turret's *effective* envelope is now much smaller than its nominal one, so
+turrets spread along a line are firing at long range with poor odds against
+anything not directly in front of them.
+
+That is arguably correct - mutual support at those ranges is thin - but it is a
+big swing from "three turrets are unbeatable" to "three turrets are worth one,"
+and the truth is probably between. The falloff curve is the thing to check, and
+it is currently a guess. Research is out on real hit-probability figures.
+
+## 17. Decoy escorts work, and nothing had to special-case them
+
+| package (about 2,600 Materiel) | real drones through | turret destroyed |
+|---|---|---|
+| 3 real + 1 decoy | 2.23 of 3 (74%) | 67% |
+| 2 real + 6 decoys | 1.70 of 2 (85%) | **80%** |
+| 1 real + 13 decoys | 1.00 of 1 (100%) | 0% |
+
+Trading warheads for decoys raises the survival rate of the real drones and, up
+to a point, raises the chance of killing the target. Past that point there are
+not enough warheads left to finish the job, which is the correct shape.
+
+What is worth noting is that none of this is special-cased. A defence picks
+targets by how much of one it can remove per shot, and a 90 hit-point decoy dies
+to one shot exactly as a real strike drone does - so it is an equally attractive
+thing to shoot at. The mechanic fell out of the targeting rule from item 8.
+
+## 18. Attacking from two altitudes at once does not work, and I think the model is wrong
+
+| six drones, split | arrived | turret destroyed |
+|---|---|---|
+| all low | 5.2 | 100% |
+| three low, three high | 5.2 | 100% |
+| all high | 5.8 | 100% |
+
+Height helps a little. Splitting never beats committing everything high, at
+either of the two scales tested.
+
+The mechanism that should make splitting pay is that a mount has one barrel and
+must physically re-lay between a low target close by and a high one further off.
+That is now modelled - traverse at ninety degrees a second, plus a two-thirds of
+a second penalty for changing height band - and it is too cheap to matter against
+a forty-tick engagement cycle.
+
+So either the tactic is not as good as it sounds, or the re-laying penalty is
+badly understated. My guess is the second. Real figures for traverse rates and
+re-acquisition time have been requested; this entry should be revisited when they
+arrive rather than tuned until it gives the answer I expected.
+
+## 19. Thermal was modelled backwards
+
+It was treated as unaffected by darkness. It is substantially *better* in
+darkness and substantially worse in daylight, because it works on temperature
+contrast and sunlight heats the background until there is little contrast left.
+The same imager that finds a warm engine against a cold sky before dawn can
+struggle past a few hundred metres on a hot afternoon.
+
+Corrected to 0.55 by day, 1.25 at night, 0.90 at twilight.
+
+The related error was treating all drones as similarly warm. An electric
+quadcopter runs its motors at forty to eighty degrees and its battery at sixty; a
+combustion engine runs at four to eight hundred, and a turbojet hotter again.
+Thermal signatures were widened accordingly - electric airframes down to 8-10,
+combustion strike drones up to 60, turbojet to 85. The consequence is that the
+cheap drones are the hard ones to find on heat and the expensive ones are easy,
+which is the right way round and was not true before.
+
+## 20. Acoustic reach was fantasy
+
+The model gave a gun mount 400 map metres of acoustic detection. Published
+experiments put practical acoustic detection of drones at tens of metres for a
+bare microphone and around 160 metres for a large array, degrading badly in wind.
+Cut to 130.
+
+This matters because it reverses a conclusion. With 400 metres of hearing,
+microphones were the best anti-drone sensor at any hour and darkness was worth
+little. At a realistic 130 they are a last-ditch sensor - closer to a trip-wire
+than a search sensor - and night matters again. Deeper research is running and
+this number should be checked against it.
+
+## 21. Nothing is a switch
+
+Detection was binary: in range or not. It now has a solid band inside about two
+thirds of a sensor's reach and an intermittent one beyond, with per-channel
+reliability - passive radio listening 95, optical 88, thermal 84, radar 78,
+acoustic 52 - and a two-second track hold so a marginal contact does not strobe.
+
+Radar was also rescaled to the fourth root of cross-section rather than the
+square root, which is how the radar equation actually behaves and is why a drone
+the size of a dinner plate is so much harder than an aircraft.

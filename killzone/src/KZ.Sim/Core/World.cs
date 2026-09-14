@@ -195,7 +195,12 @@ namespace KZ.Sim
                     AcquiringUntilTick = 0,
                     Acquiring = EntityHandle.None,
                     IsInterceptor = def.IsInterceptor,
-                    InterceptBaseChance = def.InterceptBaseChance
+                    InterceptBaseChance = def.InterceptBaseChance,
+                    Bearing = 0,
+                    TraverseBamPerTick = def.TraverseDegreesPerSecond > 0
+                        ? Trig.DegreesPerSecondToBamPerTick(def.TraverseDegreesPerSecond)
+                        : 0,
+                    TrackingLayer = Layer.Ground
                 };
             }
 
@@ -764,7 +769,7 @@ namespace KZ.Sim
 
                 // Passive listening. Unaffected by darkness or altitude - if it is
                 // transmitting, it is transmitting.
-                if (Reaches(s.Esm, sig.Radio, Fix.One, distSq)) return true;
+                if (Reaches(s.Esm, sig.Radio, Fix.One, distSq, SensorChannel.Esm, ti)) return true;
 
                 // Active radar. Air only, and better against altitude, where there
                 // is no ground clutter to pick a small return out of.
@@ -773,12 +778,15 @@ namespace KZ.Sim
                     Fix radarMod = layer == Layer.High
                         ? Fix.FromDoubleContentOnly(1.20)
                         : Fix.FromDoubleContentOnly(0.80);
-                    if (Reaches(s.Radar, sig.Radar, radarMod, distSq)) return true;
+                    if (Reaches(s.Radar, sig.Radar, radarMod, distSq, SensorChannel.Radar, ti)) return true;
                 }
 
-                // Thermal. Darkness is irrelevant; distance and altitude are not.
-                Fix thermalMod = layer == Layer.High ? Fix.FromDoubleContentOnly(0.80) : Fix.One;
-                if (Reaches(s.Thermal, sig.Thermal, thermalMod, distSq)) return true;
+                // Thermal, which is a night sensor and a poor day one. Sunlight
+                // heats the background until there is little contrast left to work
+                // with, so the imager that owns the small hours is mediocre at noon.
+                Fix thermalMod = ThermalTimeScale();
+                if (layer == Layer.High) thermalMod = thermalMod * Fix.FromDoubleContentOnly(0.80);
+                if (Reaches(s.Thermal, sig.Thermal, thermalMod, distSq, SensorChannel.Thermal, ti)) return true;
 
                 // Microphones. The thing that finds small drones, and the thing
                 // that altitude genuinely defeats - sound from a kilometre up
@@ -786,29 +794,91 @@ namespace KZ.Sim
                 Fix acousticMod = layer == Layer.High
                     ? Fix.FromDoubleContentOnly(0.35)
                     : Fix.One;
-                if (Reaches(s.Acoustic, sig.Acoustic, acousticMod, distSq)) return true;
+                if (Reaches(s.Acoustic, sig.Acoustic, acousticMod, distSq, SensorChannel.Acoustic, ti)) return true;
 
                 // Cameras. Long reach in daylight, and after dark this is the line
                 // that stops being true.
                 Fix opticalMod = layer == Layer.High ? Fix.FromDoubleContentOnly(0.70) : Fix.One;
                 if (IsNight && !TeamHasThermalOptics(team))
                     opticalMod = opticalMod * SimConstants.NightOpticalDetectionScale;
-                if (Reaches(s.Optical, sig.Visual, opticalMod, distSq)) return true;
+                if (Reaches(s.Optical, sig.Visual, opticalMod, distSq, SensorChannel.Optical, ti)) return true;
             }
             return false;
         }
 
         /// <summary>
-        /// Whether one channel reaches. Effective distance is the sensor's nominal
-        /// reach, scaled by a modifier and by the square root of how loud the
-        /// target is on that channel.
+        /// Whether one channel reaches, and how certainly.
+        ///
+        /// Nothing here is a switch. Inside about two thirds of a sensor's reach a
+        /// contact is solid; beyond that the sensor is working at its limit and
+        /// produces an intermittent track. How intermittent depends on the channel:
+        /// a transmission is a transmission and passive listening rarely loses one,
+        /// while a microphone in any wind is doing well to hold a drone at all, and
+        /// a radar has to decide whether the small fast return it just got was a
+        /// drone or a bird.
         /// </summary>
-        static bool Reaches(Fix sensorRange, byte signature, Fix modifier, Fix distSq)
+        bool Reaches(Fix sensorRange, byte signature, Fix modifier, Fix distSq,
+                     SensorChannel channel, int targetIndex)
         {
             if (sensorRange.Raw <= 0 || signature == 0) return false;
-            Fix strength = Fix.Sqrt(Fix.FromInt(signature) / Fix.FromInt(100));
-            Fix effective = sensorRange * modifier * strength;
-            return distSq <= effective * effective;
+
+            Fix effective = sensorRange * modifier * SignatureScale(signature, channel);
+            if (effective.Raw <= 0) return false;
+            if (distSq > effective * effective) return false;
+
+            Fix solid = effective * SimConstants.DetectionSolidFraction;
+            if (distSq <= solid * solid) return true;
+
+            // Out at the edge. Roll, but keyed to the tick and the pair rather than
+            // drawn fresh each call, so one target does not resolve differently for
+            // two sensors in the same instant.
+            int reliability = ChannelReliability(channel);
+            ulong key = (ulong)(uint)targetIndex * 0x9E3779B97F4A7C15UL
+                      + (ulong)(uint)Tick * 0xBF58476D1CE4E5B9UL
+                      + (ulong)channel * 0x94D049BB133111EBUL;
+            key ^= key >> 31;
+            return (int)(key % 100UL) < reliability;
+        }
+
+        /// <summary>
+        /// How target strength converts to reach. Radar takes the fourth root
+        /// because that is how the radar equation works - halving the range needs a
+        /// sixteenth of the cross-section, which is why a drone the size of a
+        /// dinner plate is so much harder than an aircraft. The rest take the
+        /// square root.
+        /// </summary>
+        static Fix SignatureScale(byte signature, SensorChannel channel)
+        {
+            Fix fraction = Fix.FromInt(signature) / Fix.FromInt(100);
+            if (channel == SensorChannel.Radar) return Fix.Sqrt(Fix.Sqrt(fraction));
+            return Fix.Sqrt(fraction);
+        }
+
+        /// <summary>
+        /// How often a channel produces a usable track at the edge of its envelope.
+        /// None of them is certain, and the microphone is the least certain of all.
+        /// </summary>
+        public static int ChannelReliability(SensorChannel channel)
+        {
+            switch (channel)
+            {
+                case SensorChannel.Esm: return 95;      // a transmission is hard to miss
+                case SensorChannel.Optical: return 88;
+                case SensorChannel.Thermal: return 84;
+                case SensorChannel.Radar: return 78;    // birds, clutter, small returns
+                default: return 52;                     // microphones, in any wind at all
+            }
+        }
+
+        /// <summary>How well thermal imaging is working at this hour.</summary>
+        public Fix ThermalTimeScale()
+        {
+            switch (Phase)
+            {
+                case DayPhase.Night: return SimConstants.ThermalNightScale;
+                case DayPhase.Day: return SimConstants.ThermalDayScale;
+                default: return SimConstants.ThermalTwilightScale;
+            }
         }
 
         bool TeamHasThermalOptics(byte team)
@@ -868,7 +938,8 @@ namespace KZ.Sim
                     break;
                 case SensorChannel.Thermal:
                     nominal = s.Thermal; strength = sig.Thermal;
-                    if (layer == Layer.High) mod = Fix.FromDoubleContentOnly(0.80);
+                    mod = ThermalTimeScale();
+                    if (layer == Layer.High) mod = mod * Fix.FromDoubleContentOnly(0.80);
                     break;
                 case SensorChannel.Acoustic:
                     nominal = s.Acoustic; strength = sig.Acoustic;
@@ -883,7 +954,7 @@ namespace KZ.Sim
             }
 
             if (nominal.Raw <= 0 || strength == 0) return Fix.Zero;
-            return nominal * mod * Fix.Sqrt(Fix.FromInt(strength) / Fix.FromInt(100));
+            return nominal * mod * SignatureScale(strength, channel);
         }
 
         /// <summary>The best reach any channel of one sensor has against one target.</summary>

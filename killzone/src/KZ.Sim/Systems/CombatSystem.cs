@@ -36,12 +36,20 @@ namespace KZ.Sim
 
             // Acquisition takes time, and a degraded link doubles it. That delay is
             // most of what an amber pip actually costs you in a fight.
+            //
+            // Switching to a new target also costs whatever it takes to physically
+            // point the mount at it. That is why a mount with one barrel cannot
+            // simply service every target in its envelope in turn, and why an
+            // attack arriving from two altitudes at once is worse for it than the
+            // same number of aircraft arriving from one.
             if (weapon.Acquiring != target)
             {
                 Fix acqMul = w.Entities.Has(i, ComponentMask.Mover)
                     ? w.Entities.Mover[i].AcquisitionMultiplier
                     : Fix.One;
                 int acqTicks = (Fix.FromInt(weapon.AcquisitionTicks) * acqMul).RoundToInt();
+                acqTicks += SlewTicks(w, i, ref weapon, target);
+
                 weapon.Acquiring = target;
                 weapon.AcquiringUntilTick = w.Tick + acqTicks;
                 w.Entities.Weapon[i] = weapon;
@@ -55,6 +63,90 @@ namespace KZ.Sim
             weapon.NextFireTick = w.Tick + weapon.CooldownTicks;
             weapon.Acquiring = EntityHandle.None;
             w.Entities.Weapon[i] = weapon;
+        }
+
+        /// <summary>
+        /// The chance a gun connects with something in the air.
+        ///
+        /// A mount's stated reach is the distance its rounds carry, not the
+        /// distance at which it reliably hits a two-kilogram object crossing its
+        /// front. Accuracy falls off sharply with range, falls further against
+        /// something small, and falls further still against something fast - so the
+        /// envelope inside which a turret is genuinely dangerous is much smaller
+        /// than the circle drawn on the map, and a fast target can cross the outer
+        /// part of that circle almost with impunity.
+        ///
+        /// This is also the honest answer to why a turbojet strike drone is such a
+        /// problem: it is not that guns cannot reach it, it is that they cannot hit
+        /// it.
+        /// </summary>
+        static Fix AirHitChance(World w, int attackerIndex, EntityHandle target, WeaponState weapon)
+        {
+            Fix distance = Fix2.Distance(w.Entities.Position[attackerIndex],
+                                         w.Entities.Position[target.Index]);
+            Fix reach = weapon.RangeMetres;
+            if (reach.Raw <= 0) return Fix.One;
+
+            // Falls off with the square of fractional range: near-certain up close,
+            // close to hopeless at the rim.
+            Fix closeness = Fix.One - Fix.Clamp(distance / reach, Fix.Zero, Fix.One);
+            Fix rangeTerm = closeness * closeness;
+
+            Fix chance = Fix.FromDoubleContentOnly(0.92) * rangeTerm;
+
+            // Size. A heavy multirotor is a far easier thing to hit than a racing
+            // quadcopter, and the visual signature is already the right measure of
+            // how big a thing looks.
+            int defId = w.Entities.DefId[target.Index];
+            if (defId >= 0)
+            {
+                UnitDef def = Catalog.Get(defId);
+                Fix size = Fix.FromInt(def.SigVisual < 10 ? 10 : def.SigVisual) / Fix.FromInt(45);
+                chance = chance * Fix.Clamp(size, Fix.FromDoubleContentOnly(0.45),
+                                                  Fix.FromDoubleContentOnly(1.30));
+
+                // Speed. A target crossing at fifty metres a second gives a mount
+                // very little time in which its solution is still good.
+                Fix speed = def.SpeedMetresPerSecond;
+                if (speed.Raw > 0)
+                {
+                    Fix speedTerm = Fix.FromInt(20) / speed;
+                    chance = chance * Fix.Clamp(speedTerm, Fix.FromDoubleContentOnly(0.25),
+                                                           Fix.FromDoubleContentOnly(1.15));
+                }
+            }
+
+            // Shooting upward is harder again.
+            if (w.Entities.EntityLayer[target.Index] == Layer.High)
+                chance = chance * Fix.FromDoubleContentOnly(0.70);
+
+            return Fix.Clamp(chance, Fix.FromDoubleContentOnly(0.02), Fix.FromDoubleContentOnly(0.95));
+        }
+
+        /// <summary>
+        /// How long it takes to swing the mount onto a new target, and to change
+        /// elevation band if the new one is at a different height.
+        /// </summary>
+        static int SlewTicks(World w, int i, ref WeaponState weapon, EntityHandle target)
+        {
+            if (weapon.TraverseBamPerTick <= 0) return 0;
+
+            Fix2 delta = w.Entities.Position[target.Index] - w.Entities.Position[i];
+            ushort wanted = Trig.Atan2(delta.Y, delta.X);
+            int swing = Trig.Delta(weapon.Bearing, wanted);
+            if (swing < 0) swing = -swing;
+
+            int ticks = swing / weapon.TraverseBamPerTick;
+
+            // Re-laying from one height band to another costs more than traversing
+            // within one, because the mount has to find the target again as well as
+            // point at it.
+            Layer targetLayer = w.Entities.EntityLayer[target.Index];
+            if (targetLayer != weapon.TrackingLayer) ticks += 20;
+
+            weapon.Bearing = wanted;
+            weapon.TrackingLayer = targetLayer;
+            return ticks;
         }
 
         /// <summary>
@@ -204,6 +296,20 @@ namespace KZ.Sim
             // the reason a two-hundred-Materiel drone is a real threat to a tank.
             bool topAttack = w.Entities.EntityLayer[i] == Layer.Low
                              && w.Entities.EntityLayer[target.Index] == Layer.Ground;
+
+            // Shooting at something in the air is a different proposition from
+            // shooting at something on the ground, and the simulation treats it
+            // that way: ground fire connects, air defence rolls.
+            if (w.Entities.EntityLayer[target.Index] != Layer.Ground)
+            {
+                Fix chance = AirHitChance(w, i, target, weapon);
+                if (!w.Random.Get(RandomStream.Interception).Chance(chance))
+                {
+                    // A miss still costs the mount its cycle, which is the whole
+                    // reason a defended approach can be saturated at all.
+                    return;
+                }
+            }
 
             w.ApplyDamage(target, weapon.Damage, weapon.Type, topAttack, w.Entities.HandleAt(i));
 

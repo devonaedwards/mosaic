@@ -48,6 +48,9 @@ namespace KZ.Sim
         public bool IsInterceptor;
         public Fix InterceptBaseChance;
 
+        /// <summary>Degrees per second the mount can traverse. Zero means instant.</summary>
+        public int TraverseDegreesPerSecond;
+
         /// <summary>
         /// Whether this can shoot at something in the air at all.
         ///
@@ -82,10 +85,28 @@ namespace KZ.Sim
         public bool IsStructure;
         public int FootprintTiles = 1;
 
+        // A note on thermal signatures, because the numbers look wrong at a glance.
+        // An electric quadcopter runs its motors at forty to eighty degrees and its
+        // battery at sixty; a combustion engine runs at four hundred to eight
+        // hundred, and a turbojet hotter still. That is not a small difference in
+        // degree, it is the difference between a thing a heat sensor can find and a
+        // thing it mostly cannot - which is why the cheap electric drones are the
+        // hard ones to see and the expensive strike drones are the easy ones.
+
         /// <summary>How much a jammer or radar gives away by being switched on.</summary>
         public byte SignatureWhileEmitting = 85;
 
         public bool IsMeshRepeater;
+
+        /// <summary>
+        /// Carries no warhead and exists to be shot at. Unlike the inflatable on
+        /// the ground, this one is a valid target for everything - looking like the
+        /// real thing on radar is precisely the product.
+        /// </summary>
+        public bool IsFlyingDecoy;
+
+        /// <summary>Can trade altitude for cover, which is a real decision.</summary>
+        public bool CanChangeAltitude;
 
         /// <summary>
         /// Cannot fly in daylight at all. Heavy multirotors are slow, loud and
@@ -211,7 +232,7 @@ namespace KZ.Sim
                 Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
                 WeaponRangeMetres = M(550), WeaponCooldownTicks = 24,
-                SensorOptical = M(600), SensorAcoustic = M(400),
+                SensorOptical = M(600), SensorAcoustic = M(130),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55
             });
 
@@ -341,7 +362,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Interceptor Battery", Faction = FactionId.KestrelPact, Tier = 3,
-                CanEngageAir = true,
+                CanEngageAir = true, TraverseDegreesPerSecond = 45,
                 CostMateriel = 1200, BuildTicks = SimConstants.Seconds(32),
                 Hp = M(600), Armour = ArmourClass.Light, SpeedMetresPerSecond = M(6.0),
                 WeaponDamage = M(220), WeaponType = DamageType.Fragmentation,
@@ -356,19 +377,19 @@ namespace KZ.Sim
         {
             Add(new UnitDef
             {
-                Name = "Scout Quad", Tier = 1,
+                Name = "Scout Quad", CanChangeAltitude = true, Tier = 1,
                 CostMateriel = 120, BuildTicks = SimConstants.Seconds(6),
                 Hp = M(40), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(16.0),
                 Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true, IsMeshRepeater = true,
                 SensorOptical = M(250),
-                SigRadio = 60, SigThermal = 10, SigAcoustic = 60, SigVisual = 12, SigRadar = 20
+                SigRadio = 60, SigThermal = 8, SigAcoustic = 60, SigVisual = 12, SigRadar = 20
             });
 
             // The workhorse: ammunition with a pilot. It does not come home.
             Add(new UnitDef
             {
-                Name = "FPV Team", Tier = 1,
+                Name = "FPV Team", CanChangeAltitude = true, Tier = 1,
                 CostMateriel = 200, BuildTicks = SimConstants.Seconds(8),
                 Hp = M(55), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(22.0),
@@ -376,7 +397,7 @@ namespace KZ.Sim
                 WeaponDamage = M(260), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(8), WeaponAcquisitionTicks = 12, IsMeshRepeater = true,
                 SensorOptical = M(140),
-                SigRadio = 70, SigThermal = 12, SigAcoustic = 70, SigVisual = 15, SigRadar = 22
+                SigRadio = 70, SigThermal = 8, SigAcoustic = 70, SigVisual = 15, SigRadar = 22
             });
 
             // Unjammable, and leashed for it. Slower, less agile, and trailing a
@@ -392,12 +413,12 @@ namespace KZ.Sim
                 WeaponDamage = M(340), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(8), WeaponAcquisitionTicks = 12,
                 SensorOptical = M(220),
-                SigRadio = 0, SigThermal = 12, SigAcoustic = 70, SigVisual = 15, SigRadar = 22
+                SigRadio = 0, SigThermal = 8, SigAcoustic = 70, SigVisual = 15, SigRadar = 22
             });
 
             Add(new UnitDef
             {
-                Name = "Multirole Quad", Tier = 2,
+                Name = "Multirole Quad", CanChangeAltitude = true, Tier = 2,
                 CostMateriel = 380, BuildTicks = SimConstants.Seconds(14),
                 Hp = M(110), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(19.0),
@@ -407,14 +428,14 @@ namespace KZ.Sim
                 WeaponRangeMetres = M(40),
                 IsMeshRepeater = true,
                 SensorOptical = M(260),
-                SigRadio = 65, SigThermal = 18, SigAcoustic = 72, SigVisual = 20, SigRadar = 25
+                SigRadio = 65, SigThermal = 10, SigAcoustic = 72, SigVisual = 20, SigRadar = 25
             });
 
             // Fast and cheap, but nearly useless without a radar telling it where
             // to look. Killing the radar is how you open the sky.
             Add(new UnitDef
             {
-                Name = "Interceptor FPV", Tier = 2, CanEngageAir = true,
+                Name = "Interceptor FPV", CanChangeAltitude = true, Tier = 2, CanEngageAir = true,
                 CostMateriel = 300, BuildTicks = SimConstants.Seconds(10),
                 Hp = M(60), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(34.0),
@@ -422,7 +443,7 @@ namespace KZ.Sim
                 WeaponDamage = M(0), WeaponType = DamageType.Ram,
                 WeaponRangeMetres = M(12), IsInterceptor = true, InterceptBaseChance = M(0.55), IsMeshRepeater = true,
                 SensorOptical = M(180),
-                SigRadio = 70, SigThermal = 14, SigAcoustic = 78, SigVisual = 15, SigRadar = 22
+                SigRadio = 70, SigThermal = 9, SigAcoustic = 78, SigVisual = 15, SigRadar = 22
             });
 
             // The eyes. Nothing on the map is worth shooting at until one of these
@@ -437,12 +458,12 @@ namespace KZ.Sim
                 Link = LinkKind.Radio, AltLink = LinkKind.Mesh, LinkRobustness = 45,
                 ConsumesCrew = true, IsMeshRepeater = true,
                 SensorOptical = M(900),
-                SigRadio = 55, SigThermal = 28, SigAcoustic = 25, SigVisual = 30, SigRadar = 40
+                SigRadio = 55, SigThermal = 25, SigAcoustic = 25, SigVisual = 30, SigRadar = 40
             });
 
             Add(new UnitDef
             {
-                Name = "Night Bomber", Tier = 2, NightOnly = true,
+                Name = "Night Bomber", CanChangeAltitude = true, Tier = 2, NightOnly = true,
                 MinesCarried = 4, MineDamage = M(600),
                 CostMateriel = 1100, BuildTicks = SimConstants.Seconds(34),
                 Hp = M(480), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
@@ -451,7 +472,7 @@ namespace KZ.Sim
                 WeaponDamage = M(300), WeaponType = DamageType.Fragmentation,
                 WeaponRangeMetres = M(30), WeaponCooldownTicks = 96,
                 SensorOptical = M(300), SensorThermal = M(400),
-                SigRadio = 60, SigThermal = 45, SigAcoustic = 95, SigVisual = 55, SigRadar = 55
+                SigRadio = 60, SigThermal = 22, SigAcoustic = 95, SigVisual = 55, SigRadar = 55
             });
 
             Add(new UnitDef
@@ -464,7 +485,7 @@ namespace KZ.Sim
                 WeaponDamage = M(300), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(10),
                 SensorOptical = M(240),
-                SigRadio = 50, SigThermal = 30, SigAcoustic = 35, SigVisual = 25, SigRadar = 35
+                SigRadio = 50, SigThermal = 45, SigAcoustic = 35, SigVisual = 25, SigRadar = 35
             });
 
             // Navigates by looking at the ground rather than by listening to a
@@ -481,12 +502,68 @@ namespace KZ.Sim
                 WeaponDamage = M(420), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(10),
                 SensorOptical = M(200),
-                SigRadio = 0, SigThermal = 30, SigAcoustic = 30, SigVisual = 25, SigRadar = 35
+                SigRadio = 0, SigThermal = 40, SigAcoustic = 30, SigVisual = 25, SigRadar = 35
             });
 
             // A relay in the sky. Extends reach, not capacity - every drone it
             // carries still needs its own crew. Kill it and everything hanging off
             // it drops at once.
+            // The slow heavy one. Big warhead, long reach, and cheap enough to send
+            // in numbers. It is not especially tough - a heavy machine gun does
+            // real damage to it - so its protection is the altitude it cruises at,
+            // and the decision of whether to come down is the player's.
+            Add(new UnitDef
+            {
+                Name = "Heavy Strike Drone", Tier = 3,
+                CostMateriel = 800, BuildTicks = SimConstants.Seconds(22),
+                Hp = M(210), Armour = ArmourClass.AirFixed, Layer = Layer.High,
+                SpeedMetresPerSecond = M(18.0), TurnRateDegreesPerSecond = 35,
+                Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
+                ConsumesCrew = false, OneWay = true, AutonomyQuality = 60,
+                CanChangeAltitude = true,
+                WeaponDamage = M(520), WeaponType = DamageType.Shaped,
+                WeaponRangeMetres = M(10),
+                SensorOptical = M(200),
+                SigRadio = 0, SigThermal = 60, SigAcoustic = 55, SigVisual = 45, SigRadar = 60
+            });
+
+            // The fast one. Same job, three times the speed, and the reason a gun
+            // mount stops being an answer: it crosses the gun's envelope faster
+            // than the gun can find it, aim and fire. Expensive, and it carries
+            // less for the money.
+            Add(new UnitDef
+            {
+                Name = "Jet Strike Drone", Tier = 3,
+                CostMateriel = 1900, BuildTicks = SimConstants.Seconds(34),
+                Hp = M(180), Armour = ArmourClass.AirFixed, Layer = Layer.High,
+                SpeedMetresPerSecond = M(55.0), TurnRateDegreesPerSecond = 22,
+                Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
+                ConsumesCrew = false, OneWay = true, AutonomyQuality = 58,
+                WeaponDamage = M(380), WeaponType = DamageType.Shaped,
+                WeaponRangeMetres = M(10),
+                SensorOptical = M(180),
+                SigRadio = 0, SigThermal = 85, SigAcoustic = 70, SigVisual = 40, SigRadar = 55
+            });
+
+            // Plywood, foam and a corner reflector. It carries nothing and hurts
+            // nobody. Its entire purpose is to look like the expensive thing on
+            // somebody else's radar, so that the shot which should have stopped a
+            // real strike is spent on it instead.
+            Add(new UnitDef
+            {
+                Name = "Decoy Drone", Tier = 3,
+                CostMateriel = 130, BuildTicks = SimConstants.Seconds(7),
+                Hp = M(90), Armour = ArmourClass.AirFixed, Layer = Layer.High,
+                SpeedMetresPerSecond = M(20.0), TurnRateDegreesPerSecond = 40,
+                Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
+                ConsumesCrew = false, OneWay = true,
+                IsFlyingDecoy = true, CanChangeAltitude = true,
+                SigRadio = 0, SigThermal = 25, SigAcoustic = 35, SigVisual = 30,
+                // Deliberately louder on radar than the thing it is imitating. That
+                // is the whole product.
+                SigRadar = 80
+            });
+
             Add(new UnitDef
             {
                 Name = "Mothership", Faction = FactionId.ObsidianDirectorate, Tier = 3,
@@ -495,7 +572,7 @@ namespace KZ.Sim
                 SpeedMetresPerSecond = M(13.0), TurnRateDegreesPerSecond = 50,
                 Link = LinkKind.Mesh, LinkRobustness = 65, ConsumesCrew = true, IsMeshRepeater = true,
                 SensorOptical = M(400), SensorEsm = M(300),
-                SigRadio = 75, SigThermal = 40, SigAcoustic = 40, SigVisual = 45, SigRadar = 65
+                SigRadio = 75, SigThermal = 45, SigAcoustic = 40, SigVisual = 45, SigRadar = 65
             });
 
             Add(new UnitDef
@@ -509,7 +586,7 @@ namespace KZ.Sim
                 WeaponDamage = M(320), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(10),
                 SensorOptical = M(220),
-                SigRadio = 0, SigThermal = 30, SigAcoustic = 35, SigVisual = 25, SigRadar = 35
+                SigRadio = 0, SigThermal = 42, SigAcoustic = 35, SigVisual = 25, SigRadar = 35
             });
         }
 

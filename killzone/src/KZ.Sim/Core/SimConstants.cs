@@ -148,6 +148,36 @@ namespace KZ.Sim
         /// <summary>Optical sensors collapse at night unless the player has bought thermal.</summary>
         public static readonly Fix NightOpticalDetectionScale = Fix.FromDoubleContentOnly(0.35);
 
+        /// <summary>
+        /// Thermal imaging is worse in daylight, not better.
+        ///
+        /// It works on temperature contrast, and sunlight heats the background
+        /// until there is very little contrast left - the same imager that picks a
+        /// warm engine out of a cold sky at four in the morning struggles past a
+        /// few hundred metres on a hot afternoon. This is the opposite of the
+        /// intuition that "thermal is the night sensor and neutral by day", and the
+        /// model had it wrong in exactly that way.
+        /// </summary>
+        public static readonly Fix ThermalDayScale = Fix.FromDoubleContentOnly(0.55);
+        public static readonly Fix ThermalNightScale = Fix.FromDoubleContentOnly(1.25);
+        public static readonly Fix ThermalTwilightScale = Fix.FromDoubleContentOnly(0.90);
+
+        // ---- how reliable any of this is ------------------------------------
+
+        /// <summary>
+        /// Inside this fraction of a sensor's reach a contact is solid. Beyond it,
+        /// out to full reach, the sensor is working at the edge of what it can do
+        /// and produces an intermittent track rather than a certain one.
+        /// </summary>
+        public static readonly Fix DetectionSolidFraction = Fix.FromDoubleContentOnly(0.60);
+
+        /// <summary>
+        /// Once something has been seen, the track is held this long even if the
+        /// sensor loses it. Real systems coast a track rather than dropping it the
+        /// instant a return is missed, and without this a marginal contact strobes.
+        /// </summary>
+        public const int TrackHoldTicks = 64;   // 2 s
+
         // ---- mines -----------------------------------------------------------
 
         /// <summary>

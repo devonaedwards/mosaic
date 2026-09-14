@@ -27,6 +27,8 @@ namespace KZ.Balance
             if (which == "all" || which == "mines") MineExperiment();
             if (which == "all" || which == "sensors") SensorMixExperiment();
             if (which == "all" || which == "stacking") StackingExperiment();
+            if (which == "all" || which == "vertical") VerticalExperiment();
+            if (which == "all" || which == "decoys") DecoyEscortExperiment();
 
             return 0;
         }
@@ -407,6 +409,211 @@ namespace KZ.Balance
                 if (!w.Entities.IsAlive(first)) return true;
                 if (CountFriendlyDronesAirborne(w) == 0 && tick > 8) return false;
             }
+            return false;
+        }
+
+        /// <summary>
+        /// The same number of drones, split between altitudes.
+        ///
+        /// A turret's sensors and its reach are both altitude-dependent, and not in
+        /// the same direction. Low drones are heard by the microphone and are well
+        /// inside the gun's envelope. High drones are almost inaudible and force
+        /// the gun to shoot upward, which costs it range - but they are exactly
+        /// what a radar is for. Sending both at once asks the turret a question it
+        /// has no single answer to.
+        /// </summary>
+        static void VerticalExperiment()
+        {
+            Console.WriteLine();
+            Console.WriteLine("VERTICAL - six drones against one turret, split between altitudes");
+            Console.WriteLine();
+            Console.WriteLine("  attack                  arrived   turret killed");
+            Console.WriteLine("  " + new string('-', 48));
+
+            int[][] splits = {
+                new int[] {6, 0}, new int[] {4, 2}, new int[] {3, 3},
+                new int[] {2, 4}, new int[] {0, 6}
+            };
+            string[] labels = {
+                "all low", "four low, two high", "three low, three high",
+                "two low, four high", "all high"
+            };
+
+            for (int i = 0; i < splits.Length; i++)
+            {
+                int arrivedTotal = 0, killed = 0;
+                const int trials = 40;
+                for (int trial = 0; trial < trials; trial++)
+                {
+                    int arrived;
+                    if (RunSplitAssault(splits[i][0], splits[i][1], (ulong)(trial + 1), false, out arrived))
+                        killed++;
+                    arrivedTotal += arrived;
+                }
+                Console.WriteLine(string.Format("  {0,-22}  {1,7}   {2,12}",
+                    labels[i], (arrivedTotal / (double)trials).ToString("0.0"),
+                    (killed * 100 / trials) + "%"));
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("  and the same, against a turret that also has a radar:");
+            Console.WriteLine();
+            for (int i = 0; i < splits.Length; i++)
+            {
+                int arrivedTotal = 0, killed = 0;
+                const int trials = 40;
+                for (int trial = 0; trial < trials; trial++)
+                {
+                    int arrived;
+                    if (RunSplitAssault(splits[i][0], splits[i][1], (ulong)(trial + 1), true, out arrived))
+                        killed++;
+                    arrivedTotal += arrived;
+                }
+                Console.WriteLine(string.Format("  {0,-22}  {1,7}   {2,12}",
+                    labels[i], (arrivedTotal / (double)trials).ToString("0.0"),
+                    (killed * 100 / trials) + "%"));
+            }
+            Console.WriteLine();
+            Console.WriteLine("  Height is cover from a gun and exposure to a radar. Which of those");
+            Console.WriteLine("  matters depends entirely on what the defender bought.");
+        }
+
+        static bool RunSplitAssault(int low, int high, ulong seed, bool withRadar, out int arrived)
+        {
+            Terrain t = new Terrain(2400, 1600);
+            t.Fill(TileClass.Open);
+            World w = new World(t, 512, 32, seed, 2, 0);
+
+            w.Player(1).Materiel = Fix.FromInt(200000);
+            w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
+            for (int q = 0; q < 6; q++) w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(300 + q * 40, 900));
+            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1000, 780));
+            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1450, 1150));
+
+            EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(1650, 780));
+            if (withRadar) w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(1750, 780));
+
+            int total = low + high;
+            for (int i = 0; i < total; i++)
+                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Multirole Quad"),
+                    new Fix2(F(1200), F(780 + (i - total / 2) * 12)), gun, i));
+            w.Step();
+
+            // Send the back half of the flight upstairs.
+            int sent = 0;
+            for (int i = 1; i < w.Entities.HighWater && sent < high; i++)
+            {
+                if (!w.Entities.IsSlotAlive(i)) continue;
+                if (w.Entities.Team[i] != 1) continue;
+                if (w.Entities.EntityLayer[i] != Layer.Low) continue;
+                if (!w.Entities.Has(i, ComponentMask.Sortie)) continue;
+                w.Enqueue(Command.SetAltitude(1, w.Entities.HandleAt(i), Layer.High));
+                sent++;
+            }
+
+            bool[] struck = new bool[w.Entities.Capacity];
+            int reached = 0;
+            Fix strikeRange = F(50);
+
+            for (int tick = 0; tick < 200 * SimConstants.TicksPerSecond; tick++)
+            {
+                w.Step();
+                if (!w.Entities.IsAlive(gun)) { arrived = reached; return true; }
+
+                Fix2 gunPos = w.Entities.Position[gun.Index];
+                for (int i = 1; i < w.Entities.HighWater; i++)
+                {
+                    if (struck[i] || !w.Entities.IsSlotAlive(i)) continue;
+                    if (w.Entities.Team[i] != 1 || w.Entities.EntityLayer[i] == Layer.Ground) continue;
+                    if (Fix2.Distance(w.Entities.Position[i], gunPos) <= strikeRange)
+                    { struck[i] = true; reached++; }
+                }
+                if (CountFriendlyDronesAirborne(w) == 0 && tick > 8) break;
+            }
+            arrived = reached;
+            return false;
+        }
+
+        /// <summary>
+        /// Cheap decoys flown alongside a real strike, to be shot at instead of it.
+        /// The question is whether spending part of the budget on things that carry
+        /// nothing gets more warheads onto the target than spending all of it on
+        /// warheads.
+        /// </summary>
+        static void DecoyEscortExperiment()
+        {
+            Console.WriteLine();
+            Console.WriteLine("DECOY ESCORT - 2,600 Materiel of strike package against one turret");
+            Console.WriteLine("heavy strike drone 800, decoy drone 130");
+            Console.WriteLine();
+            Console.WriteLine("  package                      real drones through   turret killed");
+            Console.WriteLine("  " + new string('-', 64));
+
+            int[][] mixes = {
+                new int[] {3, 1}, new int[] {2, 6}, new int[] {1, 13}
+            };
+            for (int i = 0; i < mixes.Length; i++)
+            {
+                int real = mixes[i][0], decoys = mixes[i][1];
+                int throughTotal = 0, killed = 0;
+                const int trials = 40;
+                for (int trial = 0; trial < trials; trial++)
+                {
+                    int through;
+                    if (RunDecoyStrike(real, decoys, (ulong)(trial + 1), out through)) killed++;
+                    throughTotal += through;
+                }
+                Console.WriteLine(string.Format("  {0,-27}  {1,17}   {2,12}",
+                    real + " real + " + decoys + " decoy",
+                    (throughTotal / (double)trials).ToString("0.00") + " of " + real,
+                    (killed * 100 / trials) + "%"));
+            }
+            Console.WriteLine();
+            Console.WriteLine("  Nothing special-cases a decoy here. A defence picks targets by how");
+            Console.WriteLine("  much of one it can remove per shot, and a decoy dies to one shot");
+            Console.WriteLine("  just as a real drone does - so it is an equally good thing to shoot");
+            Console.WriteLine("  at, which is exactly the product being sold.");
+        }
+
+        static bool RunDecoyStrike(int real, int decoys, ulong seed, out int through)
+        {
+            Terrain t = new Terrain(2400, 1600);
+            t.Fill(TileClass.Open);
+            World w = new World(t, 512, 32, seed, 2, 0);
+            w.Player(1).Materiel = Fix.FromInt(200000);
+            w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
+
+            EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(1650, 780));
+            w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(1750, 780));
+
+            for (int i = 0; i < real; i++)
+                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Heavy Strike Drone"),
+                    new Fix2(F(900), F(780 + (i - real / 2) * 30)), gun, i));
+            for (int i = 0; i < decoys; i++)
+                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Decoy Drone"),
+                    new Fix2(F(900), F(700 + i * 22)), gun, real + i));
+
+            int reached = 0;
+            bool[] struck = new bool[w.Entities.Capacity];
+            int realDefId = Catalog.IdOf("Heavy Strike Drone");
+
+            for (int tick = 0; tick < 300 * SimConstants.TicksPerSecond; tick++)
+            {
+                w.Step();
+                if (!w.Entities.IsAlive(gun)) { through = reached; return true; }
+
+                Fix2 gunPos = w.Entities.Position[gun.Index];
+                for (int i = 1; i < w.Entities.HighWater; i++)
+                {
+                    if (struck[i] || !w.Entities.IsSlotAlive(i)) continue;
+                    if (w.Entities.Team[i] != 1) continue;
+                    if (w.Entities.DefId[i] != realDefId) continue;
+                    if (Fix2.Distance(w.Entities.Position[i], gunPos) <= F(50))
+                    { struck[i] = true; reached++; }
+                }
+                if (CountFriendlyDronesAirborne(w) == 0 && tick > 8) break;
+            }
+            through = reached;
             return false;
         }
 

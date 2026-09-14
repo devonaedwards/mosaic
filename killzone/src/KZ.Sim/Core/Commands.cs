@@ -26,6 +26,7 @@ namespace KZ.Sim
         DropPin,
         PlaceDecoy,
         LayMines,
+        SetAltitude,
         SetAutonomyBox
     }
 
@@ -82,6 +83,20 @@ namespace KZ.Sim
             c.Kind = CommandKind.LayMines; c.Team = team; c.Subject = bomber;
             c.Point = from; c.Target = EntityHandle.None;
             c.MineEnd = to;
+            return c;
+        }
+
+        /// <summary>
+        /// Climb or descend. Height is cover from anything that shoots upward and
+        /// from anything that listens, and it is exposure to anything with a radar.
+        /// Coming in low and going in high are different attacks against the same
+        /// position, and sending both at once is a third.
+        /// </summary>
+        public static Command SetAltitude(byte team, EntityHandle subject, Layer layer)
+        {
+            Command c = new Command();
+            c.Kind = CommandKind.SetAltitude; c.Team = team; c.Subject = subject;
+            c.Param = (int)layer;
             return c;
         }
 
@@ -152,6 +167,17 @@ namespace KZ.Sim
                 case CommandKind.LayMines:
                     SortieSystem.LayMines(w, c.Subject, c.Point, c.MineEnd);
                     break;
+
+                case CommandKind.SetAltitude:
+                {
+                    if (!w.Entities.IsAlive(c.Subject)) break;
+                    int si = c.Subject.Index;
+                    int defId = w.Entities.DefId[si];
+                    if (defId < 0 || !Catalog.Get(defId).CanChangeAltitude) break;
+                    if (w.Entities.EntityLayer[si] == Layer.Ground) break;
+                    w.Entities.EntityLayer[si] = (Layer)c.Param;
+                    break;
+                }
 
                 case CommandKind.PlaceDecoy:
                     w.SpawnDecoy(c.Team, c.Point, TargetKind.HighValue, c.Param);

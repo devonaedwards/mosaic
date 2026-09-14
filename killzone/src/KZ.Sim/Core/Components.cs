@@ -145,6 +145,17 @@ namespace KZ.Sim
         /// <summary>Interception is the one place a direct attack rolls dice.</summary>
         public bool IsInterceptor;
         public Fix InterceptBaseChance;
+
+        /// <summary>
+        /// Where the barrel is pointing, and how fast it can be pointed somewhere
+        /// else. A mount with one barrel cannot engage two targets at once, and
+        /// swinging between a low target close by and a high one further off costs
+        /// real time - which is what makes attacking from two altitudes at once a
+        /// tactic rather than a preference.
+        /// </summary>
+        public ushort Bearing;
+        public int TraverseBamPerTick;
+        public Layer TrackingLayer;
     }
 
     /// <summary>
