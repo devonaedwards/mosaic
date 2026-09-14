@@ -100,6 +100,44 @@ Even at twelve drones on a dark night, killing a 450 Materiel structure costs
 walking into prepared ground, or whether the gun's reach comes down. The
 implementation is not the thing standing in the way of either answer.
 
+### Amended after the Phase 0 and Phase 1 re-run - this entry is now wrong in the other direction
+
+Everything above was measured against a gun mount with **550 metres of reach,
+infinite ammunition and instant traverse**, on a flat, clear, ownerless, uncovered
+map. Not one of those was a design decision: the 550 was three balance experiments
+overwriting the catalogue behind the reader's back (AUDIT-UNWIRED F33), the
+infinite ammunition and instant traverse were two fields nobody had set on the
+unit (F4), and the empty map was every experiment world in the project (F34). All
+four are now fixed, and the same experiment re-run on the mount that is actually
+in the game says the opposite of the entry above:
+
+| drones sent together | reached the gun | gun destroyed | Materiel spent |
+|---|---|---|---|
+| 1 | 0.8 | never | 200 |
+| 2 | 1.8 | never | 400 |
+| 3 | 2.8 | **80%** | 600 |
+| 5 | 4.8 | every time | 1,000 |
+| 8 | 7.8 | every time | 1,600 |
+
+Three drones - six hundred Materiel - take a four-hundred-and-fifty Materiel
+structure four times in five. The exchange rate is not more than ten to one
+against the attacker; it is about four to three **in the attacker's favour**. Every
+word of this entry's problem statement has evaporated: there is no wall, nothing
+needs a suppression weapon to solve it, and the three "possible answers for
+whoever owns balance" are answers to a problem that no longer exists. The open
+question has reversed. A gun mount now has to be made worth its 450 Materiel.
+
+The mechanism is finding 31, and it is not the range: **the mount gets one shot.**
+
+Two smaller corrections to the tables above. The 16- and 24-drone rows read 14.8
+arrived because the experiment stops counting when the gun dies, not because
+anything capped the flight; above about twelve drones those rows measure the
+harness, not the game. And **attacking at night is now worth almost nothing** -
+three drones by day take the gun 80% of the time, three at night 100%, and from
+five drones upward day and night are both 100%. Item 12 predicted that collapse
+for the wrong reason (microphones) and it has arrived for a different one: by day
+the gun is already losing.
+
 ---
 
 ## 8. Weapons shot at whatever was nearest, not at what mattered
@@ -162,6 +200,13 @@ otherwise.
 | Logistics UGV | 780 | no | after one |
 | Fighting vehicle | 1,320 | no | after one |
 | Main Tank | 1,320 | yes, one | after two |
+
+**Survived the honest re-run, unchanged to the last digit.** Damage, survivals
+and the number of mines each vehicle eats are identical on the corrected tree and
+on the corrected world. This is the only table in this document that came through
+the re-run untouched, and it is worth saying why: mines do not involve a sensor,
+a hit roll, a magazine or a traverse rate, so not one of the four faults could
+reach it.
 
 The uncomfortable part is that this is the most cost-effective thing in the
 roster by a wide margin, and the least interesting to operate. There is no pilot
@@ -287,6 +332,41 @@ This also corrects item 2. Attacking at night was halving the drone requirement
 only because the turret had no sensor that worked in the dark. Against a turret
 with microphones, darkness is worth very little, which is the more honest answer.
 
+### Amended: new table, and two of the three conclusions fall
+
+Every number above predates the `thermal-optical.md` §11 signature table (twenty
+numbers, never applied) and the night-optical constant going from 0.35 to 0.20.
+Re-measured:
+
+| fitted with | vs a quad, day | vs a quad, night | vs a tank, day |
+|---|---|---|---|
+| optics only | 73 | 15 | 300 |
+| acoustic only | 48 | 96 | 320 |
+| optics + acoustic | 73 | 96 | 320 |
+| optics + thermal | 73 | **73** | 300 |
+| all three | 73 | 96 | 320 |
+
+**The first conclusion survives and hardens.** The gun's envelope is set by its
+sensors and not its barrel - only now the barrel is 85 m and the sensors find a
+quadcopter at 73, so the two have converged from opposite ends and the honest
+figure is smaller than either.
+
+**The second is now false by day.** "Microphones are the best anti-drone sensor
+at any hour" was written when acoustic reach was 335 m. It is 48 m by day against
+73 m of camera, so by daylight the camera is better. After dark it is 96 against
+15, so the claim is true at night and false in the sun. Item 20 began this walk-
+back by cutting the nominal acoustic reach; the signature table finished it.
+
+**The third is overturned.** "Thermal buys back the night against vehicles and
+very little against drones" was measured when thermal took a quadcopter from 41 m
+to 80 m after dark - about double. It now takes it from 15 m to 73 m, close to
+five times, and restores the full daylight figure. A thermal imager is now the
+difference between a mount that is blind after dark and one that is not, against
+exactly the target this entry said it would not help against. The reason is the
+one the entry itself gave and got the sign of: a small drone is not very hot, but
+the corrected table made *everything else* about optical detection worse at night,
+and thermal does not care.
+
 ## 13. Stacked turrets are a structural dead end, not a balance number
 
 | turrets | defence cost | drones needed | attacker cost |
@@ -313,6 +393,33 @@ No amount of retuning gun range fixes that. It needs one of:
    than through. That is a legitimate answer and arguably the realistic one, but
    it needs the map design to always offer a way around, and it needs saying out
    loud rather than discovering it in a playtest.
+
+### Amended: the table is wrong, and the experiment behind it cannot see anything
+
+| turrets | defence cost | drones needed | attacker cost |
+|---|---|---|---|
+| 1 | 450 | 8 | 1,600 |
+| 2 | 900 | 8 | 1,600 |
+| 3 | 1,350 | 8 | 1,600 |
+| 4 | 1,800 | 8 | 1,600 |
+
+Three gun mounts costing 1,350 Materiel fall to 1,600 Materiel of drones. The
+claim in bold above - that they cannot be destroyed at any budget - is false by
+a factor that no longer has a meaningful denominator.
+
+Two things are worth separating. The first is that this table was measured
+against the 550 m mount with infinite ammunition, and the honest mount is much
+weaker, so the direction of the correction is unsurprising. The second is not:
+**the stacking experiment printed 8 / 8 / 8 / 8 on every build in this pass, and
+on the build before it.** It reported the same four numbers with the gun at 550 m
+and at 85 m, with and without a magazine, with and without the track hold, with
+and without the corrected signature table, on a flat map and on a mixed one. It
+has no discriminating power at all, so it cannot be the evidence for anything -
+including for the corrected table directly above. See finding 32.
+
+The structural argument underneath - that crews cap the attacker's simultaneous
+force while nothing caps the defender's density - is not refuted by this. It was
+never tested. The experiment never reaches the regime where it would bite.
 
 ## 14. The model is now more truthful than the interface can draw
 
@@ -375,6 +482,37 @@ This also answers the jet question without any special case. A turbojet strike
 drone crossing at three times the speed of a quadcopter is not hard to shoot at,
 it is hard to hit, and the speed term does that on its own.
 
+### Amended twice, and the first amendment is the more uncomfortable one
+
+**The recorded table had already gone stale before any of this pass's work.**
+Re-running the same experiment on the commit immediately preceding these four
+changes - the tree this entry was supposed to describe - gives 37% at three
+drones, 92% at five and 100% at eight. Not 10 / 72 / 98. Nobody changed the entry
+because nobody re-ran the experiment; the numbers drifted out from under it at
+some earlier point and the document went on quoting them. A measurement in a
+document is evidence about the day it was taken, and this file has no mechanism
+that notices when it stops being true. That is the same shape as finding 30, one
+level up: there, code nothing called; here, a number nothing re-checks.
+
+**And the honest re-run is different again.** On the deployed 85 m mount, with a
+magazine, a traverse rate, the corrected signature table and a real world:
+
+| drones sent together | always hit | guns roll, as recorded | pre-pass tree, measured | now |
+|---|---|---|---|---|
+| 3 | never | 10% | 37% | 80% |
+| 5 | never | 72% | 92% | **100%** |
+| 8 | never | 98% | 100% | 100% |
+| 24 | every time | every time | every time | every time |
+
+The entry's *conclusion* - that making direct fire roll was the single change that
+unstuck the turret problem - survives all of this and is arguably understated. Its
+numbers do not. Five drones no longer take a gun position three times in four;
+three drones take it four times in five.
+
+What does not survive is the sentence "the gun still reaches 550 m, it simply
+cannot hit a small fast thing out there". The gun never reached 550 m. That was
+the harness, and this entry is one of the five that measured it.
+
 ## 16. Stacked turrets stopped mattering, which is now suspicious in the other direction
 
 | turrets | drones needed |
@@ -394,6 +532,27 @@ big swing from "three turrets are unbeatable" to "three turrets are worth one,"
 and the truth is probably between. The falloff curve is the thing to check, and
 it is currently a guess. Research is out on real hit-probability figures.
 
+### Amended: this one survived, and got slightly stronger
+
+| turrets | drones needed, recorded | drones needed, now |
+|---|---|---|
+| 1 | 8 | 8 |
+| 2 | 8 | 8 |
+| 3 | 8 | 8 |
+| 4 | 12 | **8** |
+
+The fourth turret stopped buying anything too. Of every conclusion in items 13
+through 18, this is the one the corrected measurement agrees with, and the
+explanation the entry gave is now measurable rather than asserted: a mount's
+effective envelope really is far smaller than its nominal one, and the number is
+**about 70 m** - the range at which it first holds a track on a quadcopter, as
+against an 85 m barrel and a 127 m analytic sensor reach (finding 31).
+
+One honest caveat, which cuts against the entry rather than for it: the stacking
+experiment cannot currently distinguish anything (finding 32), so "this survived"
+means "the re-run did not contradict it", not "the re-run confirmed it". Those
+are different claims and this document should not blur them.
+
 ## 17. Decoy escorts work, and nothing had to special-case them
 
 | package (about 2,600 Materiel) | real drones through | turret destroyed |
@@ -410,6 +569,28 @@ What is worth noting is that none of this is special-cased. A defence picks
 targets by how much of one it can remove per shot, and a 90 hit-point decoy dies
 to one shot exactly as a real strike drone does - so it is an equally attractive
 thing to shoot at. The mechanic fell out of the targeting rule from item 8.
+
+### Amended: the result is not refuted, it is no longer measurable
+
+| package (about 2,600 Materiel) | real drones through, recorded | now |
+|---|---|---|
+| 3 real + 1 decoy | 2.23 of 3 (74%) | 3.00 of 3 (100%) |
+| 2 real + 6 decoys | 1.70 of 2 (85%) | 2.00 of 2 (100%) |
+| 1 real + 13 decoys | 1.00 of 1 (100%) | 1.00 of 1 (100%) |
+
+The gradient was the finding. Trading warheads for decoys raised survival from
+74% to 85%, and that rise is what "decoy escorts work" meant. Every mix now puts
+every real drone through, so there is no gradient left to see - not because decoys
+stopped working but because the turret stopped killing anything (finding 31). An
+escort cannot be shown to protect a package that was never in danger.
+
+The "turret destroyed" column is also gone: `RunDecoyStrike` still computes it and
+`AverageThrough` discards it, so the second half of the table above is no longer
+produced by the harness at all. Printing it again is the cheapest way to give this
+experiment back some resolution, and it is a harness change rather than a finding.
+
+Item 25 already superseded this entry's claim in its strong form. What the re-run
+adds is that the weak form is not currently supported either.
 
 ## 18. Attacking from two altitudes at once does not work, and I think the model is wrong
 
@@ -432,6 +613,56 @@ So either the tactic is not as good as it sounds, or the re-laying penalty is
 badly understated. My guess is the second. Real figures for traverse rates and
 re-acquisition time have been requested; this entry should be revisited when they
 arrive rather than tuned until it gives the answer I expected.
+
+### Amended: the penalty was not understated. It was zero, and unreachable.
+
+This needs saying plainly, because it is a different kind of error from the rest
+of this document and the difference is the lesson.
+
+**What was believed:** that a mount with one barrel must physically re-lay between
+a low target close by and a high one further off; that this was modelled, at
+ninety degrees a second plus two thirds of a second for changing band; that the
+modelled penalty was "too cheap to matter against a forty-tick engagement cycle";
+and therefore that the penalty was **badly understated** and the tactic probably
+sound.
+
+**What it was measured against:** a Gun Mount with no traverse rate. The field was
+never set on the unit, and `SlewTicks` returns early on a zero traverse rate. For
+the one unit every turret finding in this document was measured on, the penalty
+this entry called too cheap was **exactly zero**, and no value of it could have
+been reached by any experiment, because the code path returned before reading it.
+There was no number to understate.
+
+That is not a mis-estimate. A mis-estimate says the world is 3 and the model says
+1, and it is fixed with a better number. This entry compared a measurement against
+a mechanism, found the mechanism too weak, and concluded its constant wanted
+raising - when the constant was not being read. The fix was not a number. It was
+one `grep` for call sites, which is the same tool that would have caught items 29
+and 30 and is now a build step.
+
+**What the number is now.** The mount carries 150 degrees a second, from
+`point-defence.md`'s light electro-optical turret figures. Holding the whole
+scenario fixed and switching only the traverse rate between that and the old
+instant slew, sixty trials a cell:
+
+| | 3 drones | 5 drones | 8 drones |
+|---|---|---|---|
+| traverse wired, 150°/s | gun lost 80% | 100% | 100% |
+| traverse not wired, instant | gun lost **46%** | 100% | 100% |
+
+Thirty-four points at the only drone count that still discriminates. Far from
+being too cheap to matter, re-laying is the **largest single term** in whether a
+gun mount survives an attack: of the 3.2 seconds between the mount first holding
+a track and the drone striking it, about 1.7 are spent slewing (finding 31). The
+guess recorded above was wrong in both halves - the penalty was not understated,
+it was absent; and once present it is if anything generous to the attacker.
+
+**The tactic itself is now unmeasured rather than disproved.** Every row of the
+vertical experiment reads 6.0 arrived and 100% turret killed, with a radar and
+without, and has read exactly that on every build in this pass and the one before
+it. The experiment cannot distinguish an attack split across two altitudes from
+one that is not, so it cannot support this entry's conclusion in either
+direction. See finding 32.
 
 ## 19. Thermal was modelled backwards
 
@@ -464,6 +695,15 @@ little. At a realistic 130 they are a last-ditch sensor - closer to a trip-wire
 than a search sensor - and night matters again. Deeper research is running and
 this number should be checked against it.
 
+**Amended: survived, and the trip-wire description is if anything too generous.**
+Measured against a quadcopter, the acoustic channel reaches **48 m by day and
+96 m at night** - the night figure is the doubling that already exists in the
+model for still air, not a new effect. Forty-eight metres is inside the drone's
+own strike range plus a second of flight. The one thing the re-run adds is that
+after dark acoustic is now the *best* channel a mount has, at 96 m against 15 m
+of camera, which is the opposite of the daylight picture and is why item 12's
+"best sensor at any hour" had to go.
+
 ## 21. Nothing is a switch
 
 Detection was binary: in range or not. It now has a solid band inside about two
@@ -474,6 +714,36 @@ acoustic 52 - and a two-second track hold so a marginal contact does not strobe.
 Radar was also rescaled to the fourth root of cross-section rather than the
 square root, which is how the radar equation actually behaves and is why a drone
 the size of a dinner plate is so much harder than an aircraft.
+
+### Amended: this entry described behaviour that did not exist
+
+**What was believed:** the sentence above, "a two-second track hold so a marginal
+contact does not strobe", and the title drawn on top of it.
+
+**What the model actually did:** `SimConstants.TrackHoldTicks` had **zero call
+sites**. `Reaches()` keyed its edge roll on target, tick and channel and was
+deliberately memoryless, so a contact in the intermittent band was re-rolled
+independently **thirty-two times a second**, with no memory of the tick before.
+The solid band was real. The per-channel reliabilities were real. The hold was
+prose. A marginal contact did not fail to strobe: strobing at 32 Hz is precisely
+what it did, and a gun that lost its track re-paid the acquisition cost each time
+it came back.
+
+So the entry was not merely optimistic about a number. It named a mechanism, drew
+a conclusion from that mechanism, and the mechanism was not there - the same
+failure as item 18, found by the same one-line check, in the same audit.
+
+**What it does now, measured in isolation.** The hold is wired at 64 ticks, and it
+is the one change in this pass that made the defence better rather than worse.
+Isolating it - the commit that wires it touches nothing else in the simulation -
+the number of drones reaching the gun across the whole reach sweep falls from 7.7
+to **7.4** of 8, and the five-drone saturation row goes from the gun always losing
+to losing **88%** of the time. A gun that no longer drops a fringe track kills
+about a third of a drone more per engagement.
+
+That is a real effect and a small one, and it is swamped by the other three
+changes in this pass, which all run the other way. The title stands - nothing is
+a switch - and it did not stand when it was written.
 
 ---
 
@@ -512,6 +782,27 @@ everything a side owns, so a sensor line works without any code for it.
 
 This is the most legible thing added so far. It is one slider, it is drawable as
 a wedge on the map, and every position on it is a defensible purchase.
+
+**Amended: the shape survived exactly, every number fell by about a third.** The
+square-root-of-arc law, the coverage fractions, the head counts and the costs are
+all unchanged; the reaches are not, because the corrected visual signature table
+and the night-optical constant moved the base figure this table is a function of.
+
+| arc | reach vs a quadcopter, recorded | now |
+|---|---|---|
+| 30° | 402 m | 255 m |
+| 45° | 329 m | 208 m |
+| 90° | 232 m | 147 m |
+| 120° | 201 m | 127 m |
+| 180° | 164 m | 104 m |
+| 360° | 116 m | 73 m |
+
+The argument is untouched and the purchase decision is the same one. What changes
+is that a 360-degree head now finds a quadcopter at 73 m, which is inside the
+range at which a drone is already committed - so the cheap panoramic option has
+crossed from "less reach" into "barely a sensor", and the case for a line of
+short-range acoustic posts that this entry ends on is stronger than when it was
+written.
 
 ## 23. Autonomy is modelled as one thing and is two
 
@@ -608,6 +899,28 @@ corrected to something demonstrably more truthful and change no outcome, because
 what was wrong was never the number. Verifying the fix against its own mechanism
 (the probe) said it worked. Verifying it against the game (the control column)
 said it did not.
+
+**Amended: still literally zero, and that is now weaker evidence, not stronger.**
+The control column was re-run on the corrected tree and the corrected world. It is
+still identical to two decimal places at every mix - 3.00 against 3.00, 2.00
+against 2.00, 1.00 against 1.00 - so the headline claim of this entry holds
+exactly as recorded, and the range arithmetic it rests on is unchanged: the probe
+still reports 2,373 m against a reflector and 750 m against a strike drone, and
+the weapons still kill at 85 and 320.
+
+But the column no longer *demonstrates* it. Both sides of it now read every real
+drone through, on five different builds spanning every change in this pass, and
+they read the same on the build before any of them. A control that cannot move
+under any intervention is not evidence that the thing it controls for is inert;
+it is evidence that the experiment is (finding 32). This entry's conclusion now
+stands on its arithmetic, which is checkable, and no longer on its control, which
+is not.
+
+That is a third variety of the same trap and worth naming beside the other two.
+Item 21 believed a mechanism that was not running. Item 18 tuned a constant that
+was never read. This entry drew a sound conclusion from an instrument that
+happened to be stuck, and was right anyway - which is the most dangerous of the
+three, because nothing about the result looked wrong.
 
 ## 26. The top rung of the link ladder was unconditional, and untested
 
@@ -950,3 +1263,164 @@ was not running them: a public symbol with zero call sites, a constant never
 referenced, an enum value never compared, a def field never read outside the file
 that declares it. That is the same lesson as items 27 and 29, arriving for the
 third time, which means it is not a lesson yet — it needs to be a build step.
+
+### Amended: all four are fixed, and the re-run is in items 2, 12, 13, 15–18, 20–22, 25 and 31–33
+
+It is now a build step — `tools/check_dead_symbols.py`, run by `./build.sh`, with
+the 86 it found recorded as a ratchet and anything new failing immediately.
+
+Each of the three headline items above has been re-measured rather than argued
+about, and the audit's own predictions did not all survive contact:
+
+- **The track hold** is wired, and item 21 is amended. Its isolated effect is
+  real, small, and the only thing in this pass that helped the defence.
+- **The gun mount's traverse** is wired and is worth thirty-four points of win
+  rate. The audit was right that it invalidated item 18 and wrong about which way
+  the correction runs: the penalty was not understated, it was absent.
+- **The gun mount's magazine** is wired and is worth **nothing at all**, because
+  the mount never fires often enough to empty it. This entry says items 13–18
+  measured a turret with infinite ammunition, which is true; the harness's own
+  header goes further and says the five-round belt was already a binding
+  constraint at higher drone counts, which is not. Measured, it binds nowhere:
+  zero reload events across every experiment at every drone count from one to
+  twenty-four, on the 85 m mount and on the 550 m one. See finding 31. That
+  claim was produced the same way item 18's was — by reasoning about a mechanism
+  instead of counting it.
+- **The harness** no longer overwrites the gun's range and no longer fights on an
+  empty map. The first correction moved almost every turret number in this
+  document. The second moved **nothing**, and finding 33 is why that is the
+  expected result rather than a disappointment.
+
+## 31. The gun mount fires once
+
+The single most consequential thing the honest re-run turned up, and none of the
+four fixes predicted it.
+
+A Gun Mount defending against an attack — one drone or twenty-four, on its own
+85 m barrel or on the 550 m test mount, by day or at night — gets **one shot**.
+Not five, not "however many fit into the crossing time". One. Measured by counting
+reload events and reading `EngagementsRemaining` every tick across twenty runs at
+each of six drone counts: **zero reloads, ever**, and the counter never fell below
+four of five except once, on the 550 m mount against twenty-four drones, where it
+reached three.
+
+Traced tick by tick, a single FPV against the shipped mount:
+
+```
+tick 552   70 m   first detected             (the barrel reaches 85 m; the
+                                              analytic sensor figure is 127 m)
+tick 552   70 m   acquisition + slew begins  71 ticks = 2.2 s
+tick 622   22 m   FIRES.  belt 5 -> 4
+tick 647          the next shot would be allowed
+tick ~650   0 m   the drone arrives
+```
+
+Three numbers do all the work. The mount **first holds a track at about 70 m**,
+not at the 127 m its sensors compute, because a 120-degree head sweeping at
+seventy degrees a second is usually pointed somewhere else and a contact in the
+intermittent band has to latch. The drone covers that 70 m in **3.2 seconds** at
+22 m/s. And acquisition plus slew costs **2.2 of those 3.2 seconds** — about 1.7 s
+of it traverse, because the mount begins facing wherever it happened to be facing.
+
+So the engagement is: see it, turn to it, fire once at twenty-two metres, die. The
+measured hit rate on that one shot is about one in five.
+
+Everything else about the weapon is downstream of that, and mostly unreachable:
+
+- **The five-round belt cannot bind.** It is a limit on a fifth shot that is never
+  taken. Wiring it changed not one digit in any of the ten experiments — the whole
+  harness output is byte-identical across the commit that added it.
+- **The traverse rate binds hard**, because it is spent inside the only engagement
+  there is. Turning it off hands 34 points of survival back to the gun (item 18).
+- **Barrel length barely matters.** The reach sweep reads 7.4 of 8 arriving at
+  550 m, at 450 m and at 350 m — identical — and 7.8 at 85 m. Twenty-five seconds
+  of nominal exposure and 3.9 seconds of it produce almost the same result,
+  because above about 70 m the barrel is not what stops the mount shooting.
+
+This is item 9 arriving with a number attached. "You cannot shoot what you cannot
+see" was implemented as a rule; what nobody had measured is that for the game's
+only dedicated air-defence structure the seeing is so much shorter than the
+shooting that the weapon is effectively a one-shot device.
+
+Whether that is *wrong* is a design question rather than an implementation one. A
+heavy machine gun getting one burst at a drone already inside a hundred metres is
+not obviously unrealistic. It does mean the gun mount cannot be the answer to
+anything, and that item 2's problem — a wall that could not be solved — has been
+replaced by its mirror image.
+
+The cheap lever, if one is wanted, is not the barrel. It is the 2.2 seconds. A
+mount that starts an engagement already pointed the right way, or that has a
+second head, or that is cued by another sensor, gets a second shot and roughly
+doubles its output. That is also the shape of an upgrade a player can be sold.
+
+## 32. Three of the ten balance experiments cannot detect a change to the simulation
+
+Stacking, Vertical and Decoy Escort produced **byte-identical output on five
+different builds** spanning the whole of this pass: with the gun's range
+overwritten to 550 m and with the real 85 m; with a magazine and without; with the
+track hold and without; with the twenty-number signature table applied and not; on
+a flat, ownerless, uncovered map and on a mixed one with a border and imagery.
+Every row of all three tables sits on a ceiling — 8 drones take any number of
+turrets, 6 drones take any altitude split, every real drone gets through every
+decoy mix — and a measurement pinned to a ceiling is a constant, not a result.
+
+Those three experiments are the sole evidence for items 13, 16, 17, 18 and the
+control column of item 25.
+
+It is worse than it looks, because what resolution the suite has left is
+concentrated in one cell. Across the whole of Saturation and Darkness the only row
+that is neither 0% nor 100% is **three drones**: 80% by day, 100% at night. One
+number, in one row, of one experiment, is carrying the entire turret balance of
+this document.
+
+The fix is not a finding, it is arithmetic: put the experiments back on their
+knees. Fewer drones, more turrets, a defence that starts with an advantage. An
+experiment whose answer is 100% before the run begins is a unit test asserting
+`true`, and this project has made that mistake often enough (items 15, 25, 26, 30)
+that it ought to be caught by the shape of the output rather than by someone
+eventually noticing.
+
+The general form, and it is the sharpest version of this project's recurring
+lesson: **a green suite proves nothing about the paths it does not walk, and a
+saturated experiment proves nothing about the variables it cannot move.** Item 30
+learned the first half. This is the second.
+
+## 33. The realistic world changed the description and not one number
+
+AUDIT F34 found that every experiment ran on `Fill(Open)` with clear weather, firm
+ground, no territory owner and no imagery, and concluded that five whole systems
+were provably inert in every number the project had recorded. That is fixed: the
+experiments now paint a road, a treeline and a stretch of rubble, set a weather
+and a ground state, draw a border with an owner on each side, and grant each side
+imagery over its own ground — and print all of it above their results.
+
+Run the same assault on both worlds, holding everything else including the seed
+and the start tick fixed:
+
+| drones | flat, ownerless, uncovered | mixed terrain, border, imagery |
+|---|---|---|
+| 1 | 1.0 arrived, gun never lost | 1.0, never |
+| 2 | 2.0, never | 2.0, never |
+| 3 | 3.0, every time | 3.0, every time |
+| 5 | 5.0, every time | 5.0, every time |
+| 8 | 8.0, every time | 8.0, every time |
+
+Identical. Every cell.
+
+This is the correct result and worth recording as one rather than filing as a
+disappointment, because it says exactly what F1, F5 and F6 say: **nothing consumes
+any of it yet.** Terrain occludes nothing (item 29), navigation error displaces no
+aimpoint, and reference imagery is granted and never read. Painting a forest on
+the map cannot change a detection that never asks what is in the way.
+
+So the harness fix bought honesty rather than accuracy. Before it, an experiment
+silently asserted a flat empty world and reported the result as though it were the
+game; now it states its world and the result happens to be the same. The
+distinction is worth the work: the next time one of those five systems is wired
+the experiments will already be exercising it, and the day the two columns diverge
+will be evidence instead of a surprise.
+
+The one thing to guard against is reading that table as permission. It is tempting
+to conclude terrain does not matter. What it shows is that terrain is not yet
+*connected*, and item 29 is unambiguous that when it is, every detection figure in
+this document becomes an upper bound.
