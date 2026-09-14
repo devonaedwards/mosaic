@@ -554,3 +554,57 @@ So the honest model has two constraints in series: **money gates production,
 crews gate employment.** The game currently only has the second, which is why a
 player with a large bank and no crews feels correct and a player with crews and
 no bank does not exist. Worth adding before the economy is tuned.
+
+## 25. The decoy's reflector is physically right and tactically inert
+
+This supersedes item 17, and it is a correction to something I reported as a
+success.
+
+Item 17 said decoy escorts worked and nothing had to special-case them. Half of
+that was true for the wrong reason. Two research passes then found that the radar
+signature scale could not express what a decoy is: the 0-100 index was linear and
+fed to a fourth root, so a decoy at 80 escorting a strike drone at 60 was detected
+seven percent further out. Three orders of magnitude of real cross-section
+difference had been flattened into nothing. That is fixed - the scale is decibels
+now, and the probe confirms the intended behaviour exactly:
+
+```
+radar reach vs decoy   2373 m
+radar reach vs strike   750 m       3.16x, as designed
+```
+
+Then I put a control into the decoy experiment - the same package run again with
+the reflector stripped - and the two columns came out **identical to two decimal
+places at every mix**. The reflector buys nothing.
+
+The reason is not the reflector. It is that the game detects at 1400-2400 metres
+and kills at 85-320:
+
+```
+radar mast detection    1400 m (2373 against a reflector)
+gun mount kill ring        85 m
+interceptor battery       320 m
+```
+
+Early warning cannot matter when nothing can shoot at the range the warning
+arrives. By the time anything enters a weapon's envelope it has been found by
+optics and microphones anyway, so the radar track is redundant at the only moment
+it could pay.
+
+**What is actually missing is a cued launch.** A reflector decoy does not fool
+gunnery and was never meant to; what it does is make an air defence commit an
+interceptor, and a crew, and several minutes, against an inflatable. The game has
+interceptors but scrambles them by hand, so there is no decision for the decoy to
+corrupt. Until a radar cue can launch something, this whole category of unit is
+buying a property the game has nowhere to spend.
+
+So: the signature model is right and should stay. Item 17's conclusion holds only
+in its weaker form - a decoy is one more thing worth shooting at, and shot-value
+targeting handles that without special cases. The interesting half is not
+implemented yet.
+
+The general lesson is the same one as item 15 and item 18. A number can be
+corrected to something demonstrably more truthful and change no outcome, because
+what was wrong was never the number. Verifying the fix against its own mechanism
+(the probe) said it worked. Verifying it against the game (the control column)
+said it did not.

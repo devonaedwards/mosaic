@@ -547,8 +547,14 @@ namespace KZ.Balance
             Console.WriteLine("DECOY ESCORT - 2,600 Materiel of strike package against one turret");
             Console.WriteLine("heavy strike drone 800, decoy drone 130");
             Console.WriteLine();
-            Console.WriteLine("  package                      real drones through   turret killed");
-            Console.WriteLine("  " + new string('-', 64));
+            Console.WriteLine("  The right-hand column is a control. It re-runs the same package with");
+            Console.WriteLine("  the decoy's radar cross-section cut to the strike drone's, leaving");
+            Console.WriteLine("  everything else alone - so the gap between the columns is what the");
+            Console.WriteLine("  reflector buys, as opposed to what simply being one more thing worth");
+            Console.WriteLine("  shooting at buys.");
+            Console.WriteLine();
+            Console.WriteLine("  package                 through (reflector)   through (no reflector)");
+            Console.WriteLine("  " + new string('-', 70));
 
             int[][] mixes = {
                 new int[] {3, 1}, new int[] {2, 6}, new int[] {1, 13}
@@ -556,27 +562,47 @@ namespace KZ.Balance
             for (int i = 0; i < mixes.Length; i++)
             {
                 int real = mixes[i][0], decoys = mixes[i][1];
-                int throughTotal = 0, killed = 0;
-                const int trials = 40;
-                for (int trial = 0; trial < trials; trial++)
-                {
-                    int through;
-                    if (RunDecoyStrike(real, decoys, (ulong)(trial + 1), out through)) killed++;
-                    throughTotal += through;
-                }
-                Console.WriteLine(string.Format("  {0,-27}  {1,17}   {2,12}",
+                double withReflector = AverageThrough(real, decoys, true);
+                double without = AverageThrough(real, decoys, false);
+                Console.WriteLine(string.Format("  {0,-22}  {1,19}   {2,22}",
                     real + " real + " + decoys + " decoy",
-                    (throughTotal / (double)trials).ToString("0.00") + " of " + real,
-                    (killed * 100 / trials) + "%"));
+                    withReflector.ToString("0.00") + " of " + real,
+                    without.ToString("0.00") + " of " + real));
             }
             Console.WriteLine();
             Console.WriteLine("  Nothing special-cases a decoy here. A defence picks targets by how");
             Console.WriteLine("  much of one it can remove per shot, and a decoy dies to one shot");
             Console.WriteLine("  just as a real drone does - so it is an equally good thing to shoot");
             Console.WriteLine("  at, which is exactly the product being sold.");
+            Console.WriteLine();
+            Console.WriteLine("  The reflector, though, is doing nothing - the two columns agree to");
+            Console.WriteLine("  two decimals. It is not that the reflector is modelled wrongly: the");
+            Console.WriteLine("  radar finds a decoy at 2373 m and a strike drone at 750, which is");
+            Console.WriteLine("  the three-to-one the reporting describes. It is that the gun kills");
+            Console.WriteLine("  at 85 m and the battery at 320, so early warning arrives long");
+            Console.WriteLine("  before anything can act on it, and by the time something can, the");
+            Console.WriteLine("  cameras have the target anyway.");
+            Console.WriteLine();
+            Console.WriteLine("  A reflector decoy was never meant to fool gunnery. It is meant to");
+            Console.WriteLine("  make a defence spend an interceptor and a crew on an inflatable.");
+            Console.WriteLine("  Until a radar track can scramble something by itself, there is no");
+            Console.WriteLine("  decision here for a decoy to corrupt. See FINDINGS 25.");
         }
 
-        static bool RunDecoyStrike(int real, int decoys, ulong seed, out int through)
+        static double AverageThrough(int real, int decoys, bool reflector)
+        {
+            const int trials = 40;
+            int total = 0;
+            for (int trial = 0; trial < trials; trial++)
+            {
+                int through;
+                RunDecoyStrike(real, decoys, (ulong)(trial + 1), reflector, out through);
+                total += through;
+            }
+            return total / (double)trials;
+        }
+
+        static bool RunDecoyStrike(int real, int decoys, ulong seed, bool reflector, out int through)
         {
             Terrain t = new Terrain(2400, 1600);
             t.Fill(TileClass.Open);
@@ -594,13 +620,23 @@ namespace KZ.Balance
                 w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Decoy Drone"),
                     new Fix2(F(900), F(700 + i * 22)), gun, real + i));
 
+            // The control: strip the reflector and leave the airframe. A Gerbera
+            // without its corner reflector is a cheap piston aircraft, and on radar
+            // it is no more interesting than what it is escorting.
+            byte decoyRadar = reflector ? (byte)92 : (byte)52;
+
             int reached = 0;
             bool[] struck = new bool[w.Entities.Capacity];
             int realDefId = Catalog.IdOf("Heavy Strike Drone");
 
+            int decoyDefId = Catalog.IdOf("Decoy Drone");
+
             for (int tick = 0; tick < 300 * SimConstants.TicksPerSecond; tick++)
             {
                 w.Step();
+                for (int i = 1; i < w.Entities.HighWater; i++)
+                    if (w.Entities.IsSlotAlive(i) && w.Entities.DefId[i] == decoyDefId)
+                        w.Entities.Signature[i].Radar = decoyRadar;
                 if (!w.Entities.IsAlive(gun)) { through = reached; return true; }
 
                 Fix2 gunPos = w.Entities.Position[gun.Index];
