@@ -16,6 +16,119 @@ namespace KZ.Balance
         static Fix F(double v) { return Fix.FromDoubleContentOnly(v); }
         static Fix2 P(double x, double y) { return new Fix2(F(x), F(y)); }
 
+        // ------------------------------------------------------------------
+        // World construction.
+        //
+        // AUDIT-UNWIRED.md F34: every experiment used to run on Fill(Open), clear
+        // weather, firm ground, an ownerless map and no imagery anywhere - flat,
+        // empty, weatherless, and with nobody owning any ground. Five whole
+        // systems (weather, ground state, territory, reference imagery, the
+        // satellite link) are provably inert under those conditions, so nothing
+        // measured there can speak to how they interact with anything else.
+        //
+        // Weather and ground state below are Clear and Firm - themselves ordinary,
+        // common conditions, not a fog of war for the harness to hide behind. They
+        // are picked deliberately (rather than left as whatever the default
+        // happens to be) because Wet and Wind both ground every small-electric
+        // airframe these experiments fly (SortieSystem.WeatherGrounds) - which
+        // would not make the experiments more realistic, it would make them
+        // report zero every time and answer nothing. NightExperiment already
+        // exercises the day/night axis on purpose; a dedicated weather experiment
+        // that varies Weather itself is future work, not this task's.
+        const WeatherState DefaultWeather = WeatherState.Clear;
+        const GroundState DefaultGround = GroundState.Firm;
+
+        // Every attacker-vs-gun-mount experiment below places the attacker's
+        // infrastructure west of this line and the defended position east of it,
+        // just in front of the gun at x=1650 - so the last stretch of any
+        // approach is contested ground, not the attacker's own rear.
+        const int StandardBorderMetres = 1550;
+
+        /// <summary>
+        /// Lays open ground with a road, a treeline and a stretch of rubble across
+        /// it, so a match on this map is never the featureless plain F34
+        /// described. Positions are fractions of the map's own size so the same
+        /// layout works on every map an experiment below happens to use, and the
+        /// road band is centred where every experiment already stages its
+        /// engagement (roughly y = 0.49 * height, matching KZ.Headless's own
+        /// road and every drone pad below).
+        /// </summary>
+        static void PaintMixedTerrain(Terrain t)
+        {
+            t.Fill(TileClass.Open);
+            int w = t.WidthTiles, h = t.HeightTiles;
+
+            t.FillRect(0, h * 47 / 100, w - 1, h * 51 / 100, TileClass.Road);
+            t.FillRect(w * 28 / 100, h * 12 / 100, w * 46 / 100, h * 40 / 100, TileClass.Forest);
+            t.FillRect(w * 58 / 100, h * 58 / 100, w * 74 / 100, h * 78 / 100, TileClass.Rubble);
+        }
+
+        /// <summary>Grants a team imagery over its own side of the border, cell by cell.</summary>
+        static void GrantHomeImagery(World w, byte team, bool west, int borderMetres)
+        {
+            int borderCell = borderMetres / ReferenceImagery.CellMetres;
+            for (int cy = 0; cy < w.Imagery.CellsY; cy++)
+                for (int cx = 0; cx < w.Imagery.CellsX; cx++)
+                    if (west ? cx <= borderCell : cx >= borderCell)
+                        w.Imagery.Grant(team, cx, cy);
+        }
+
+        /// <summary>
+        /// The default world for a balance experiment: mixed terrain, a stated
+        /// weather and ground state, a territory border with an owner on each
+        /// side, and each side's reconnaissance of its own rear. This is what
+        /// every FINDINGS.md number should have been measured against, and per
+        /// F34 none of it was.
+        /// </summary>
+        static World MakeRealisticWorld(int widthMetres, int heightMetres, int entityCapacity,
+            int tetherCapacity, ulong seed, int playerCount, int startTick,
+            int borderMetres, byte westTeam, byte eastTeam)
+        {
+            Terrain t = new Terrain(widthMetres, heightMetres);
+            PaintMixedTerrain(t);
+
+            World w = new World(t, entityCapacity, tetherCapacity, seed, playerCount, startTick);
+            w.Weather = DefaultWeather;
+            w.Ground = DefaultGround;
+
+            const int neutralMetres = 64; // two Territory cells (CellMetres=32) either side of the line
+            w.Territory.SetVerticalBorder(borderMetres, westTeam, eastTeam, neutralMetres);
+            GrantHomeImagery(w, westTeam, true, borderMetres - neutralMetres);
+            GrantHomeImagery(w, eastTeam, false, borderMetres + neutralMetres);
+
+            return w;
+        }
+
+        /// <summary>
+        /// Flat, clear, firm, ownerless and uncovered - exactly the world every
+        /// experiment ran on by accident before this fix (AUDIT-UNWIRED.md F34).
+        /// Kept, and named plainly, only so a result can still be checked against
+        /// the old FINDINGS.md conclusions that were measured this way. Nothing
+        /// below should reach for this because it is simpler; the one caller that
+        /// does (GunRangeExperiment) explains why in its own comment.
+        /// </summary>
+        static World MakeFlatControlWorld(int widthMetres, int heightMetres, int entityCapacity,
+            int tetherCapacity, ulong seed, int playerCount, int startTick)
+        {
+            Terrain t = new Terrain(widthMetres, heightMetres);
+            t.Fill(TileClass.Open);
+            return new World(t, entityCapacity, tetherCapacity, seed, playerCount, startTick);
+        }
+
+        /// <summary>
+        /// Prints the conditions an experiment ran under. F34's point generalised:
+        /// an experiment whose world is invisible in its own output is exactly how
+        /// three balance findings went unnoticed for as long as they did.
+        /// </summary>
+        static void PrintWorldConfig(int borderMetres, byte westTeam, byte eastTeam)
+        {
+            Console.WriteLine(string.Format(
+                "  world: mixed terrain (road, forest, rubble over open ground), weather {0}, "
+              + "ground {1}, territory split at {2} m (team {3} west / team {4} east), "
+              + "imagery granted over each side's own ground",
+                DefaultWeather, DefaultGround, borderMetres, westTeam, eastTeam));
+        }
+
         public static int Main(string[] args)
         {
             string which = args.Length > 0 ? args[0] : "all";
@@ -47,7 +160,8 @@ namespace KZ.Balance
         {
             Console.WriteLine();
             Console.WriteLine("SATURATION - simultaneous drones against one gun mount");
-            Console.WriteLine("launched together from 1,200 m, gun reaches 550 m");
+            Console.WriteLine("launched together from 1,200 m, gun's real range is 85 m (FINDINGS 2)");
+            PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
             Console.WriteLine("  drones   arrived   gun killed   materiel spent   per kill");
             Console.WriteLine("  " + new string('-', 62));
