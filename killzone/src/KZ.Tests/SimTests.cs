@@ -743,10 +743,18 @@ namespace KZ.Tests
                 //
                 // With honest figures the night is a trade. Cameras lose most of
                 // their reach; microphones gain, because the ambient floor falls ten
-                // decibels or so once everything stops moving. Against a small quad
-                // the camera still wins even after dark - so darkness is a real
-                // advantage - and against anything with an engine the microphone
-                // wins outright.
+                // decibels or so once everything stops moving.
+                //
+                // This test used to go on to assert that against a small quad the
+                // camera still won after dark. That was true only of two numbers
+                // the research corrected: optical night was 0.35 where it should
+                // be 0.20, and a quad's visual signature was 15 where it should be
+                // 6 (thermal-optical.md §10, §11 - an unlit matte drone is close to
+                // invisible to a camera at night). With the corrected values the
+                // microphone is the defence's best sensor against a quad once the
+                // sun goes down, and even that reaches far less than the daytime
+                // camera did - so darkness is a real advantage, and against
+                // anything with an engine the microphone wins outright.
                 Terrain t = new Terrain(2048, 2048);
                 t.Fill(TileClass.Open);
 
@@ -771,8 +779,11 @@ namespace KZ.Tests
                 Assert.True(acousticNight > acousticDay,
                             "quiet air after dark buys the microphone real reach");
 
-                Assert.True(opticalNight > acousticNight,
-                            "but against a small quad the camera still wins at night, "
+                Assert.True(acousticNight > opticalNight,
+                            "after dark the microphone, not the camera, is the best sensor "
+                            + "against a small quad");
+                Assert.True(acousticNight < opticalDay,
+                            "and even that is well short of the daytime camera, "
                             + "which is why darkness is worth flying in");
             });
 

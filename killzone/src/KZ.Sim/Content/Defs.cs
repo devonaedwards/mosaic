@@ -264,7 +264,10 @@ namespace KZ.Sim
                 CostMateriel = 750, BuildTicks = SimConstants.Seconds(24),
                 Hp = M(1100), Armour = ArmourClass.Structure, FootprintTiles = 3,
                 JamStrength = 70, JamRadiusMetres = M(450),
-                SigRadio = 25, SigThermal = 40, SigAcoustic = 20, SigVisual = 70
+                // thermal-optical.md §11 "Jammer, transmitting": thermal 48 (was
+                // 40), visual 75 (was 70). Kilowatts into an amplifier and a
+                // cooling loop is a genuine hot spot on a vehicle-sized target.
+                SigRadio = 25, SigThermal = 48, SigAcoustic = 20, SigVisual = 75
             });
 
             Add(new UnitDef
@@ -291,6 +294,21 @@ namespace KZ.Sim
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
                 WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
                 CanReachHigh = false,
+                // This mount shipped with neither a traverse rate nor a magazine,
+                // and both mechanics quietly did nothing for the one unit every
+                // turret finding was measured against: SlewTicks returns early on
+                // a zero traverse rate, so the band-change penalty FINDINGS §18
+                // called "badly understated" was exactly zero, and with no
+                // magazine the saturation tables in FINDINGS §13-16 were run
+                // against infinite ammunition. 150°/s is the light AI EO turret
+                // figure (point-defence.md §"Where the existing numbers break" 5,
+                // §"Azimuth and elevation rates by class"); five shots then a
+                // twenty-second reload is the AI Gun Turret row of §"Suggested
+                // replacement units", inside §Q3's three to six engagements per
+                // belt. Saturation is meant to be the barrel running dry, not the
+                // sensors failing.
+                TraverseDegreesPerSecond = 150,       // point-defence.md §"Where the existing numbers break" 5 (was 0: instant)
+                AmmoCapacity = 5, ReloadSeconds = 20, // point-defence.md §"Suggested replacement units" (was 0: never ran dry)
                 SensorOptical = M(600), SensorAcoustic = M(200),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
@@ -401,8 +419,14 @@ namespace KZ.Sim
                 Hp = M(2250), Armour = ArmourClass.Heavy, SpeedMetresPerSecond = M(7.5),
                 WeaponDamage = M(340), WeaponType = DamageType.Kinetic,
                 WeaponRangeMetres = M(620),
-                SensorOptical = M(360), SensorThermal = M(300),
-                SigRadio = 0, SigThermal = 90, SigAcoustic = 80, SigVisual = 90,
+                // Thermal 250 rather than 300: thermal-optical.md §10 "Cooled/
+                // uncooled implied by the sensor table" - the battery's cooled
+                // imager should out-reach a tank's uncooled one by about two to
+                // one, and 500 against 300 was too tight.
+                SensorOptical = M(360), SensorThermal = M(250),
+                // thermal-optical.md §11: visual 100 (was 90) anchors the top of
+                // the optical scale. Thermal 90 stays as the night value.
+                SigRadio = 0, SigThermal = 90, SigAcoustic = 80, SigVisual = 100,
                 SensorArcDegrees = 90, SensorScanDegreesPerSecond = 25});
 
             Add(new UnitDef
@@ -428,7 +452,9 @@ namespace KZ.Sim
                 WeaponDamage = M(220), WeaponType = DamageType.Fragmentation,
                 WeaponRangeMetres = M(320), WeaponCooldownTicks = 96,
                 IsInterceptor = true, InterceptBaseChance = M(0.75),
-                SensorThermal = M(500), SensorRadar = M(800), SensorEsm = M(600),
+                // Thermal 520 rather than 500: thermal-optical.md §10 "Cooled/
+                // uncooled implied by the sensor table", paired with the tank's 250.
+                SensorThermal = M(520), SensorRadar = M(800), SensorEsm = M(600),
                 SigRadio = 70, SigThermal = 50, SigAcoustic = 40, SigVisual = 60,
                 SensorArcDegrees = 360});
         }
@@ -443,7 +469,10 @@ namespace KZ.Sim
                 SpeedMetresPerSecond = M(16.0),
                 Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true, IsMeshRepeater = true,
                 SensorOptical = M(250),
-                SigRadio = 60, SigThermal = 8, SigAcoustic = 12, SigVisual = 12, SigRadar = 22,
+                // thermal-optical.md §11 "Small electric quad": visual 6 (was 12).
+                // A 0.3 m airframe; §8.3 puts the wide-search limit at about 25
+                // map metres, and 6 is still generous.
+                SigRadio = 60, SigThermal = 8, SigAcoustic = 12, SigVisual = 6, SigRadar = 22,
                 SensorArcDegrees = 180});
 
             // The workhorse: ammunition with a pilot. It does not come home.
@@ -458,7 +487,11 @@ namespace KZ.Sim
                 WeaponDamage = M(260), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(8), WeaponAcquisitionTicks = 12, IsMeshRepeater = true,
                 SensorOptical = M(140),
-                SigRadio = 70, SigThermal = 8, SigAcoustic = 12, SigVisual = 15, SigRadar = 22
+                // thermal-optical.md §11 "Small electric quad": visual 6 (was 15).
+                // This number is also the target's size in the gun's hit roll, so
+                // 15 was giving the mount 232 m against a 0.3 m airframe; §8.3
+                // puts the wide-search limit at about 25 map metres.
+                SigRadio = 70, SigThermal = 8, SigAcoustic = 12, SigVisual = 6, SigRadar = 22
             });
 
             // Unjammable, and leashed for it. Slower, less agile, and trailing a
@@ -475,7 +508,9 @@ namespace KZ.Sim
                 WeaponDamage = M(340), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(8), WeaponAcquisitionTicks = 12,
                 SensorOptical = M(220),
-                SigRadio = 0, SigThermal = 8, SigAcoustic = 12, SigVisual = 15, SigRadar = 22
+                // thermal-optical.md §11 "Fiber-optic quad": thermal 9 (was 8) for
+                // the spool drag on the motors, visual 6 (was 15) as the FPV Team.
+                SigRadio = 0, SigThermal = 9, SigAcoustic = 12, SigVisual = 6, SigRadar = 22
             });
 
             Add(new UnitDef
@@ -523,7 +558,12 @@ namespace KZ.Sim
                 Link = LinkKind.Radio, AltLink = LinkKind.Mesh, LinkRobustness = 45,
                 ConsumesCrew = true, IsMeshRepeater = true,
                 SensorOptical = M(900),
-                SigRadio = 55, SigThermal = 25, SigAcoustic = 18, SigVisual = 30, SigRadar = 40,
+                // thermal-optical.md §11 "Fixed-wing recon": the research gives 14
+                // for an electric airframe and 38 for a small two-stroke, and calls
+                // the old 25 the average of two different aircraft. This one is
+                // SmallElectric, so 14. Visual 40 (was 30): a three-metre span is a
+                // far bigger optical target than a quad.
+                SigRadio = 55, SigThermal = 14, SigAcoustic = 18, SigVisual = 40, SigRadar = 40,
                 SensorArcDegrees = 45});
 
             Add(new UnitDef
@@ -538,7 +578,18 @@ namespace KZ.Sim
                 WeaponDamage = M(300), WeaponType = DamageType.Fragmentation,
                 WeaponRangeMetres = M(30), WeaponCooldownTicks = 96,
                 SensorOptical = M(300), SensorThermal = M(400),
-                SigRadio = 60, SigThermal = 22, SigAcoustic = 35, SigVisual = 55, SigRadar = 58,
+                // thermal-optical.md §11 "Electric heavy multirotor": thermal 32
+                // (was 22) - six to eight motors at 60-90 °C plus large packs is
+                // about ten times the FPV's radiating area, and these are
+                // intercepted at night by infrared; visual 30 (was 55), which was
+                // too high for a 1.5 m airframe against a tank at 100.
+                // Radar 38 (was 58): radar-rf.md §5, heavy multirotor at 0.08 m².
+                // The old value put this below-Shahed airframe above both the
+                // Heavy Strike Drone (52) and the Jet Strike Drone (50), inverting
+                // the ordering the fourth-root law exists to express. The rest of
+                // the column is on the research's own scale (decoy 92 / strike 52
+                // against its 90 / 48, FINDINGS §25), so 38 goes in as written.
+                SigRadio = 60, SigThermal = 32, SigAcoustic = 35, SigVisual = 30, SigRadar = 38,
                 SensorArcDegrees = 60});
 
             Add(new UnitDef
@@ -552,7 +603,10 @@ namespace KZ.Sim
                 WeaponDamage = M(300), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(10),
                 SensorOptical = M(240),
-                SigRadio = 50, SigThermal = 45, SigAcoustic = 55, SigVisual = 25, SigRadar = 38
+                // thermal-optical.md §11 "Combustion loitering munition": thermal
+                // 52 (was 45), a two-stroke at 325-345 °C; visual 20 (was 25), a
+                // one-to-two-metre airframe usually seen frontally in a dive.
+                SigRadio = 50, SigThermal = 52, SigAcoustic = 55, SigVisual = 20, SigRadar = 38
             });
 
             // Navigates by looking at the ground rather than by listening to a
@@ -596,7 +650,11 @@ namespace KZ.Sim
                 WeaponDamage = M(520), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(10),
                 SensorOptical = M(200),
-                SigRadio = 0, SigThermal = 60, SigAcoustic = 90, SigVisual = 45, SigRadar = 52
+                // thermal-optical.md §11 "Combustion heavy strike drone": thermal
+                // 72 (was 60) - a fifty-horsepower two-stroke with an exposed
+                // exhaust, credibly found beyond 3-5 km by mid-wave infrared;
+                // visual 38 (was 45).
+                SigRadio = 0, SigThermal = 72, SigAcoustic = 90, SigVisual = 38, SigRadar = 52
             });
 
             // The fast one. Same job, three times the speed, and the reason a gun
@@ -616,7 +674,10 @@ namespace KZ.Sim
                 WeaponDamage = M(380), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(10),
                 SensorOptical = M(180),
-                SigRadio = 0, SigThermal = 85, SigAcoustic = 95, SigVisual = 40, SigRadar = 50
+                // thermal-optical.md §11 "Turbojet strike drone": thermal 92 (was
+                // 85), the hottest thing in the sky; visual 34 (was 40) - smaller
+                // and faster than the piston version, not bigger.
+                SigRadio = 0, SigThermal = 92, SigAcoustic = 95, SigVisual = 34, SigRadar = 50
             });
 
             // Plywood, foam and a corner reflector. It carries nothing and hurts
@@ -632,7 +693,12 @@ namespace KZ.Sim
                 Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
                 ConsumesCrew = false, OneWay = true,
                 IsFlyingDecoy = true, CanChangeAltitude = true,
-                SigRadio = 0, SigThermal = 25, SigAcoustic = 65, SigVisual = 30,
+                // thermal-optical.md §11 "Decoy drone (reflectors)": the research
+                // gives 40 for a piston-powered decoy and 12 for a cheap electric
+                // one. This one is Combustion, so 40 (was 25) - a Gerbera-type
+                // decoy is thermally convincing, which is the point of it. Visual
+                // 22 (was 30).
+                SigRadio = 0, SigThermal = 40, SigAcoustic = 65, SigVisual = 22,
                 // Deliberately louder on radar than the thing it is imitating. That
                 // is the whole product.
                 SigRadar = 92

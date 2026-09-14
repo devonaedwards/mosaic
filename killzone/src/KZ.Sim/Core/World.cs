@@ -868,7 +868,7 @@ namespace KZ.Sim
                 bool pointedAtIt = WithinArc(s, Entities.Position[i], tp);
 
                 Fix thermalMod = ThermalTimeScale() * s.ApertureRangeScale;
-                if (layer == Layer.High) thermalMod = thermalMod * Fix.FromDoubleContentOnly(0.80);
+                if (layer == Layer.High) thermalMod = thermalMod * SimConstants.ThermalHighScale;
                 if (pointedAtIt
                     && Reaches(s.Thermal, sig.Thermal, thermalMod, distSq, SensorChannel.Thermal, ti))
                     return true;
@@ -884,7 +884,7 @@ namespace KZ.Sim
                 // Cameras. Long reach in daylight, and after dark this is the line
                 // that stops being true.
                 Fix opticalMod = s.ApertureRangeScale;
-                if (layer == Layer.High) opticalMod = opticalMod * Fix.FromDoubleContentOnly(0.70);
+                if (layer == Layer.High) opticalMod = opticalMod * SimConstants.OpticalHighScale;
                 if (IsNight && !TeamHasThermalOptics(team))
                     opticalMod = opticalMod * SimConstants.NightOpticalDetectionScale;
                 if (pointedAtIt
@@ -1009,8 +1009,12 @@ namespace KZ.Sim
             switch (channel)
             {
                 case SensorChannel.Esm: return 95;      // a transmission is hard to miss
-                case SensorChannel.Optical: return 88;
-                case SensorChannel.Thermal: return 84;
+                // Thermal above optical, not below it. Against sky the heat sensor
+                // is the steadier discriminator; the camera is the one that dies
+                // in haze, glare and darkness. The old 88 / 84 had them reversed.
+                // thermal-optical.md §10 "Channel reliability".
+                case SensorChannel.Optical: return 82;  // was 88
+                case SensorChannel.Thermal: return 88;  // was 84
                 case SensorChannel.Radar: return 78;    // birds, clutter, small returns
                 default: return 52;                     // microphones, in any wind at all
             }
@@ -1146,7 +1150,7 @@ namespace KZ.Sim
                 case SensorChannel.Thermal:
                     nominal = s.Thermal; strength = sig.Thermal;
                     mod = ThermalTimeScale() * s.ApertureRangeScale;
-                    if (layer == Layer.High) mod = mod * Fix.FromDoubleContentOnly(0.80);
+                    if (layer == Layer.High) mod = mod * SimConstants.ThermalHighScale;
                     break;
                 case SensorChannel.Acoustic:
                     nominal = s.Acoustic; strength = sig.Acoustic;
@@ -1155,7 +1159,7 @@ namespace KZ.Sim
                 default:
                     nominal = s.Optical; strength = sig.Visual;
                     mod = s.ApertureRangeScale;
-                    if (layer == Layer.High) mod = mod * Fix.FromDoubleContentOnly(0.70);
+                    if (layer == Layer.High) mod = mod * SimConstants.OpticalHighScale;
                     if (IsNight && !TeamHasThermalOptics(Entities.Team[sensorIndex]))
                         mod = mod * SimConstants.NightOpticalDetectionScale;
                     break;

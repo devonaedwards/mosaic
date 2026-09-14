@@ -145,8 +145,18 @@ namespace KZ.Sim
         public const int NightTicks = 3360;                // 1:45
         public const int DawnTicks = 960;                  // 0:30
 
-        /// <summary>Optical sensors collapse at night unless the player has bought thermal.</summary>
-        public static readonly Fix NightOpticalDetectionScale = Fix.FromDoubleContentOnly(0.35);
+        /// <summary>
+        /// Optical sensors collapse at night unless the player has bought thermal.
+        ///
+        /// 0.20 rather than the 0.35 FINDINGS §12 measured the turret's night
+        /// reach with. Keeping 65% implied a low-light sensor and a target with
+        /// some brightness of its own; for a small matte unlit drone the honest
+        /// figure is close to zero, and an entire night-bombing doctrine exists
+        /// because of it. The one paired measurement that supported 0.35 was for
+        /// illuminated road vehicles - the best case, not the typical one.
+        /// thermal-optical.md §10 "Optical night 0.35 - too generous".
+        /// </summary>
+        public static readonly Fix NightOpticalDetectionScale = Fix.FromDoubleContentOnly(0.20);
 
         /// <summary>
         /// Thermal imaging is worse in daylight, not better.
@@ -157,9 +167,15 @@ namespace KZ.Sim
         /// few hundred metres on a hot afternoon. This is the opposite of the
         /// intuition that "thermal is the night sensor and neutral by day", and the
         /// model had it wrong in exactly that way.
+        ///
+        /// 0.62 and 1.15 rather than the 0.55 and 1.25 of FINDINGS §19. The
+        /// direction was right; the ratio (2.27) sat at the top of the 1.80-2.23
+        /// band the radiometric model gives for sky-backed targets, and 1.85
+        /// centres it. The research calls this a minor tuning change.
+        /// thermal-optical.md §10 "Thermal day 0.55 / night 1.25".
         /// </summary>
-        public static readonly Fix ThermalDayScale = Fix.FromDoubleContentOnly(0.55);
-        public static readonly Fix ThermalNightScale = Fix.FromDoubleContentOnly(1.25);
+        public static readonly Fix ThermalDayScale = Fix.FromDoubleContentOnly(0.62);
+        public static readonly Fix ThermalNightScale = Fix.FromDoubleContentOnly(1.15);
         /// <summary>
         /// Dawn and dusk are the worst hour for thermal, not a midpoint between the
         /// other two. Everything the sun warmed all day passes back down through
@@ -199,6 +215,21 @@ namespace KZ.Sim
         /// now works out to a handful of metres of reach on its own.
         /// </summary>
         public static readonly Fix AcousticHighScale = Fix.FromDoubleContentOnly(0.50);
+
+        /// <summary>
+        /// What altitude does to a camera and a heat sensor - and the answer is
+        /// that it helps them. The model used to take 30% off optical and 20% off
+        /// thermal for a high target, which made height a hiding place from
+        /// exactly the two sensors it exposes a target to: a sky-silhouetted
+        /// airframe is the best optical background there is, and against a cold
+        /// sky the thermal contrast gate never binds. The penalty those numbers
+        /// were groping for is what the target is seen *against*, which is the
+        /// ground-clutter term (audit F11), not altitude.
+        /// thermal-optical.md §10 "High-altitude modifiers - optical sign is wrong":
+        /// optical ×1.00 (was 0.70), thermal ×1.30 (was 0.80).
+        /// </summary>
+        public static readonly Fix OpticalHighScale = Fix.One;
+        public static readonly Fix ThermalHighScale = Fix.FromDoubleContentOnly(1.30);
 
         // ---- weather ---------------------------------------------------------
 
