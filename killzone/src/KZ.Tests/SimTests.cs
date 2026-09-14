@@ -1130,6 +1130,45 @@ namespace KZ.Tests
                             "target selection does choose, and can be fooled");
             });
 
+            r.Run("a fiber drone is beaten by everything except a jammer", delegate
+            {
+                // Guarding a claim I got wrong once. A fiber drone's radio
+                // signature is zero, and it is tempting to read that as immunity.
+                // It is not. The fiber buys exactly two things - it cannot be
+                // jammed, and passive radio listening cannot find it - and every
+                // other way of killing a drone works normally.
+                //
+                // Four of the five channels see it. A gun shoots it. An
+                // interceptor rams it. That is what "the counter to any rung sits
+                // one rung back" was always supposed to mean.
+                World w = MakeWorld(701);
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(1000, 1000));
+                EntityHandle bomber = w.Spawn(Catalog.IdOf("Night Bomber"), 1, P(1000, 1000));
+                EntityHandle fiber = w.Spawn(Catalog.IdOf("Fiber FPV Team"), 2, P(1040, 1000));
+                w.Step();
+
+                Assert.Equal(0, w.DetectionRangeFor(mast.Index, fiber.Index, SensorChannel.Esm).Raw,
+                             "passive listening finds nothing, which is the point of the fiber");
+
+                Assert.True(w.DetectionRangeFor(gun.Index, fiber.Index, SensorChannel.Optical) > Fix.Zero,
+                            "but a camera sees it");
+                Assert.True(w.DetectionRangeFor(gun.Index, fiber.Index, SensorChannel.Acoustic) > Fix.Zero,
+                            "a microphone hears it - it is still a quadcopter");
+                Assert.True(w.DetectionRangeFor(mast.Index, fiber.Index, SensorChannel.Radar) > Fix.Zero,
+                            "radar returns off it like anything else");
+                Assert.True(w.DetectionRangeFor(bomber.Index, fiber.Index, SensorChannel.Thermal) > Fix.Zero,
+                            "and its motors are warm");
+
+                Assert.True(w.IsDetectedBy(1, fiber), "so the defence has it");
+
+                // And a rotary interceptor with a seeker is a real counter to it,
+                // which is the other half of the same correction.
+                UnitDef interceptor = Catalog.Get(Catalog.IdOf("Interceptor FPV"));
+                Assert.True(interceptor.CanEngageAir, "interceptors engage air");
+                Assert.True(interceptor.SensorOptical > Fix.Zero, "using an optical seeker");
+            });
+
             r.Run("a fiber drone defeats radio listening completely", delegate
             {
                 // The property that makes fiber worth its leash, and one the old

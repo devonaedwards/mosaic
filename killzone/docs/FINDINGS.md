@@ -775,12 +775,44 @@ in the catalogue carries target selection, which is the correct rarity.
 
 ### Three more corrections worth carrying
 
-**A fiber drone should not be invulnerable.** Its radio signature is zero and the
-game treats that as the end of the argument. A directed-energy system was
-reported killing a fiber-optic drone in January 2026. Directed energy does not
-need to hear anything — it needs line of sight. The game's point-defence model
-was researched almost entirely from one war and has no directed energy in it at
-all, which is probably the single largest piece of overfitting in the project.
+**A fiber drone is not invulnerable, and saying so was my error.** The claim
+above originally read that a fiber drone's zero radio signature made it immune
+and that directed energy was the missing counter. That is wrong, and the
+catalogue says so:
+
+```
+Fiber FPV Team   SigRadio 0   SigThermal 8   SigAcoustic 12   SigVisual 15   SigRadar 22
+```
+
+It is visible on **four of the five channels**. A gun mount shoots it. An
+interceptor rams it. Cameras, microphones, heat sensors and radar all find it.
+What the fiber actually buys is exactly two things: it cannot be **jammed**, and
+it cannot be found by **passive radio listening**. That is a narrow and specific
+immunity, and it is already correctly modelled - which is what "the counter to
+any rung sits one rung back" was always supposed to mean.
+
+The error was reading "immune to the electronic-warfare channel" as "immune",
+and it is worth keeping on the record because it is the failure mode this
+project keeps hitting from the other direction: I generalised from one
+interesting property to a claim about the whole unit without opening the file
+that would have refuted it in one line.
+
+**The real gap is smaller and sits on the interceptor.** Rotary interceptors are
+a working counter-drone weapon when they carry a seeker, and the game's carries
+optics only:
+
+```
+Interceptor FPV   SensorOptical 180   (no thermal)
+```
+
+At night that 180 collapses to about a quarter of its reach, against a target
+with a visual signature of 15 - so an interceptor after dark can barely find
+anything on its own and has to be cued by ground radar. That is realistic, and it
+is also the shape of a real upgrade rather than a flaw: a thermal seeker is what
+turns an interceptor from a daylight weapon into an all-hours one, and it should
+cost accordingly. Directed energy remains a genuine absence from the point-defence
+model, but as one more counter among several, not as the answer to an
+invulnerability that does not exist.
 
 **Crew skill is the variable, and there is now a clean measurement of it.**
 Fiber FPVs in one theatre land about 19% of attacks; comparable hardware in
