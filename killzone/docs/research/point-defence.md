@@ -61,7 +61,25 @@ though they were.
    had its budget cut. `[H]` Lasers are weather-gated and need seconds of dwell
    per target; microwaves are all-weather but reach under ~1 km.
 
-7. **Electronic warfare is the cheapest layer and the one the threat has already
+7. **Slew rate is almost never the binding constraint; re-acquisition is.**
+   A gun mount needs only 3–19°/s to track an incoming drone at 500–1,000 m
+   `[CALC]`, far inside any powered mount's capability. What costs time is
+   settling, re-ranging and re-classification after the slew — and a passive
+   EO turret with no radar pays that in full every time.
+
+8. **Nothing in this class engages two targets at once except high-power
+   microwave.** Guns, lasers and missile launchers are strictly serial; radar
+   lets them *track* hundreds while *engaging* one.
+
+9. **No published hit-probability-versus-range curve exists for any
+   counter-drone gun system.** `[H]` on the absence. The derived model below
+   puts single-burst kill probability against a Shahed at roughly **99% at
+   200 m, 51% at 500 m, 16% at 1,000 m** — and shows that the speed penalty for
+   a turbojet target is **range-dependent**, negligible at point-blank and a
+   factor of three at a kilometre. The game's flat speed multiplier is the wrong
+   shape.
+
+10. **Electronic warfare is the cheapest layer and the one the threat has already
    routed around.** Shahed-class drones carry 16-element (soon 20-element)
    controlled-reception-pattern antennas and fall back to inertial navigation
    plus barometer when jammed. `[M]` Fiber-optic FPVs are immune outright. `[H]`
@@ -514,6 +532,272 @@ architecture `[H]`. Everyone building this is building layers.
 
 ---
 
+## Traverse, slew and re-acquisition
+
+**Sourcing warning.** This section is the weakest-sourced in the document. Slew
+rates for counter-drone mounts are either unpublished (Sky Sentinel, Bullfrog —
+neither vendor states a traverse rate) or buried in datasheets I could not reach
+in this session. Figures below marked `[GEN]` are general engineering knowledge
+of the class of machine, not citations, and should be treated as design
+defaults to be replaced if a real datasheet turns up. What *is* well founded is
+the reasoning about which constraint actually binds — and it is not the slew
+rate.
+
+### Azimuth and elevation rates by class
+
+| Class | Azimuth | Elevation | Confidence |
+|---|---|---|---|
+| Light AI EO turret (Sky Sentinel, Bullfrog) | ~100–200°/s | ~60–120°/s | `[GEN]` — unpublished; inferred from a 300–400 lb station with "precision robotics" and a machine-gun-weight payload |
+| General remote weapon station (CROWS/Protector class, ground-target optimised) | ~60°/s | ~30–45°/s | `[GEN]` |
+| Towed AA gun, manual (ZU-23-2 class) | ~30–50°/s, crew-limited, poor settling | ~20–30°/s | `[GEN]` |
+| Self-propelled AAA turret (Gepard, Skyranger) | ~90–120°/s | ~45–60°/s | `[GEN]` |
+| Naval CIWS (Phalanx class) | ~100°/s+ | ~80°/s+ | `[GEN]` |
+| Light SHORAD missile launcher | ~45–60°/s | ~30–45°/s | `[GEN]` |
+
+Two robust structural rules fall out, and these are worth more to the game than
+any single number:
+
+1. **Elevation is roughly half azimuth rate, in every class.** Elevation drives
+   are lifting mass against gravity through a shorter lever. Whatever azimuth
+   figure you pick, halve it for pitch.
+2. **Mass sets the rate.** A machine gun on a light robotic mount is the
+   fastest thing on the list; a 35 mm turret with an ammunition feed and a radar
+   is slower; a missile rail heavier still.
+
+### Why slew rate is usually the wrong constraint
+
+**[CALC] Angular rate demand rises as range falls.** A target crossing at speed
+`v` and slant range `R` demands a tracking rate of `v/R`:
+
+| Target | 1,000 m | 500 m | 300 m | 150 m |
+|---|---|---|---|---|
+| Shahed at 180 km/h (50 m/s) | 2.9°/s | 5.7°/s | 9.5°/s | 19°/s |
+| Jet Geran at 600 km/h (167 m/s) | 9.5°/s | 19°/s | 32°/s | 64°/s |
+
+Every one of those is inside every mount's slew capability. **A gun turret is
+never slew-limited against an incoming drone at useful range.** What it is
+limited by is:
+
+- **Settling.** A fast slew excites the mount; the tracker has to re-converge
+  before the firing solution is trustworthy. `[GEN]` Budget **0.3–1.0 s** after
+  a large re-lay, and note that it is longer on a light mount than a heavy one —
+  the exact opposite of the slew-rate ordering.
+- **Re-acquisition and re-ranging.** After a slew the system must reclassify the
+  new target and, critically, re-establish range and closing rate. For a passive
+  EO turret with no radar that is the slow step, because range from image scale
+  needs several frames of growth to converge. Sky Sentinel and Bullfrog are both
+  fully passive. `[M]`
+- **Handover from search to track.** Systems with a separate search sensor
+  (Skyranger's AESA, Leonardo DRS multi-mission radars handling hundreds of
+  tracks `[H]`) pay almost nothing here, because the next target is already
+  tracked before the gun moves. Systems without one pay the full search cost
+  again.
+
+That last point is the real design lever. **The sensor architecture, not the
+motor, decides how fast a mount can switch targets.**
+
+### Does changing elevation band cost extra?
+
+Mechanically, barely. `[CALC]` Climbing 30° of elevation at 45°/s is 0.67 s;
+at 90°/s it is 0.33 s. So the game's flat **two-thirds of a second is a
+reasonable mechanical figure for a heavy mount and roughly double the truth for
+a light one.**
+
+But three real costs are missing from that model:
+
+1. **Slant range grows with elevation.** A target at 800 m ground range and
+   2,000 m altitude is at 2,154 m slant range — beyond every machine gun on the
+   list. Elevation change is not a time cost, it is a *range* cost.
+2. **Angular rate at high elevation is punishing.** A target passing near
+   overhead sweeps through large angles quickly regardless of its speed, and near
+   the zenith azimuth rate demand goes to infinity — the classic gimbal problem.
+   This is the only place a gun mount genuinely does hit its slew limit.
+3. **Re-ranging dominates.** Changing band usually means changing target, which
+   means paying the re-acquisition cost above, not the motor cost.
+
+**Recommendation:** replace the flat 0.67 s with **0.3 s mechanical + 0.5 s
+re-acquire** for light AI turrets and **0.6 s + 0.5 s** for autocannon and
+missile mounts, make it asymmetric (upward costs more than downward, because the
+target overhead is rate-demanding), and add a **hard ceiling** per weapon class
+(Q2) which matters far more than any of this.
+
+### Can any of them engage two targets at once?
+
+**Guns: no. Strictly one at a time.** One barrel, one line of sight, one firing
+solution. This is true of every gun system in this document.
+
+**But tracking and engaging are different verbs**, and the game should separate
+them:
+
+| System | Tracks simultaneously | Engages simultaneously |
+|---|---|---|
+| Passive AI turret | a handful (single EO field of view) | 1 |
+| Autocannon with AESA | hundreds `[H]` | 1 |
+| Laser | many (radar) | **1**, for 2–5 s each `[M]` |
+| Missile launcher | many | 1 per guidance channel; command-guided and laser-designated systems have **1–2 channels**, fire-and-forget IR seekers can have several missiles in flight at once `[GEN]` |
+| Interceptor drone pad | many | as many as you have airframes airborne and operators |
+| **HPM** | — | **everything in the cone, in one pulse** `[M]` |
+
+Bullfrog's demonstrations against "multi-drone engagements in rapid succession"
+`[M]` are exactly that — *succession*, not simultaneity. The phrase is worth
+reading carefully; it is the honest description of a serial weapon.
+
+**Design consequence:** give every unit an explicit `engagement_channels` field.
+It is 1 for almost everything, several for interceptor pads, and "all in arc"
+for HPM. That single field is the cleanest way to encode Q3 and Q4 in the model.
+
+---
+
+## Hit probability against range
+
+### What is actually published
+
+**Plainly: there are no published Pk-versus-range curves for any counter-drone
+gun system in open sources I could reach.** `[H]` on the absence — vendors
+publish engagement *envelopes* and anecdotes, not probability curves, because Pk
+is the number that sells or sinks a programme. Three data points are all the
+open record gives:
+
+1. **Bullfrog: "ten dollars per engagement."** `[M]` **[CALC]** At roughly
+   $0.60–0.90 per 7.62 mm NATO round, $10 is **11–17 rounds**. If that describes
+   a *successful* engagement, it implies a per-round hit probability around 6–9%,
+   which corresponds to a very short range against a small slow target. It is a
+   marketing round number and should not be over-read, but it is the only
+   ammunition-per-kill figure in the public record.
+2. **Sky Sentinel destroyed six Shahed-136 drones in early combat testing.** `[M]`
+   No rounds-expended figure was published.
+3. **Bullfrog's "less than two percent false-negative rate."** `[M]` This is
+   widely misquoted as an accuracy figure. **It is a detection metric** — how
+   often the system fails to notice a drone — **not a hit metric.** Do not tune
+   the game against it.
+
+The one genuinely useful published constraint is the fire-control sensitivity
+figure: **a 0.03 s error in projectile time of flight, about half a percent,
+misses a Mach 1 target by 20 metres.** `[M]` That is the physics the whole
+section rests on.
+
+### A derived Pk model
+
+Everything below is `[CALC]`. Inputs: Gaussian angular error `σ`, combining
+dispersion (**5 mrad** assumed for a rigid-mounted M2 — an assumption, not a
+source) with aiming bias from velocity-estimate error (**5%**, appropriate to a
+passive EO tracker with no Doppler). Per-round hit probability
+`p = 1 − exp(−r²/2σ²R²)`; burst probability `1 − (1−p)^n` for a 20-round burst.
+Effective vulnerable radius: **0.3 m** small quadcopter, **0.8 m** Shahed-class.
+
+**Single-burst kill probability (20 rounds, .50-calibre class):**
+
+| Range | Small quad @ 60 km/h | Shahed @ 180 km/h | Shahed @ 500–600 km/h |
+|---|---|---|---|
+| 200 m | **~60%** | **~99%** | **~78%** |
+| 500 m | **~13%** | **~51%** | **~22%** |
+| 1,000 m | **~3.5%** | **~16%** | **~5%** |
+
+**Expected rounds per kill (same model):**
+
+| Range | Small quad | Shahed @ 180 | Shahed @ 500–600 |
+|---|---|---|---|
+| 200 m | ~32 | ~5 | ~14 |
+| 500 m | ~200 | ~28 | ~82 |
+| 1,000 m | ~550 | ~116 | ~370 |
+
+A 100-round belt therefore buys **three Shahed kills at 500 m and less than one
+at 1,000 m.** That is the ammunition economy the game should feel.
+
+### The speed penalty is range-dependent, and this is where the game's shape is wrong
+
+Compare the 180 km/h and 500–600 km/h columns:
+
+| Range | Pk ratio, slow ÷ fast |
+|---|---|
+| 200 m | **1.3×** |
+| 500 m | **2.3×** |
+| 1,000 m | **3.1×** |
+
+At point-blank, speed barely matters — time of flight is so short that even a
+sloppy velocity estimate produces a small lead error. At a kilometre it is the
+dominant term. **The game currently scales hit chance inversely with target
+speed as a flat multiplier across all ranges. That is the wrong shape.** Speed
+should enter as `velocity_error × time_of_flight`, i.e. **proportional to speed
+*and* to range**, combined in quadrature with the range-independent dispersion
+term. Practically: make the speed penalty near-zero at 20% of max range and
+roughly a factor of three at full range.
+
+### The range falloff is also the wrong shape
+
+Per-round hit probability does fall roughly as `1/R²` — the game's instinct is
+right in the tail. But **burst** probability is `1 − (1−p)^n`, which saturates.
+The resulting curve is:
+
+- **Flat and near-certain** inside about 25% of effective range,
+- **collapsing steeply** through the middle band,
+- with a **long thin non-zero tail** past nominal maximum range — you do
+  occasionally hit at 1,500 m, just rarely.
+
+A parabola of the form `1 − (R/Rmax)²` gets the flat head roughly right, but it
+falls too gently through the middle and then **hits exactly zero at Rmax**, which
+is wrong in a way players notice: there is no lucky long-range kill, ever.
+
+**Recommended replacement:**
+
+```
+Pk = 1 - exp( -k * (R_ref / R)^2 * size_factor / speed_factor(R) )
+```
+
+with `k` tuned so that `Pk = 0.5` at the class's design range (500 m for a
+.50-calibre mount, 2,000 m for a 30 mm airburst mount), and
+`speed_factor(R) = 1 + c * v * R`. This gives saturation near the gun, an
+inverse-square middle band, and a non-zero tail, in one expression.
+
+### Airburst changes the model, not just the number
+
+The entire reason 30/35 mm AHEAD exists is that it **removes the requirement for
+a direct hit** — 152 tungsten sub-projectiles released near the target `[H]`.
+In model terms the effective target radius jumps from ~0.8 m to something like
+the burst cloud radius, several metres. That is why an autocannon holds useful
+Pk out to 3,000–4,000 m `[H]` while a machine gun does not hold it past 1,000.
+**Airburst should be a target-radius multiplier in the game, not a range
+multiplier.** Getting that right is the single cleanest way to make the
+autocannon unit feel different from the machine gun rather than simply better.
+
+### Proportion of misses, and what it costs
+
+No open source publishes a miss rate. `[H]` on the absence. From the derived
+model, at a gun's design range of ~500 m against a Shahed, **roughly half of
+bursts miss**; against a small quadcopter at the same range, **seven out of
+eight miss**; against a turbojet target, **four out of five**.
+
+Because the game now makes a miss cost the mount its firing cycle, chain that
+against Q1's window arithmetic: a head-on 600 km/h target gives about **2.4 s of
+firing**, which at a 3–4 s engagement cycle is **one burst, perhaps two.**
+Multiply through and a single AI gun turret has something like a **5–20% chance
+of stopping a single turbojet drone that flies directly at it**, and perhaps
+**50–70% against a subsonic Shahed at 500 m**. Those numbers are `[CALC]` and
+should be treated as the shape of the answer rather than the answer, but they
+match the observed reality that Ukrainian mobile fire groups and AI turrets are
+credited with kills in ones and sixes while interceptor drones are credited with
+70% of a national total. `[H]`
+
+### The 30% upward-fire cut
+
+The flat 30% penalty is a defensible proxy but it is modelling the wrong thing.
+Shooting upward, the real effects are:
+
+1. **Slant range exceeds map range.** A target 800 m away on the ground plane at
+   2,000 m altitude is 2,154 m away in reality. This alone accounts for most of
+   the observed penalty and it is already in the Pk curve if you use slant range.
+2. **Angular rate demand rises near the zenith** — the only case where the mount
+   is genuinely rate-limited.
+3. **A hard ceiling**, which no multiplier can express (Q2).
+
+**Recommendation:** drop the flat 30%, compute Pk on **slant** range, add the
+per-class **ceiling**, and keep a small residual penalty (10–15%) for the
+rate-demand effect at high elevation. That reproduces the real behaviour —
+cheap point defence that is fine against low targets and simply cannot touch
+high ones — instead of smearing it into a uniform tax.
+
+---
+
 ## Where the current model is wrong, and what to build instead
 
 ### Where the existing numbers break
@@ -531,6 +815,22 @@ architecture `[H]`. Everyone building this is building layers.
    coverage rather than accuracy.
 4. **Nothing in the game distinguishes an effector that engages one target at a
    time from one that engages a cone.** That distinction is the whole of Q3/Q4.
+5. **90°/s azimuth for a gun turret is a sound default**, but it should not be
+   one number: ~150°/s for a light AI EO turret, ~90°/s for an autocannon
+   turret, ~45°/s for a crewed gun truck. **45°/s for a missile battery is
+   right** — and largely irrelevant, since a missile does its own turning after
+   launch and the launcher only needs coarse pointing.
+6. **Elevation should be half the azimuth rate** in every class.
+7. **The flat 0.67 s band-change penalty is about right mechanically for a heavy
+   mount and roughly double the truth for a light one** — but it is modelling
+   the wrong cost. Replace with mechanical time plus a **0.5 s re-acquisition**
+   charge, and make elevation matter through **slant range and a hard ceiling**
+   rather than a timer.
+8. **The hit-probability curve is the wrong shape twice over**: the range
+   falloff should saturate near the gun and keep a thin non-zero tail past
+   nominal maximum, and the speed penalty should scale with range rather than
+   applying flat. The 30% upward-fire cut should be replaced by slant-range
+   geometry plus a ceiling.
 
 ### Suggested replacement units
 
@@ -615,10 +915,26 @@ Two systemic additions make the above work:
   describe different phases.
 - **HPM "under 1 km"** is a general characterisation, not a measured figure for
   any specific system. Actual effective range is classified and target-dependent.
-- **My dispersion assumption of 6 mrad** in the Q1 calculation is an engineering
-  rule of thumb I applied, not a sourced value. The *shape* of the result — that
-  hit probability falls roughly as the square of range — is robust; the absolute
-  percentages are not.
+- **My dispersion assumption of 5–6 mrad** in the Q1 and Pk calculations is an
+  engineering rule of thumb I applied, not a sourced value. The *shape* of the
+  result — that hit probability falls roughly as the square of range, and that
+  the speed penalty grows with range — is robust; the absolute percentages are
+  not.
+- **Every slew-rate figure in this document is unsourced.** Neither Sky Sentinel
+  nor Bullfrog publishes a traverse rate, and this session's web-search budget
+  was exhausted before I could reach remote-weapon-station or Skyranger
+  datasheets. The class-ordering (light EO turret > autocannon turret > missile
+  rail > crewed gun) and the elevation-is-half-azimuth rule are solid; the
+  numbers are defaults to be replaced.
+- **No Pk-versus-range curve is published for any counter-drone gun.** The whole
+  hit-probability section is derived, not reported. Treat the derived tables as a
+  defensible model with stated assumptions, not as findings.
+- **Bullfrog's "$10 per engagement"** is a marketing figure. My inference that it
+  implies 11–17 rounds rests on an assumed ammunition price, and on reading
+  "engagement" as "successful engagement", which the source does not state.
+- **Rounds-expended-per-kill is not published by anyone** for Sky Sentinel,
+  Bullfrog, or Ukrainian mobile fire groups. If a real figure surfaces it should
+  override the derived table immediately.
 
 ---
 

@@ -51,6 +51,19 @@ namespace KZ.Sim
         /// <summary>Degrees per second the mount can traverse. Zero means instant.</summary>
         public int TraverseDegreesPerSecond;
 
+        public AmmoType Ammo = AmmoType.Solid;
+
+        /// <summary>
+        /// How high it can reach, in the game's three bands. A machine gun cannot
+        /// touch something cruising at two and a half kilometres, and that - not
+        /// speed - is what took the gun trucks out of the Shahed business.
+        /// </summary>
+        public bool CanReachHigh = true;
+
+        /// <summary>Engagements before reloading. Zero means it never runs dry.</summary>
+        public int AmmoCapacity;
+        public int ReloadSeconds = 8;
+
         /// <summary>
         /// Whether this can shoot at something in the air at all.
         ///
@@ -239,8 +252,16 @@ namespace KZ.Sim
                 CanEngageAir = true,
                 CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
                 Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
+                // Eighty-five metres, not the five hundred and fifty this had.
+                // The old figure was the mount's *detection* reach being used as
+                // its kill ring, and the two are an order of magnitude apart: a
+                // heavy machine gun's useful engagement envelope against a small
+                // drone is a few hundred real metres, which is tens of metres on
+                // this map. Getting that wrong was most of why a single turret
+                // looked unbeatable.
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(550), WeaponCooldownTicks = 24,
+                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                CanReachHigh = false,
                 SensorOptical = M(600), SensorAcoustic = M(130),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
@@ -372,10 +393,11 @@ namespace KZ.Sim
             {
                 Name = "Interceptor Battery", Faction = FactionId.KestrelPact, Tier = 3,
                 CanEngageAir = true, TraverseDegreesPerSecond = 45,
+                Ammo = AmmoType.Proximity, AmmoCapacity = 12, ReloadSeconds = 20,
                 CostMateriel = 1200, BuildTicks = SimConstants.Seconds(32),
                 Hp = M(600), Armour = ArmourClass.Light, SpeedMetresPerSecond = M(6.0),
                 WeaponDamage = M(220), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(2000), WeaponCooldownTicks = 96,
+                WeaponRangeMetres = M(320), WeaponCooldownTicks = 96,
                 IsInterceptor = true, InterceptBaseChance = M(0.75),
                 SensorThermal = M(500), SensorRadar = M(800), SensorEsm = M(600),
                 SigRadio = 70, SigThermal = 50, SigAcoustic = 40, SigVisual = 60,

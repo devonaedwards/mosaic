@@ -203,7 +203,13 @@ namespace KZ.Sim
                     TraverseBamPerTick = def.TraverseDegreesPerSecond > 0
                         ? Trig.DegreesPerSecondToBamPerTick(def.TraverseDegreesPerSecond)
                         : 0,
-                    TrackingLayer = Layer.Ground
+                    TrackingLayer = Layer.Ground,
+                    Ammo = def.Ammo,
+                    CanReachHigh = def.CanReachHigh,
+                    AmmoCapacity = def.AmmoCapacity,
+                    AmmoRemaining = def.AmmoCapacity,
+                    ReloadTicks = SimConstants.Seconds(def.ReloadSeconds),
+                    ReloadingUntilTick = 0
                 };
             }
 

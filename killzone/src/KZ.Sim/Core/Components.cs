@@ -202,6 +202,28 @@ namespace KZ.Sim
         public ushort Bearing;
         public int TraverseBamPerTick;
         public Layer TrackingLayer;
+
+        /// <summary>What the mount is loaded with, which changes the shape of its
+        /// hit curve far more than its damage.</summary>
+        public AmmoType Ammo;
+
+        /// <summary>Whether it can engage the high band at all.</summary>
+        public bool CanReachHigh;
+
+        /// <summary>
+        /// How many engagements are left before it has to reload, and how long that
+        /// takes.
+        ///
+        /// This is what makes saturating a defence mean something. A mount that
+        /// never runs dry can only be beaten by out-shooting it; a mount with a
+        /// magazine can be beaten by making it spend one. It is also the real cost
+        /// of the clever ammunition - the rounds that are forgiving of a bad aiming
+        /// solution are bulky and expensive, so you carry far fewer of them.
+        /// </summary>
+        public int AmmoRemaining;
+        public int AmmoCapacity;
+        public int ReloadTicks;
+        public int ReloadingUntilTick;
     }
 
     /// <summary>

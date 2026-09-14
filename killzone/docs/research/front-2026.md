@@ -12,27 +12,21 @@ is load-bearing, it is marked. Where something is a guess, it says so.
 
 ## 0. How to read this, and a caveat about the evidence
 
-Every claim below carries two labels.
-
-**Kind of claim:**
+Every claim carries a kind and a confidence (High / Medium / Low).
 
 - **[Reported]** - independent reporting or third-party analysis (ISW, IISS,
   RUSI, ACLED, Carnegie, FPRI, Jamestown, wire services).
-- **[Claimed]** - asserted by a belligerent or its government. Kyiv's daily
-  loss tallies and Moscow's advance claims both live here. Treat as directional
-  at best.
+- **[Claimed]** - asserted by a belligerent. Kyiv's loss tallies and Moscow's
+  advance claims both live here. Directional at best.
 - **[Inference]** - my reasoning from the above. Not sourced. Argue with it.
 
-**Confidence:** High / Medium / Low.
-
-**Important caveat on sourcing.** Direct retrieval of the underlying articles
-was blocked by the network for almost every domain, including ISW, Ukrainska
-Pravda, ASPI and Critical Threats, so most figures here come from search
-summaries rather than article text. The URLs in section 13 are the real,
-returned source locations and nothing here is invented - but **anyone making a
-load-bearing design decision on a specific number should open the source and
-confirm it.** Figures I could not corroborate across two independent results are
-marked Low confidence for that reason alone.
+**Caveat on sourcing.** Direct retrieval of the underlying articles was blocked
+by the network for almost every domain, so most figures come from search
+summaries rather than article text. The URLs in section 13 are the real, returned
+source locations and nothing here is invented - but **anyone making a
+load-bearing decision on a specific number should open the source and confirm
+it.** Figures not corroborated across two independent results are marked Low
+confidence for that reason alone.
 
 ---
 
@@ -42,46 +36,38 @@ marked Low confidence for that reason alone.
 slowly, in Russia's favour on a few sectors, and slightly in Ukraine's favour on
 one.** [Reported, High]
 
-The single most important structural fact is that **the contested band has
-become deeper than the distance either side can advance in a year.** The kill
-zone - the belt in which anything that moves is seen and struck - is now
-credibly 25 km on each side of the line of contact, so roughly 50 km total, with
-some sectors described at 50 km per side. [Reported, Medium] Russian forces
-advanced into 37.85 sq km in July 2026, about 1.22 sq km per day by ISW's strict
-measure. [Reported, High] A force that gains a kilometre a week is operating
-inside a hazard belt twenty-five times deeper than its weekly progress. Movement
-has become the hard problem; ground is the easy one.
+The most important structural fact is that **the contested band is now deeper
+than the distance either side can advance in a year.** The kill zone - the belt
+in which anything that moves is seen and struck - is credibly 25 km each side of
+the line of contact, with some sectors described at 50 km per side. [Reported,
+Medium] Russian forces advanced into 37.85 sq km in July 2026, about 1.22 sq km
+per day on ISW's strict measure. [Reported, High] A force gaining a kilometre a
+week operates inside a hazard belt twenty-five times deeper than its weekly
+progress. Movement is the hard problem; ground is the easy one. Everything else
+follows.
 
-Everything else follows from that.
+- **The lines.** Russia holds Pokrovsk, Myrnohrad and Huliaipole and is pressing
+  Kostiantynivka and the fortress belt, without converting any of it into
+  operational movement. Ukraine cut off the Russian salient north of Lyman over
+  four months, retaking 200+ sq km. [Reported, High/Medium]
+- **Loss attribution.** Drones are credited with 70% to 96% of casualties
+  depending on who counts - the most contested number in the war. [Section 5]
+- **Force structure.** Both sides now have a formal unmanned branch. Russia's USF
+  was ~87,000 at end-2025 with a 165,000 target; Ukraine formed two unmanned
+  brigades in two months. [Reported, Medium-High]
+- **Assaults.** Three to four men, on motorcycles or quad bikes. Company-scale
+  mechanised assaults still happen and are still destroyed. [Reported, High]
+- **Armour.** Used as indirect fire and standoff support, not as a breakthrough
+  weapon. [Reported, Medium]
+- **Logistics.** 16,676 Ukrainian robot logistics and evacuation runs in June
+  2026 alone; 100,000+ across the year to late August. [Reported, High]
+- **Manpower.** Russia's losses have exceeded its recruitment since January 2026;
+  Ukraine has no fully manned brigade. [Reported, Medium-High]
 
-- **The lines.** Russia holds Pokrovsk and Myrnohrad (late January 2026) and
-  Huliaipole (late 2025) and is pressing Kostiantynivka and the fortress belt,
-  without converting any of it into operational movement. [Reported, High]
-  Ukraine cut off the Russian salient north of Lyman over four months, retaking
-  200+ sq km. [Reported, Medium]
-- **Attribution of losses.** Drones are credited with 70% to 96% of casualties
-  depending on who counts. The most contested number in the war. [See section 5]
-- **Force structure.** Both sides now have a formal unmanned branch. Russia's
-  Unmanned Systems Forces were ~87,000 at end-2025 with a 165,000 target for
-  end-2026; Rubicon grew from ~1,450 personnel (March 2025) to ~5,000 (spring
-  2026). [Reported, Medium] Ukraine formed its 445th and 446th Unmanned Systems
-  Brigades within two months in mid-2026. [Reported, High]
-- **Assaults.** The standard attacking unit is three to four men, on motorcycles
-  or quad bikes. Company-scale mechanised assaults still happen and are still
-  destroyed. [Reported, High]
-- **Armour.** Used, but as indirect-fire and standoff support, not as a
-  breakthrough weapon. [Reported, Medium]
-- **Logistics.** Ground robots performed 16,676 Ukrainian logistics and
-  evacuation runs in June 2026 alone, and 100,000+ across 2026 to late August.
-  [Reported, High on the counts]
-- **Manpower.** Russia's losses have exceeded its recruitment since January 2026.
-  Ukraine has no fully manned brigade and is recruiting foreigners for up to half
-  its assault infantry billets. [Reported, Medium-High]
-
-**The one-line version for the game:** in 2026 the scarce resources are
-*infantry who will move* and *the ability to cross open ground at all*. Ammunition,
-vehicles and even drones are comparatively abundant. A game that makes ground
-cheap and movement expensive will feel right.
+**The one-line version:** in 2026 the scarce resources are *infantry who will
+move* and *the ability to cross open ground at all*. Ammunition, vehicles and
+even drones are comparatively abundant. A game that makes ground cheap and
+movement expensive will feel right.
 
 ---
 
@@ -90,27 +76,17 @@ cheap and movement expensive will feel right.
 | When | What | Kind |
 |---|---|---|
 | Late 2025 | Huliaipole falls; 42 villages in Dnipropetrovsk and Zaporizhzhia Oblasts taken between Sept 2025 and Jan 2026 | Reported |
-| Dec 2025 onward | Russia takes Pokrovsk/Myrnohrad but makes no significant advance west of them - the capture does not become a breakthrough | Reported |
-| Late Jan 2026 | Pokrovsk offensive concludes after 18 months | Reported |
+| Dec 2025 - Jan 2026 | Pokrovsk offensive concludes after 18 months; Russia takes Pokrovsk and Myrnohrad but makes no significant advance west of them | Reported |
 | Jan 2026 | ISW assesses Russian losses have surpassed Russian recruitment for the first time | Reported |
 | Feb 2026 | Syrskyi announces "second stage" of the corps reform; 18 corps formed, ~5 brigades each | Reported |
 | Q1 2026 | Russian contract signings fall to ~71,216 (~800/day) - lowest in three years, vs the ~1,100-1,150/day needed for the 409,000 annual target | Reported |
-| Mar 2026 | Ukraine's Deep Strike Command Centre stands up under the Unmanned Systems Forces; reported kill-zone reach extends from ~50 km to ~150 km | Reported/Claimed |
-| Mar 2026 | IISS Military Balance assesses drones caused up to 80% of personnel losses by 2025 | Reported |
-| Mid-Mar 2026 | Russian Spring-Summer 2026 offensive begins | Reported |
-| Apr 2026 | Ukraine announces intent to field 25,000 UGVs; US Army issues its own "last tactical mile" UGV requirement | Reported |
-| Apr 2026 | Ukrainian counterattacks north of Lyman begin exploiting gaps near Nove | Reported |
+| Mar 2026 | Deep Strike Command Centre stands up under USF; reported kill-zone reach extends from ~50 km to ~150 km. IISS assesses drones caused up to 80% of personnel losses by 2025. Russian Spring-Summer offensive begins mid-month | Reported/Claimed |
+| Apr 2026 | Ukraine announces intent to field 25,000 UGVs; US Army issues its own "last tactical mile" UGV requirement; Ukrainian counterattacks north of Lyman begin exploiting gaps near Nove | Reported |
 | May 2026 | Ukraine's drone commander states the kill zone has reached 25 km on both sides | Claimed |
-| Jun 2026 | Ukraine unveils personnel reform: fixed-term contracts, ~300,000 UAH/month for assault infantry (~10x average wage) | Reported |
-| Jun 2026 | 16,676 UGV logistics/evacuation runs in a single month, up 122% since January | Reported |
-| Jul 2026 | Nove captured; Russian advance measured at 37.85 sq km (1.22/day), or 121.56 sq km including infiltration | Reported |
-| Jul 2026 | Russia masses again for Dobropillia using quad bikes and motorcycles | Reported |
-| Aug 2026 | Russian advance-plus-infiltration ~123.53 sq km; ISW notes rate "marginally increased" but offensive has failed operationally | Reported |
-| Aug 2026 | Lyman salient cut off; 200+ sq km liberated by 3rd Army Corps over ~4 months | Reported |
-| Aug 2026 | Western officials estimate Russia losing ~6,000 more soldiers monthly than it recruits | Reported |
-| Aug 2026 | Ukraine passes 100,000 cumulative UGV logistics/evacuation missions for the year | Reported |
-| Sep 2026 | 446th Unmanned Systems Brigade formed - second drone brigade in two months | Reported |
-| 5-7 Sep 2026 | Partial ceasefire on strikes against Kyiv during a US delegation visit; strikes resume before it expires | Reported |
+| Jun 2026 | Personnel reform: fixed-term contracts, ~300,000 UAH/month for assault infantry (~10x average wage). 16,676 UGV logistics/evacuation runs in the month, up 122% since January | Reported |
+| Jul 2026 | Nove captured; Russian advance 37.85 sq km (1.22/day), or 121.56 sq km including infiltration; Russia masses again for Dobropillia on quad bikes and motorcycles | Reported |
+| Aug 2026 | Advance-plus-infiltration ~123.53 sq km, rate "marginally increased" but offensive operationally failed. Lyman salient cut off, 200+ sq km liberated by 3rd Army Corps over ~4 months. Russia losing ~6,000 more soldiers monthly than it recruits. 100,000 cumulative UGV missions passed | Reported |
+| Sep 2026 | 446th Unmanned Systems Brigade formed - second in two months. Partial ceasefire on strikes against Kyiv 5-7 Sep during a US delegation visit; strikes resume before it expires | Reported |
 
 ---
 
@@ -118,58 +94,52 @@ cheap and movement expensive will feel right.
 
 ### The active sectors [Reported, High]
 
-Three sectors carry almost all of the fighting:
+Three sectors carry almost all the fighting.
 
 1. **Pokrovsk-Dobropillia-Myrnohrad.** Russia holds the towns; its problem is
    what comes after. No significant advance west of Pokrovsk since December 2025.
-   Russia was massing again for Dobropillia in July 2026 on quad bikes and
-   motorcycles.
+   Russia massed again for Dobropillia in July 2026 on quad bikes and motorcycles.
 2. **Kostiantynivka and the fortress belt.** Kostiantynivka sits at the southern
-   end of the greater Kramatorsk area. Ukrainian defences there weakened sharply
-   in mid-2026, with pressure on the centre from two directions. Meduza assessed
-   in June that the main battle is now Kramatorsk and that Ukraine could hold the
-   city through 2026.
+   end of the greater Kramatorsk area. Ukrainian defences weakened sharply in
+   mid-2026, with pressure on the centre from two directions. Meduza assessed in
+   June that the main battle is now Kramatorsk, and that Ukraine could hold it
+   through 2026.
 3. **Huliaipole and central Zaporizhzhia.** Since taking Huliaipole, Russia has
-   spent a year pushing toward the main Ukrainian stronghold in central
-   Zaporizhzhia.
+   spent a year pushing toward the main stronghold in central Zaporizhzhia.
 
 ACLED's monitor for early September 2026 records Russian gains around Huliaipole
-and Kostiantynivka, and adds the important editorial judgement that Russia's
-advances are **slower than it hopes and reports**. [Reported, High]
-
-Ukraine's General Staff logged 207 combat engagements on 17 June 2026, with
-assault density heaviest at Pokrovsk and Huliaipole. [Claimed, Medium - the
-General Staff's engagement counts are internally consistent over time but are a
-belligerent's own tally.]
+and Kostiantynivka, with the editorial judgement that Russia's advances are
+**slower than it hopes and reports**. [Reported, High] Ukraine's General Staff
+logged 207 combat engagements on 17 June 2026, assault density heaviest at
+Pokrovsk and Huliaipole. [Claimed, Medium]
 
 ### The one sector that moved the other way [Reported, Medium]
 
 North of Lyman, between the Nitrius and Zherebets rivers, Ukraine's 3rd Army
 Corps ran a deliberate four-month operation: exploit gaps near Nove in April,
 advance in May-June, take Nove in July, cut the salient by August. More than 200
-sq km retaken by OSINT assessment. ISW assesses this disrupted a Russian plan
-for a wide encirclement of the fortress belt from Lyman and Dobropillia, and
-that Ukraine has contested the initiative at strategic and operational level for
-the first time since Kursk in August 2024.
+sq km retaken by OSINT assessment. ISW assesses this disrupted a Russian plan for
+a wide encirclement of the fortress belt from Lyman and Dobropillia, and that
+Ukraine has contested the initiative at strategic and operational level for the
+first time since Kursk in August 2024.
 
-**Note the method.** Not a 2022-style mechanised breakthrough but a slow, quiet,
-months-long infiltration and consolidation - the same technique Russia uses, run
-in reverse. [Inference, High] **In 2026 both sides attack the same way.**
+**Note the method.** Not a 2022-style breakthrough but a slow, quiet, months-long
+infiltration and consolidation - the technique Russia uses, run in reverse.
+[Inference, High] **In 2026 both sides attack the same way.**
 
 ### Rate of advance - the load-bearing numbers [Reported, High]
 
-- July 2026: 37.85 sq km advanced (1.22 sq km/day); 121.56 sq km including
-  infiltration.
-- August 2026: ~123.53 sq km advanced or infiltrated (3.98 sq km/day).
-- July 2025 comparison: 455.74 sq km. **2026 runs at roughly one-twelfth to
-  one-quarter of the 2025 rate depending on which measure is used.**
-- ISW's projection: at the current rate Russian forces would not seize the
-  remainder of Donetsk Oblast until **2032**, having stated 2026 as the goal.
+- July 2026: 37.85 sq km advanced (1.22/day); 121.56 sq km including infiltration.
+- August 2026: ~123.53 sq km advanced or infiltrated (3.98/day).
+- July 2025: 455.74 sq km. **2026 runs at roughly one-twelfth to one-quarter of
+  the 2025 rate depending on the measure used.**
+- ISW's projection: at the current rate Russia would not seize the rest of
+  Donetsk Oblast until **2032**, having stated 2026 as the goal.
 
-**The "advance vs infiltration" split is new and matters.** ISW now reports two
-separate numbers - ground consolidated, and ground that small groups have
-penetrated but not held. For July that is 37.85 against 121.56: infiltrated
-territory is roughly **three times** consolidated territory. [Reported, High]
+**The "advance vs infiltration" split is new and matters.** ISW now reports
+ground consolidated and ground that small groups have penetrated but not held as
+separate numbers. For July, 37.85 against 121.56 - infiltrated territory is
+roughly **three times** consolidated territory. [Reported, High]
 
 **[Inference, Medium]** For a game this is a mechanic, not a footnote: territory
 should have two states, *entered* and *held*, with a wide gap between them.
@@ -182,61 +152,54 @@ This is the game's title and its central system, so it gets the most care.
 
 ### The figures [Mixed]
 
-| Figure | Depth | Source kind |
+| Figure | Depth | Kind |
 |---|---|---|
-| Ukraine's drone commander, May 2026 | 25 km each side (~50 km total band) | Claimed |
-| Some sectors, 2026 reporting | up to 50 km per side, "a dead zone" | Reported, Low |
-| Mid-range strike band | ~30-200 km from the line: where forces mass, logistics run, HQs sit | Reported, Medium |
-| Ukrainian deep-strike reach, Mar 2026 | extended from ~50 km (31 mi) to ~150 km (93 mi) | Claimed/Reported |
-| Russian long-range fibre-optic FPV | up to 50 km, jam-resistant | Reported, Medium |
+| Ukraine's drone commander, May 2026 | 25 km each side (~50 km band) | Claimed |
+| Some sectors, 2026 | up to 50 km per side, "a dead zone" | Reported, Low |
+| Mid-range strike band | ~30-200 km: where forces mass, logistics run, HQs sit | Reported, Medium |
+| Ukrainian deep strike, Mar 2026 | ~50 km extended to ~150 km | Claimed/Reported |
+| Russian long-range fibre FPV | up to 50 km, jam-resistant | Reported, Medium |
 | Ukrainian next-gen fibre (3DTech) | up to 30 km | Reported, Medium |
 
 ### What changed during 2026 [Reported, Medium]
 
 The tactical kill zone did not triple in 2026 - **the deep zone did.** The
-headline "kill zone triples" reporting from March 2026 refers to Ukraine's
-Deep Strike Command Centre extending reach against Russian rear logistics from
-roughly 50 km to roughly 150 km. The 25 km tactical band was broadly the
-situation entering 2026 and has deepened at the margins rather than
-transformed.
+"kill zone triples" reporting from March 2026 refers to the Deep Strike Command
+Centre extending reach against Russian rear logistics from ~50 km to ~150 km. The
+25 km tactical band was broadly the position entering 2026 and has deepened at
+the margins rather than transformed.
 
-The mechanism for the tactical deepening is **fibre-optic FPV**. Fibre drones
-are immune to jamming, and both sides now build them in the thousands per month.
-Russian systems at 50 km and Ukrainian systems at 30 km mean the jam-proof band
-is now most of the tactical depth. Syrskyi has publicly conceded Russia leads on
-fibre "in terms of both quantity and range of application." [Claimed by a
-belligerent's own commander, conceding disadvantage - unusually credible for
-that reason. Medium-High]
+The mechanism for tactical deepening is **fibre-optic FPV**: immune to jamming,
+and built by both sides in the thousands per month. Russian systems at 50 km and
+Ukrainian at 30 km mean the jam-proof band is now most of the tactical depth.
+Syrskyi has publicly conceded Russia leads on fibre "in terms of both quantity
+and range of application." [A belligerent's own commander conceding disadvantage
+- unusually credible for that reason. Medium-High]
 
 ### Asymmetry between the sides [Inference, Medium]
 
-The reporting supports a modest asymmetry rather than a dramatic one:
-
-- **Russia is ahead on fibre-optic range and volume** (Syrskyi's own admission),
-  which makes the Russian tactical kill zone somewhat deeper and much harder to
-  defeat electronically.
-- **Ukraine is ahead on deep strike and on institutionalising it** (Deep Strike
-  Command Centre, 150 km). Russian rear logistics are reportedly worse off, to
-  the point of pack animals being used for resupply. [Reported, Low - this
-  specific claim recurs but I could not corroborate it at source.]
+The reporting supports a modest asymmetry, not a dramatic one. **Russia is ahead
+on fibre-optic range and volume** (Syrskyi's admission), making its tactical belt
+somewhat deeper and much harder to defeat electronically. **Ukraine is ahead on
+deep strike and on institutionalising it** (Deep Strike Command Centre, 150 km),
+with Russian rear logistics reportedly worse off.
 
 **[Inference]** For the game: the belt should not be symmetric in *character*
-even if it is similar in *depth*. One side's belt is harder to jam; the other's
-reaches further back. That is a more interesting asymmetry than "one is bigger".
+even if similar in *depth*. One side's is harder to jam; the other's reaches
+further back. A more interesting asymmetry than "one is bigger".
 
 ### Structure within the belt [Reported, Medium]
 
-Analysis of kill-zone structure describes it as banded by weapon rather than
-uniform - the innermost few kilometres owned by short-range FPV and small
-bomber drones, a middle band by longer FPV, fibre and heavy multirotors, and the
-outer band by loitering munitions, artillery-drone pairs and deep-strike
-systems. Survival inside it is a function of concealment, dispersal, movement
-timing and counter-drone fire, not armour.
+The kill zone is banded by weapon rather than uniform: the innermost kilometres
+owned by short-range FPV and small bomber drones, a middle band by longer FPV,
+fibre and heavy multirotors, the outer band by loitering munitions,
+artillery-drone pairs and deep-strike systems. Survival is a function of
+concealment, dispersal and movement timing, not armour.
 
-**[Inference, High]** The game's existing sensor model already implies bands.
-What it probably does not model is that **the bands belong to different weapon
-types with different response times.** Being seen at 3 km and being seen at
-30 km should produce very different consequences - seconds versus hours.
+**[Inference, High]** The game's sensor model already implies bands. What it
+probably does not model is that **the bands belong to different weapons with
+different response times.** Being seen at 3 km and at 30 km should produce very
+different consequences - seconds versus hours.
 
 ---
 
@@ -246,29 +209,25 @@ This is where a designer is most likely to be misled, so it is worth being blunt
 about the disagreement.
 
 ### The high estimates
-
-- **96%** of the 35,351 Russian casualties Ukraine tallied in March 2026 were
-  attributed to drones, with artillery and small arms accounting for the rest.
-  [**Claimed** - Ukrainian official tally. Low confidence as a measure of
-  reality.]
-- **80-90%** of Russian targets hit were destroyed by drones, per Mykhailo
-  Fedorov, August 2026. [**Claimed**, Low-Medium.]
-- **Up to 80%** of personnel losses attributed to drones by 2025, per the IISS
-  strategic assessment published March 2026. [**Reported**, Medium-High. This is
-  the most defensible high figure because IISS is independent.]
-- **70-80%** of daily combat losses on both sides, as a general current
-  understanding. [Reported, Medium]
+- **96%** of the 35,351 Russian casualties Ukraine tallied in March 2026,
+  artillery and small arms taking the rest. [**Claimed**, Low.]
+- **80-90%** of Russian targets hit destroyed by drones, per Mykhailo Fedorov,
+  August 2026. [**Claimed**, Low-Medium.]
+- **Up to 80%** of personnel losses by 2025, per the IISS assessment published
+  March 2026. [**Reported**, Medium-High - the most defensible high figure,
+  because IISS is independent.]
+- **70-80%** of daily combat losses on both sides, as general understanding.
+  [Reported, Medium]
 
 ### The counter-estimates
 
 - **RUSI has estimated approximately 70% of Ukrainian casualties result from
-  artillery fire.** [Reported, Medium] This is close to irreconcilable with the
-  96% drone figure and the two cannot both be describing the same thing.
-- A US fact-check in June 2026 examined a "70% from drones" political claim and
-  found it contested rather than settled. [Reported, Medium]
+  artillery fire.** [Reported, Medium] Close to irreconcilable with the 96%
+  figure; the two cannot be describing the same thing.
+- A US fact-check in June 2026 found the "70% from drones" claim contested rather
+  than settled. [Reported, Medium]
 - Forbes analysis in June 2026 argued drones have **not** replaced artillery -
-  rather, drones make artillery *harder to fire*, by hunting the guns.
-  [Reported/Analysis, Medium]
+  they make artillery *harder to fire* by hunting the guns. [Analysis, Medium]
 
 ### How to reconcile them [Inference, Medium confidence]
 
@@ -288,19 +247,16 @@ The estimates measure different things and the gap is mostly definitional:
 4. **Counting method.** A man killed by artillery *because* a drone fixed him in
    place is coded differently by different counters.
 
-**Recommended working figures for the game:**
-
-- **Drones as the proximate cause of 60-80% of personnel casualties** is
-  defensible, sourceable and not an outlier in either direction. Marking it 70%
-  and citing IISS is the safest single number.
-- **Artillery retaining 20-35%** and still dominating the *wounded* count.
-- **Do not use 96%.** It is a belligerent's video-derived tally and using it will
-  read as naive to an informed player.
+**Recommended working figures:** drones as the proximate cause of **60-80%** of
+personnel casualties is defensible and not an outlier either way - 70%, cited to
+IISS, is the safest single number. Artillery retains **20-35%** and still
+dominates the *wounded* count. **Do not use 96%**: it is a belligerent's
+video-derived tally and will read as naive to an informed player.
 
 ### Equipment losses [Low confidence - genuine gap]
 
-I could not obtain a well-sourced 2026 breakdown of vehicle losses by cause. The
-relevant qualitative findings I did obtain:
+No well-sourced 2026 breakdown of vehicle losses by cause was obtainable. The
+qualitative findings:
 
 - Mass armour assaults are "usually destroyed by a combination of mines,
   artillery and drones" against fortified positions. [Reported, Medium] Note the
@@ -309,8 +265,8 @@ relevant qualitative findings I did obtain:
 - A large Russian mechanised assault in July 2026 failed; the column included
   motorcycle escorts and commercial trucks. [Reported, Medium]
 
-**[Flagged as a gap.]** If equipment-loss attribution becomes load-bearing for
-balance, it needs its own research pass with Oryx-type visual-confirmation data.
+**[Gap.]** If equipment-loss attribution becomes load-bearing for balance it
+needs its own pass against visual-confirmation data.
 
 ---
 
@@ -322,31 +278,27 @@ balance, it needs its own research pass with Oryx-type visual-confirmation data.
   of 2025; target of **165,000 by end of 2026**, comprising 68,000 new contract
   recruits and 10,000 transfers from elsewhere in the military.
 - **Rubicon** (Center for Advanced Unmanned Technologies), established 2 August
-  2024 by Belousov's order under the MoD's Directorate for Advanced Inter-Service
-  Research and Special Projects. Grown from **~1,450 personnel (authorised
-  2,500) in March 2025 to ~5,000 (authorised 9,000) in spring 2026.**
-- **50th "Varyag" Unmanned Systems Brigade** scaling alongside it.
-- Rubicon's genesis is explicitly reactive: it was created in response to
-  Ukraine's Drone Line initiative and its best drone units.
+  2024 by Belousov's order. Grown from **~1,450 personnel (authorised 2,500) in
+  March 2025 to ~5,000 (authorised 9,000) in spring 2026**, with the 50th
+  "Varyag" Unmanned Systems Brigade scaling alongside it. Its genesis is
+  explicitly reactive - created in response to Ukraine's Drone Line.
 - **The expansion is straining.** Jamestown assesses that Rubicon reveals the
   limits of Russian drone centralisation, and Russia is missing monthly
   recruitment quotas, putting the 165,000 target in doubt.
 
 ### Ukraine [Reported, High]
 
-- **Unmanned Systems Forces (USF)** as a separate service, with the stated
-  ambition of covering the entire front at tactical, operational and strategic
-  depth.
+- **Unmanned Systems Forces (USF)** as a separate service, aiming to cover the
+  whole front at tactical, operational and strategic depth, with a **Deep Strike
+  Command Centre** from March 2026.
 - **Drone Line**: five UAS regiments and brigades created to reinforce manoeuvre
-  brigades, originally under Ground Forces, later transferred to USF; USF and the
-  top Drone Line units are now united under a new command grouping.
-- **2026 growth**: 429th expanded to brigade in January 2026; 411th expanded to
-  brigade on 9 March 2026; **445th** formed mid-2026; **446th** formed by
-  1 September 2026 - two brigades in two months.
-- **Deep Strike Command Centre** under USF, from March 2026.
+  brigades, moved from Ground Forces to USF; USF and the top Drone Line units are
+  now united under a new command grouping.
+- **2026 growth**: 429th expanded to brigade in January, 411th on 9 March,
+  **445th** mid-year, **446th** by 1 September - two brigades in two months.
 - Performance claims: 32,485 Russian personnel hit over the summer; 58,465
-  targets struck in August. [**Claimed** - these are USF's own figures. Low
-  confidence as absolute numbers, useful as an indicator of tempo.]
+  targets struck in August. [**Claimed** - USF's own figures, useful as an
+  indicator of tempo rather than as absolutes.]
 
 ### The conventional structure underneath [Reported, High]
 
@@ -358,8 +310,8 @@ brigade, and unmanned systems battalions have been **expanded to regiment size**
 
 Two qualifications [Reported, Medium]: most corps do **not** command all their
 nominal brigades - in practice they command *sectors* containing brigades from
-other corps, so paper and real structure diverge; and Ukraine is "adding force
-structure but not adding troops", producing **empty brigades**.
+other corps; and Ukraine is "adding force structure but not adding troops",
+producing **empty brigades**.
 
 **[Inference, High]** Almost nobody models this: **a formation's name, its
 establishment and its actual strength are three different things.** A player who
@@ -372,11 +324,11 @@ infantry.
 
 ### The standard attack [Reported, High]
 
-The default is **three or four men**. They advance incrementally through terrain,
+The default is **three or four men**, advancing incrementally through terrain,
 guided only by reconnaissance drones, with minimal fire support. They do not
-assault positions. They **infiltrate past** them, accumulate in rear areas over
-days, and then attack what is soft - fire support positions and, notably,
-**unmanned systems units**.
+assault positions - they **infiltrate past** them, accumulate in rear areas over
+days, then attack what is soft: fire support positions and, notably, **unmanned
+systems units**.
 
 Transport is **motorcycles and quad bikes**. When drones engage motorcycle teams,
 some try to outrun them; most dismount and take cover, which appears to be
@@ -385,9 +337,7 @@ trained doctrine rather than improvisation.
 Since mid-2025 Russian commanders have "increasingly abandoned conventional
 mechanized assaults in favour of lightly armed infiltration teams that slip
 through Ukrainian defences on foot... establishing hidden forward positions in
-forests, ravines and ruined buildings." [Reported, High] Ukrainian special
-operations are likewise pushing operators to infiltrate deeper *because* of the
-kill zone. [Reported, Low - single source.]
+forests, ravines and ruined buildings." [Reported, High]
 
 ### A successful attack in 2026 versus 2023 [Inference, High confidence]
 
@@ -403,15 +353,15 @@ kill zone. [Reported, Low - single source.]
 | Failure mode | Destroyed on the approach in a vehicle | Never arrives; killed individually |
 
 A successful 2026 attack looks like nothing happening, repeatedly, until a map
-updates. **This is a hard thing to make a game out of and also the single most
-authentic thing about the period.** [Inference]
+updates. **Hard to make a game out of, and the single most authentic thing about
+the period.** [Inference]
 
 ### Large assaults still happen [Reported, Medium]
 
-They have not vanished. A large Russian mechanised assault in July 2026 was
-attempted and failed; Russia adopted new tank tactics in January 2026 trying to
-break the stalemate; the July massing for Dobropillia used quad bikes and
-motorcycles at scale, which is mass without being mechanised mass.
+They have not vanished. A large Russian mechanised assault in July 2026 failed;
+Russia adopted new tank tactics in January 2026 trying to break the stalemate;
+the July massing for Dobropillia used quad bikes and motorcycles at scale - mass
+without being mechanised mass.
 
 **[Inference]** The game should let the player attempt the 2023 attack. It should
 usually fail, *visibly and expensively* - letting a player learn that by doing it
@@ -436,13 +386,12 @@ summer afternoons the least.
 
 **Tanks are used. They are not used as tanks.** [Reported, Medium-High]
 
-- **Tank-on-tank engagement is extremely rare.** Using a tank as an ad hoc
-  artillery piece firing indirect is **routine**. Even as the war became static,
-  tanks moved into the indirect-fire role to substitute for artillery.
-- New turret development reflects this: increased vertical arc from -10 to +42
-  degrees elevation specifically to improve **indirect fire from covered
-  positions**, plus stabilised main armament for fire on the move, 360-degree
-  external cameras, and day/thermal sights.
+- **Tank-on-tank engagement is extremely rare;** using a tank as an ad hoc
+  artillery piece firing indirect is **routine**. As the war became static, tanks
+  moved into the indirect-fire role to substitute for artillery.
+- New turret development reflects this: vertical arc increased from -10 to +42
+  degrees specifically to improve **indirect fire from covered positions**, plus
+  stabilised armament for fire on the move, 360-degree cameras and thermal sights.
 - **Protection is now anti-drone first.** Ukraine's 1st Separate Assault Regiment
   revealed on 1 April 2026 that its Abrams carry protective grilles, Kontakt-1
   ERA and anti-drone standoff structures against FPV and shaped-charge attack.
@@ -472,31 +421,29 @@ worth making explicit in the model.
 
 ### The figures [Reported, High on counts; Claimed on targets]
 
-- **16,676** UGV logistics and evacuation missions by Ukrainian forces in **June
-  2026** alone - up **122%** since the start of 2026.
-- **100,000+** cumulative UGV logistics and evacuation missions in 2026 by late
-  August.
-- **25,000 UGVs** targeted for fielding; **22,000+ already contracted** for 2026
-  by the Defence Procurement Agency, with more expected by year end.
-- Ukraine's stated goal: **100% of frontline logistics on robotic solutions.**
-  [Claimed - this is an aspiration, not a status.]
-- One widely repeated figure - **~90% of Ukrainian military logistics activity
-  already performed by ground robots** - is attributed to US Army unmanned
-  systems planning documents. [Reported, **Low confidence.** I could not verify
-  it at source, and it is implausible as a share of *all* logistics. It is far
-  more likely to describe the last tactical kilometres specifically.]
-- The US Army issued a formal requirement in **April 2026** for an autonomous
-  UGV for last-tactical-mile resupply and casualty evacuation - independent
-  confirmation that the problem is real and generalised beyond Ukraine.
+- **16,676** UGV logistics and evacuation missions in **June 2026** alone, up
+  **122%** since the start of the year.
+- **100,000+** cumulative UGV missions in 2026 by late August.
+- **25,000 UGVs** targeted; **22,000+ already contracted** for 2026 by the
+  Defence Procurement Agency, with more expected by year end.
+- Stated goal: **100% of frontline logistics on robotic solutions.** [Claimed -
+  an aspiration, not a status.]
+- A widely repeated figure - **~90% of Ukrainian military logistics activity
+  already performed by ground robots**, attributed to US Army planning documents
+  - is **Low confidence**: unverified at source and implausible as a share of
+  *all* logistics. It far more likely describes the last tactical kilometres.
+- The US Army issued its own **April 2026** requirement for an autonomous
+  last-tactical-mile resupply and casevac UGV - independent confirmation that the
+  problem generalises beyond Ukraine.
 
 ### What the last kilometres look like [Inference from the above, Medium-High]
 
-Resupply into a forward position is now a robotic or airborne problem. Wheeled
-and tracked UGVs run ammunition, water and batteries forward and carry wounded
-back; heavy multirotors drop loads; human parties on foot at night remain a
-costly fallback. On the Russian side the picture is reportedly worse, with pack
-animals in use. [Reported, **Low confidence** - a recurring, unverified claim of
-the kind that propagates because it is vivid.]
+Resupply into a forward position is now a robotic or airborne problem. UGVs run
+ammunition, water and batteries forward and carry wounded back; heavy multirotors
+drop loads; human parties on foot at night remain a costly fallback. On the
+Russian side the picture is reportedly worse, with pack animals in use.
+[Reported, **Low confidence** - a recurring, unverified claim of the kind that
+propagates because it is vivid.]
 
 **[Inference, High]** Treat the last few kilometres as a distinct logistics
 regime with its own units and losses. A supply line is not a line but a sequence
@@ -511,15 +458,15 @@ if it can be avoided. **Robot attrition should be a running cost, not an event.*
 
 - **No fully manned brigade exists.** Most front-line AFU and TDF brigades are
   understrength and rotate ad hoc.
-- The infantry shortage has worsened yearly and is now described as **the main
-  driver of Ukrainian ground forces doctrine and technology** - that is, the
-  drones and robots exist substantially because the infantry does not.
+- The shortage has worsened yearly and is now **the main driver of Ukrainian
+  ground forces doctrine and technology**: the drones and robots exist
+  substantially because the infantry does not.
 - **200,000 AWOL** and **2 million men avoiding draft notices**, per the Defence
   Minister in January 2026. [Claimed by the government against its own interest,
   which raises confidence. Medium-High]
-- **June 2026 reform**: fixed-term contracts replacing indefinite service;
+- **June 2026 reform**: fixed-term contracts replacing indefinite service, and
   assault infantry pay of ~**300,000 UAH/month** (~$6,700), roughly **ten times**
-  the Ukrainian average wage.
+  the average wage.
 - **Foreign recruitment targeted at 30-50% of assault infantry positions.**
   [Reported, Medium] A strong signal of how acute the shortage is.
 - "Adding force structure but not adding troops" - new brigades without new men.
@@ -535,9 +482,8 @@ if it can be avoided. **Robot attrition should be a running cost, not an event.*
   it recruits.**
 - Casualty scale: ~15,000 killed and ~15,000 severely wounded per month by one
   estimate; Western agencies estimate **~196,700 Russian casualties in H1 2026**,
-  including 115,000+ killed. Ukrainian data puts Q1 2026 at 85,290. ISW cites
-  **over 1.5 million** cumulative Russian personnel casualties. [Mixed
-  Reported/Claimed, Medium - these are estimates with wide error bars, but they
+  including 115,000+ killed; Ukrainian data puts Q1 2026 at 85,290; ISW cites
+  **over 1.5 million** cumulative. [Mixed, Medium - wide error bars, but they
   agree on order of magnitude.]
 
 ### What this constrains [Inference, High confidence]
@@ -578,9 +524,9 @@ airframes are cheap, and trained crews are the thing you cannot buy quickly.
 6. **Russia won the fibre-optic race, and Ukraine's own commander said so.**
    Fibre made the inner kill zone jam-proof, quietly deleting electronic warfare
    as a short-range survivability answer. [Medium]
-7. **The drone force became a branch with brigades and a staff,** on both sides.
-8. **Drone units became priority ground targets.** Infiltration groups now walk
-   past the infantry specifically to kill the operators. [Medium]
+7. **The drone force became a branch with brigades and a staff,** on both sides,
+   and **drone units became priority ground targets** - infiltration groups now
+   walk past the infantry specifically to kill the operators. [Medium]
 
 ---
 
@@ -592,9 +538,9 @@ will save it.
 
 **1. Movement is the expensive thing; ground is the cheap thing.**
 The kill zone is 25 km deep per side and the front moves 1-4 sq km a day. The
-ratio between *how far you can see and strike* and *how far you can go* is
-roughly twenty-five to one. Any game where crossing open ground is routine is
-modelling a different war. **This is the one non-negotiable.**
+ratio of *how far you can see and strike* to *how far you can go* is roughly
+twenty-five to one. Any game where crossing open ground is routine is modelling a
+different war. **The one non-negotiable.**
 
 **2. The attacking unit is three men, and it does not attack.**
 It infiltrates, hides, accumulates, and strikes something soft behind the line -
@@ -602,10 +548,9 @@ usually a drone crew or a fire position. Company assaults exist, are attempted,
 and are destroyed. The game should support both and price them honestly.
 
 **3. Entered and held must be different states.**
-Infiltrated territory outnumbers consolidated territory roughly three to one.
-A position a player has reached is not a position a player owns, and the delay
-between the two should be measured in days of holding under fire, not seconds of
-capture animation.
+Infiltrated territory outnumbers consolidated territory roughly three to one. A
+position reached is not a position owned, and the delay between the two should be
+measured in days of holding under fire, not seconds of capture animation.
 
 **4. Infantry is the binding constraint - not ammunition, not airframes.**
 No fully manned brigade exists on one side; the other loses 6,000 more men a
@@ -614,10 +559,9 @@ build queue where drones are cheap, robots are cheap, shells are available and
 trained humans are the bottleneck is the correct economy for 2026.
 
 **5. The last kilometres are robotic, and robot attrition is a running cost.**
-Supply to a forward position is a UGV run or a heavy multirotor drop. Getting
-ammunition to a position and a casualty out of one should be a modelled, risky,
-continuous activity - and losing the robot that was doing it should be ordinary,
-not dramatic.
+Supply to a forward position is a UGV run or a multirotor drop. Getting ammunition
+in and a casualty out should be a modelled, risky, continuous activity, and losing
+the robot doing it should be ordinary rather than dramatic.
 
 **6. Armour is a gun, not a fist.**
 Tanks fire indirect from cover, raid briefly, and wear cages. Tank-on-tank is

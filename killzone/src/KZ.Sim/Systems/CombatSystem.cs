@@ -26,6 +26,16 @@ namespace KZ.Sim
             WeaponState weapon = w.Entities.Weapon[i];
             if (w.Tick < weapon.NextFireTick) return;
 
+            // Reloading. A mount that has just emptied itself is, for the next few
+            // seconds, scenery - which is the point of making it spend its magazine.
+            if (weapon.ReloadingUntilTick > 0)
+            {
+                if (w.Tick < weapon.ReloadingUntilTick) return;
+                weapon.ReloadingUntilTick = 0;
+                weapon.AmmoRemaining = weapon.AmmoCapacity;
+                w.Entities.Weapon[i] = weapon;
+            }
+
             EntityHandle target = FindTarget(w, i, weapon);
             if (!w.Entities.IsAlive(target)) return;
 
@@ -60,6 +70,18 @@ namespace KZ.Sim
             if (weapon.IsInterceptor) ResolveInterception(w, i, target, ref weapon);
             else ResolveDirectFire(w, i, target, ref weapon);
 
+            // A miss costs a round exactly as a hit does, which is most of why a
+            // defence can be made to run itself dry.
+            if (weapon.AmmoCapacity > 0)
+            {
+                weapon.AmmoRemaining--;
+                if (weapon.AmmoRemaining <= 0)
+                {
+                    weapon.ReloadingUntilTick = w.Tick + weapon.ReloadTicks;
+                    w.Events.Push(SimEventKind.WeaponReloading, w.Tick, w.Entities.HandleAt(i));
+                }
+            }
+
             weapon.NextFireTick = w.Tick + weapon.CooldownTicks;
             weapon.Acquiring = EntityHandle.None;
             w.Entities.Weapon[i] = weapon;
@@ -87,12 +109,51 @@ namespace KZ.Sim
             Fix reach = weapon.RangeMetres;
             if (reach.Raw <= 0) return Fix.One;
 
-            // Falls off with the square of fractional range: near-certain up close,
-            // close to hopeless at the rim.
-            Fix closeness = Fix.One - Fix.Clamp(distance / reach, Fix.Zero, Fix.One);
-            Fix rangeTerm = closeness * closeness;
+            Fix fraction = Fix.Clamp(distance / reach, Fix.Zero, Fix.One);
+            Fix closeness = Fix.One - fraction;
 
-            Fix chance = Fix.FromDoubleContentOnly(0.92) * rangeTerm;
+            // What the mount is loaded with decides the *shape* of the falloff, not
+            // just its height, and that is the whole of the ammunition decision.
+            Fix rangeTerm, ceiling, aimForgiveness;
+            switch (weapon.Ammo)
+            {
+                case AmmoType.Buckshot:
+                    // Murderous inside a hundred metres and nothing beyond it.
+                    rangeTerm = closeness * closeness * closeness * closeness;
+                    ceiling = Fix.FromDoubleContentOnly(0.97);
+                    aimForgiveness = Fix.FromDoubleContentOnly(0.85);
+                    break;
+
+                case AmmoType.Proximity:
+                    // Does not need to connect, only to pass close.
+                    rangeTerm = closeness;
+                    ceiling = Fix.FromDoubleContentOnly(0.80);
+                    aimForgiveness = Fix.FromDoubleContentOnly(0.45);
+                    break;
+
+                case AmmoType.Airburst:
+                    // Fills a volume rather than threading a needle. The flattest
+                    // curve of the four, and the reason a gun can trouble something
+                    // fast at all.
+                    rangeTerm = Fix.One - (fraction * Fix.FromDoubleContentOnly(0.55));
+                    ceiling = Fix.FromDoubleContentOnly(0.72);
+                    aimForgiveness = Fix.FromDoubleContentOnly(0.25);
+                    break;
+
+                default:
+                    // A saturating falloff with a thin tail rather than a parabola
+                    // that reaches exactly zero at the stated range. A burst at the
+                    // edge of the envelope is a poor bet, not an impossible one,
+                    // and modelling it as impossible produced a hard wall where
+                    // reality has a gradient.
+                    rangeTerm = closeness * closeness * Fix.FromDoubleContentOnly(0.94)
+                              + Fix.FromDoubleContentOnly(0.06);
+                    ceiling = Fix.FromDoubleContentOnly(0.92);
+                    aimForgiveness = Fix.One;
+                    break;
+            }
+
+            Fix chance = ceiling * rangeTerm;
 
             // Size. A heavy multirotor is a far easier thing to hit than a racing
             // quadcopter, and the visual signature is already the right measure of
@@ -106,13 +167,29 @@ namespace KZ.Sim
                                                   Fix.FromDoubleContentOnly(1.30));
 
                 // Speed. A target crossing at fifty metres a second gives a mount
-                // very little time in which its solution is still good.
+                // very little time in which its solution is still good - unless the
+                // round does not need a good solution, which is what the fuze is
+                // for. Aim forgiveness pulls the speed penalty back toward one.
+                // Speed, and how much it hurts depends on how far away it is. A
+                // fast crosser at two hundred metres is a modest problem; the same
+                // target at a kilometre is a much worse one, because the time of
+                // flight during which the solution decays is longer. A flat speed
+                // penalty gets that backwards at one end or the other.
                 Fix speed = def.SpeedMetresPerSecond;
                 if (speed.Raw > 0)
                 {
                     Fix speedTerm = Fix.FromInt(20) / speed;
-                    chance = chance * Fix.Clamp(speedTerm, Fix.FromDoubleContentOnly(0.25),
-                                                           Fix.FromDoubleContentOnly(1.15));
+                    speedTerm = Fix.Clamp(speedTerm, Fix.FromDoubleContentOnly(0.20),
+                                                     Fix.FromDoubleContentOnly(1.15));
+
+                    // Scale the penalty up with fractional range: mild up close,
+                    // severe at the rim.
+                    Fix severity = Fix.FromDoubleContentOnly(0.55)
+                                 + fraction * Fix.FromDoubleContentOnly(1.45);
+                    speedTerm = Fix.One - (Fix.One - speedTerm) * severity;
+
+                    speedTerm = Fix.One - (Fix.One - speedTerm) * aimForgiveness;
+                    chance = chance * Fix.Clamp(speedTerm, Fix.FromDoubleContentOnly(0.05), Fix.One);
                 }
             }
 
@@ -158,6 +235,12 @@ namespace KZ.Sim
         static Fix EffectiveReach(World w, int attackerIndex, EntityHandle target, WeaponState weapon)
         {
             if (w.Entities.EntityLayer[target.Index] != Layer.High) return weapon.RangeMetres;
+
+            // A hard ceiling, not a penalty. A machine gun does not engage
+            // something at two and a half kilometres badly; it does not engage it.
+            // Moving the cruise altitude up is how one-way attack drones walked
+            // away from gun defence, and it is a cleaner mechanic than a multiplier.
+            if (!weapon.CanReachHigh) return Fix.Zero;
             if (weapon.IsInterceptor) return weapon.RangeMetres;
             return weapon.RangeMetres * Fix.FromDoubleContentOnly(0.60);
         }

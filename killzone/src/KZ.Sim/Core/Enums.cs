@@ -102,6 +102,45 @@ namespace KZ.Sim
         Impassable = 6
     }
 
+    /// <summary>
+    /// What a mount is loaded with.
+    ///
+    /// Against something small and fast the problem is not that the rounds cannot
+    /// reach, it is that the aiming solution is never quite right. Every option
+    /// below is a different answer to that: be more precise, or stop needing to be.
+    /// </summary>
+    public enum AmmoType : byte
+    {
+        /// <summary>
+        /// Plain solid rounds. Cheapest, hardest hitting, and it has to actually
+        /// connect - so it falls off fastest with range and suffers most against a
+        /// fast crosser.
+        /// </summary>
+        Solid = 0,
+
+        /// <summary>
+        /// Buckshot. A dense pattern at very short range and nothing at all beyond
+        /// it. The last-ditch option, and against a drone in the final hundred
+        /// metres it is the best thing there is.
+        /// </summary>
+        Buckshot = 1,
+
+        /// <summary>
+        /// A proximity fuze. Does not need to hit, only to pass close, which makes
+        /// aim error far less costly and holds the odds up at range. Costs more per
+        /// round and does less when it works.
+        /// </summary>
+        Proximity = 2,
+
+        /// <summary>
+        /// Programmable airburst, set to open at the target. The flattest falloff
+        /// of the four and the least troubled by a fast crosser, because it is
+        /// filling a volume rather than threading a needle. Needs a fuze setter on
+        /// the mount, which is why it is not simply the answer to everything.
+        /// </summary>
+        Airburst = 3
+    }
+
     /// <summary>The five ways one thing finds another.</summary>
     public enum SensorChannel : byte
     {

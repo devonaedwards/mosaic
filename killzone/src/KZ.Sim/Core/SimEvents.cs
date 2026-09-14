@@ -33,6 +33,7 @@ namespace KZ.Sim
         SalvageCollected,
         AutonomyMisidentified, // an autonomous munition picked a decoy or a friendly
         StructureDestroyed,
+        WeaponReloading,
         MineDetonated,
         MinesLaid,
         SortieRefusedDaylight,

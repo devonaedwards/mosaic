@@ -25,7 +25,7 @@ strike-drone ratio of 80:60 is 1.33:1 — which the fourth root then collapses i
 a **7% detection-range advantage**. A decoy drone in the game today is
 functionally not a decoy. Fixing the formula matters far more than retuning any
 number, and the good news is that the existing signature values are close to
-correct once you reinterpret the scale as decibels (Section 5).
+correct once you reinterpret the scale as decibels (Section 6).
 
 Other findings:
 
@@ -50,10 +50,20 @@ Other findings:
   that is **easier** to see than bare skin [M]. Thermal masking of *running
   vehicles* is far weaker. The game's flat 40% is the wrong shape as well as the
   wrong value.
+- **Masking is not one number and never was.** Section 5 gives a per-channel
+  multiplier matrix for every measure. The pattern that falls out: most masking
+  buys one or two channels and nothing on the rest, several measures make a
+  target *more* detectable on a channel they do not cover, and the effectiveness
+  of every thermal measure swings by a factor of three or more with how long the
+  vehicle has been stopped, the weather, and the sun.
+- **Only one masking measure can be applied reactively, under observation:
+  switching the emitter off.** Everything else has to be in place before contact.
+  That asymmetry should drive how the game prices masking far more than cost does.
 - **No published measured figure exists** for thermal blanket signature
-  reduction. All the reporting is qualitative video comparison. Anyone who tells
-  you "blankets cut thermal signature by X%" is guessing, including previous
-  versions of this model.
+  reduction, for multispectral net per-band performance, or for any of the
+  environmental dependencies. All the reporting is qualitative video comparison.
+  Anyone who tells you "blankets cut thermal signature by X%" is guessing,
+  including previous versions of this model and most of Section 5.
 
 ---
 
@@ -291,10 +301,10 @@ figures, and I could not find them anywhere. Cost is likewise unpublished; the
 order-of-magnitude is tens of thousands of dollars per vehicle kit [X].
 
 Separately and not a signature measure at all: **nylon anti-FPV netting at
-10–15 cm mesh over trenches and vehicles is reported to cut FPV hit probability
-by ~70% in static positions**, with no protection against diving attacks or
-fibre-optic drones that cut cables [L — single source of uncertain provenance,
-but the tactic is very widely observed].
+10–15 cm mesh is reported to cut FPV hit probability by ~70% in static
+positions**, with no protection against diving attacks or fibre-optic drones that
+cut cables [L]. It appears in the matrix below as a row of 1.00s, which is the
+point.
 
 ### 3.3 Emission control
 
@@ -348,9 +358,7 @@ or planform alignment on any expendable airframe.
 
 ---
 
-## 4. Decoy and masking reference tables
-
-### Decoy types
+## 4. Decoy reference table
 
 | Decoy | Unit cost | Signature presented | Effectiveness | Conf. |
 |---|---|---|---|---|
@@ -364,27 +372,185 @@ or planform alignment on any expendable airframe.
 | Painted 2D silhouette | Cost of paint | Overhead optical only | **Assessed ineffective** — no shadow, resolvable from satellite | M |
 | Tyres on a real airframe | ~Free | Breaks the seeker's image template | Works against template matching; irrelevant to close quadcopter attack | M |
 
-### Masking measures
+## 5. Masking, channel by channel
 
-| Measure | Channel | Reduction achieved | Cost | Conf. |
-|---|---|---|---|---|
-| Personal thermal blanket (Chuhaistyr Gen 2) | Thermal | Near-disappearance if worn correctly; **inverts to a cold silhouette if not** | Ukrainian-made cheap; Western ~$2,000 | M (qualitative only) |
-| Anti-thermal poncho (UA MoD) | Thermal | Partial; dappled outline remains; 2.5 kg | Not published | M |
-| Multispectral vehicle net (Barracuda MCS) | UV/vis/NIR/SWIR/thermal/radar | Not published | Not published (~tens of $k/kit [X]) | H that it exists, none on numbers |
-| Solar-load screen (Barracuda ULCAS) | Thermal (solar only) | **Up to 80% solar loading** | Not published | H (vendor) |
-| Standard garnished net | Optical only | **~0 in thermal IR** | $100s | M |
-| Anti-FPV nylon net, 10–15 cm mesh | Physical, not signature | ~70% hit-probability reduction, static positions | Low | L |
-| RAM liner + black paint + CFRP | Radar, night optical | Typical RAM 20–30 dB; lab spray-on claims 43 dB | Built in | M on RAM, L on airframe effect |
-| EMCON (radar/jammer off) | Passive RF | 100 → 0 while silent | Free; costs the capability | H |
-| Fibre-optic control link | RF | **RF signature 0** | Airframe cost + spool; range-limited | H |
-| Toroidal / low-noise propeller | Acoustic | ~20 dB axial; converts tonal to broadband | Marginal | H / M |
-| Hydrogen fuel cell propulsion | Thermal, acoustic | "Negligible" heat claimed | High | L |
+The coordinator asked for multipliers per channel rather than verdicts. Here they
+are. **Read the confidence column before using any of them.** Only three figures
+in this entire matrix are published: ULCAS's 80% solar-loading reduction, the
+toroidal propeller's ~20 dB, and the 20–30 dB coupon figure for conventional RAM.
+Everything else is my allocation, reasoned from the qualitative reporting in
+Section 3 and from signature physics, and marked **[X]**.
+
+Multipliers apply to the unit's 0–100 signature on that channel. **1.00 = no
+effect. Above 1.00 = the measure makes the target *more* detectable on that
+channel** — those cells are the ones worth designing around.
+
+### 5.1 The matrix
+
+| Measure | RF | Thermal | Acoustic | Visible | Radar | Conf. |
+|---|---|---|---|---|---|---|
+| **Personal thermal blanket, correct use** | 1.00 | **0.18** | 1.00 | 0.85 | **1.20** | [X]; near-disappearance is [M] |
+| **Personal thermal blanket, bad use / saturated** | 1.00 | **1.15** | 1.00 | 0.85 | **1.20** | Inversion to cold silhouette is [M] |
+| **Vehicle IR-suppressing cover, cold hull** | 1.00 | **0.45** | 1.00 | 0.80 | 1.05 | [X] |
+| **Vehicle IR-suppressing cover, hot powerpack** | 1.00 | **0.85** | 1.00 | 0.80 | 1.05 | [X] |
+| **Multispectral net (Barracuda-class), cold** | 1.00 | **0.55** | 1.00 | **0.25** | **0.70** | [X]; band coverage is [H] vendor |
+| **Multispectral net, hot vehicle under it** | 1.00 | 0.80 | 1.00 | 0.25 | 0.70 | [X] |
+| **Standard garnished net (non-IR)** | 1.00 | **0.95** | 1.00 | **0.35** | 0.95 | Near-zero thermal effect is [M] |
+| **IR-matched matt camouflage paint** | 1.00 | 0.90 | 1.00 | 0.75 | 1.00 | [X] |
+| **Matt black drone paint, night** | 1.00 | 1.00 | 1.00 | **0.55** | 1.00 | [X]; the practice is [M] |
+| **Matt black drone paint, daylight vs sky** | 1.00 | 1.00 | 1.00 | **1.15** | 1.00 | [X] |
+| **RAM liner on a strike drone (as fielded)** | 1.00 | 1.00 | 1.00 | 1.00 | **0.55** | [X]; 20–30 dB coupon figure is [M] |
+| **Shaping / planform alignment** | 1.00 | 1.00 | 1.00 | 1.00 | **0.30** | [X] — **not fielded on expendables**, so 1.00 in practice |
+| **Vegetation and terrain concealment, fresh cut** | 1.00 | **0.60** | 0.90 | **0.20** | **0.60** | [X] |
+| **Vegetation, cut and 48 h old** | 1.00 | 0.75 | 0.90 | **0.55** | 0.60 | [X] |
+| **Revetment / berm / overhead cover** | 0.60 | **0.45** | 0.85 | **0.30** | **0.35** | [X] — this is line-of-sight blockage, not signature reduction |
+| **Exhaust cooling and mixing** | 1.00 | **0.75** whole vehicle, **0.50** hot-spot | 0.80 | 1.00 | 1.00 | [X] |
+| **Toroidal propellers** | 1.00 | 1.00 | **0.35** | 1.00 | 1.00 | ~20 dB is [H]; mapping to index is [X] |
+| **Ducted fan** | 1.00 | 1.05 | **0.55** | 1.00 | **1.10** | [X] — a duct is a cavity, and cavities reflect |
+| **Electric instead of combustion propulsion** | 1.00 | **0.20** | **0.45** | 1.00 | 1.00 | [M] direction, [X] magnitude |
+| **Battery / motor thermal management** | 1.00 | **0.70** | 1.00 | 1.00 | 1.00 | [X] |
+| **Hydrogen fuel cell** | 1.00 | **0.15** | 0.50 | 1.00 | 1.00 | "Negligible" claim is [L] |
+| **EMCON — radar or jammer switched off** | **0.00** | 1.00 | 1.00 | 1.00 | 1.00 | [H] |
+| **Reactive / low-duty-cycle transmission** | **0.25** | 1.00 | 1.00 | 1.00 | 1.00 | [M] direction, [X] magnitude |
+| **Fibre-optic control link** | **0.00** | 1.00 | 1.00 | 1.05 | 1.00 | [H] on the zero |
+| **Anti-FPV nylon netting** | 1.00 | 1.00 | 1.00 | **1.15** | 1.00 | Not a signature measure at all — see below |
+
+### 5.2 What each measure does nothing for
+
+Spelled out, because this is where most of the design value is:
+
+- **Thermal blankets and IR covers do nothing for RF, acoustic or radar** — and a
+  metallised blanket is plausibly *worse* on radar, since foil over a body is a
+  reflector [X]. They do a little for visible, because they are patterned, but
+  that is incidental.
+- **Camouflage netting, standard type, does nothing for thermal, acoustic or RF.**
+  This is the single most commonly held wrong belief and it is directly
+  contradicted by the reporting: nets "offer little protection if a position
+  remains thermally visible" [M].
+- **Multispectral netting does nothing for acoustic or RF.** It is good on visible,
+  useful on radar, moderate on thermal. It cannot hide a transmitting radio or a
+  running generator.
+- **Paint does nothing for RF, thermal, acoustic or radar.** Paint is a visible-band
+  measure with a small emissivity side-effect. It is not stealth.
+- **Vegetation and berms do nothing for RF** if the antenna is above the screen, and
+  very little for acoustic. Their radar value is line-of-sight blockage, not
+  absorption — a berm does not reduce RCS, it removes the target from the beam.
+- **Exhaust cooling does nothing for RF, visible or radar.** It is a thermal
+  hot-spot measure with an acoustic bonus from the muffler.
+- **Quieter propulsion does nothing for RF, visible or radar**, and a ducted fan is
+  slightly *worse* on radar because the duct is a cavity.
+- **EMCON does nothing for any channel but RF.** A silent jammer is still a large
+  hot metal box with a visible antenna. This matters: in the game, switching a
+  jammer off should take RF 100 → 0 and change nothing else, which means a jammer
+  parked in the open is still trivially findable optically.
+- **Anti-FPV netting does nothing for any signature channel.** It is a kinetic
+  measure. It also marks the position — a 15 cm-mesh net over a trench is a
+  conspicuous artificial geometry from above [X]. Worth modelling as a hit-
+  probability modifier with a *visible signature penalty*, not as masking.
+
+### 5.3 Counter-productive regimes
+
+Every one of these is a mechanic worth having, because they make masking a
+decision rather than a free upgrade.
+
+| Measure | Counter-productive regime | Channel it hurts |
+|---|---|---|
+| Thermal blanket | Full nullification against a warmer background produces a **cold silhouette** [M] | Thermal |
+| Thermal blanket, metallised | Foil layer is radar- and mmW-reflective [X] | Radar |
+| Vehicle IR cover | Left on while moving → powerpack overheats, then radiates harder than uncovered [X] | Thermal |
+| Multispectral net | Untied edges flap; motion in an otherwise static scene is the strongest optical cue there is [X] | Visible |
+| Cut vegetation | Wilts within 24–72 h; near-IR reflectance of dead foliage diverges sharply from living plants, so it goes **dark** under NIR-sensitive cameras [X] | Visible / NIR |
+| Matt black drone paint | Conspicuous silhouette against a bright daytime sky [X] | Visible |
+| Ducted fan | Duct forms a cavity and raises RCS [X] | Radar |
+| Overhead cover | Blocks your own drone launch, comms and sensor arcs | Own capability |
+| EMCON | The unit's own radar reach goes to zero while silent | Own capability |
+| Anti-FPV netting | Marks the position as occupied and worth striking [X] | Visible |
+| Any decoy near a real position | Draws attention to the area even when the decoy is correctly identified [M] | All |
+
+### 5.4 Environmental dependence
+
+The coordinator's point is exactly right: a blanket on a vehicle that has been
+cold-soaked in shade overnight is a different object from a blanket on a vehicle
+that just drove twenty kilometres. The governing variable on the thermal channel
+is **apparent ΔT against background**, and every environmental term below acts
+through it.
+
+Modifiers are multiplicative on the base multiplier in Section 5.1. All **[X]**
+unless noted — I found no source that quantifies any of this, and I want that
+stated plainly rather than buried.
+
+| Condition | Effect on thermal masking | Effect on other channels |
+|---|---|---|
+| **Vehicle stationary >4 h, shaded** | Covers and nets near best case: ×0.8 on the multiplier (i.e. more effective) | — |
+| **Vehicle stationary 1–4 h** | Hull cooled, powerpack still warm: ×1.0 | — |
+| **Vehicle stationary <30 min after a 20 km road move** | Powerpack, running gear and exhaust all hot; a cover traps and re-radiates: ×1.8 (much less effective). Hot-spot suppression is nearly useless here | Acoustic irrelevant once stopped |
+| **Ambient near freezing** | ΔT of a human or engine against background is largest — masking matters most and works least: ×1.3 | Radar and RF unaffected |
+| **Ambient near body/skin temperature (hot summer day)** | ΔT is small anyway; masking is nearly redundant: ×0.7 | — |
+| **Thermal crossover, ~30–60 min around dawn and dusk** | Background and target converge; everything looks flat. Masking multiplier ×0.6 — but note the *baseline* thermal signature should also drop. The game's twilight ×0.90 understates this; **×0.65 is the better figure [X]** | Optical falling, acoustic best |
+| **High sun, clear sky, midday** | Solar loading dominates. A solar screen is worth most here — ULCAS's **up to 80% solar-load reduction [H]** applies to this case and only this case: ×0.6 | Visible detection at its best |
+| **Rain** | Wets and cools everything, evaporative cooling flattens contrast, and LWIR transmission drops sharply. Rain is the strongest natural masker available: ×0.5 on the masking multiplier **and** a large cut to baseline thermal reach | Optical degraded; X-band radar picks up rain clutter; acoustic degraded by rain noise |
+| **Wind >5 m/s** | Convective cooling shrinks contrast and disperses exhaust plumes: ×0.8. But nets flap | **Acoustic**: raises the ambient noise floor materially — the cheapest masking in the game is a windy day |
+| **Snow cover** | Background is very cold and very uniform; any warm object is unmissable. Masking ×1.4 | Visible: dark equipment on snow is at maximum contrast |
+| **Dense foliage, summer** | Canopy blocks line of sight outright | Visible ×0.4, radar ×0.7 from attenuation and clutter |
+| **Bare trees, winter** | Vegetation concealment largely collapses | Visible ×1.6 relative to summer |
+
+Two of these are worth promoting into the core model regardless of what happens
+to masking: **rain** and **thermal crossover** are both larger effects than
+anything a textile achieves, and the game currently models neither.
+
+### 5.5 Emplacement time, and whether it can be done under observation
+
+Drone observation is continuous on a modern front. A measure that takes forty
+minutes to put up is a measure you can only use before you are seen, which in
+practice means most vehicle-scale masking is emplaced at night or not at all.
+
+| Measure | Time to emplace | Under observation? |
+|---|---|---|
+| EMCON — switch off | **Instant, reversible instantly** | **Yes** — the only measure that is |
+| Personal thermal blanket | Seconds | **Yes** |
+| Fibre-optic link | Built in; no field action | N/A |
+| Matt paint | Depot or factory | No |
+| RAM liner | Factory | No |
+| Exhaust cooling kit | Depot fit | No |
+| Cut vegetation over a vehicle | 10–30 min, 2 crew | Marginal — movement is visible |
+| Standard garnished net | 15–30 min, 2–4 crew | No |
+| Multispectral net kit (25–90 kg class handling, by analogy with decoy kits [M]) | **20–45 min, 3–4 crew** | **No** |
+| Inflatable decoy | 10–20 min, **2–4 people** for a 25–90 kg kit [M] | No |
+| Revetment or berm | Hours, needs an excavator | No |
+| Overhead cover | Hours to days | No |
+
+The design consequence is stark and worth stating: **EMCON is the only masking
+measure a unit can apply reactively.** Everything else must be in place before
+contact. That asymmetry should drive how the game prices them.
+
+### 5.6 Cost, relative to what is protected, and why units skip it
+
+| Measure | Cost relative to the protected asset | Why units do or do not use it |
+|---|---|---|
+| EMCON | **Free in money** | Used constantly. The cost is capability: a silent radar sees nothing |
+| Personal thermal blanket | Western ~$2,000 vs an infantryman's whole kit — **prohibitive**, which is exactly why Ukrainian units built the cheap Chuhaistyr [M] | Price was the binding constraint, and it was solved domestically |
+| Standard net | **<0.5%** of a vehicle | Universal. Cheap, light, and everyone already has one |
+| Multispectral net kit | Unpublished; **~1–5% of an armoured vehicle [X]** | Weight, emplacement time, snagging on hatches, and crews strip them for maintenance and do not put them back |
+| Matt paint | **<0.5%** | Universal, no downside |
+| RAM liner on a $20k–$50k expendable drone | Even $2,000 of coating is **4–10%** — material on a one-way airframe | This is why fielded treatment is a thin liner plus black paint, not a proper multi-layer RAM stack [M] |
+| Shaping | Large, through tooling and manufacturability | **Why it is not fielded on expendables at all.** Cheapness is the design goal; a shaped airframe defeats the point |
+| Exhaust cooling | Low single-digit % | Fitted where it comes as standard; rarely retrofitted |
+| Toroidal propellers | Marginal per unit | Thrust-efficiency penalty versus a conventional blade; adoption is early |
+| Hydrogen propulsion | **High** — storage and fuel-cell cost dominate a cheap airframe | Niche; one claimed combat deployment [L] |
+| Revetment or berm | Cost is **engineer time and plant**, the scarcest resource on a front | Used where the position is static and valuable enough to justify the hours |
+| Anti-FPV netting | Low | Widely used despite marking the position, because the hit-probability gain is immediate |
+
+The recurring practical reason for non-use across the whole table is not money.
+It is **time under observation, weight, and the fact that crews remove things that
+interfere with using the vehicle**. A game that charges only build cost for
+masking will overstate its adoption; charging emplacement time and a maintenance
+or mobility penalty gets the behaviour right.
 
 ---
 
-## 5. Verdict on the game's current assumptions
+## 6. Verdict on the game's current assumptions
 
-### 5.1 "Decoy drone radar signature 80 against a real strike drone at 55–60"
+### 6.1 "Decoy drone radar signature 80 against a real strike drone at 55–60"
 
 **Wrong — but the numbers are nearly right and the formula is wrong.**
 
@@ -433,7 +599,7 @@ above 100 for decoys** (decoy = 400, i.e. RCS ratio 8:1 against a strike drone a
 52, giving 1.68× range). Ugly, and still understates the effect, but it at least
 makes the unit do something.
 
-### 5.2 "A thermal blanket cutting thermal signature to 40%"
+### 6.2 "A thermal blanket cutting thermal signature to 40%"
 
 **Wrong in value and wrong in shape.**
 
@@ -454,11 +620,15 @@ model:
   is most valuable at night (thermal ×1.25) and least valuable at midday, when
   solar loading already swamps contrast.
 
-For **vehicles**, do not use the same number. A multispectral net over a cold
-vehicle: **×0.45**. Over a running vehicle: **×0.85**. The 80% solar-loading
-figure [H] supports the first; nothing supports better than the second.
+For **vehicles**, do not use the same number, and do not use a single number at
+all — see the matrix in Section 5.1 and the environmental modifiers in 5.4. A
+multispectral net over a cold-soaked vehicle is ×0.55 on thermal; over one that
+has just driven twenty kilometres it is ×0.55 × 1.8 ≈ **×0.99**, which is to say
+it is doing nothing on that channel until the powerpack cools. That swing — a
+factor of nearly two, driven entirely by time since the vehicle last moved — is
+the most important thing the current flat 40% throws away.
 
-### 5.3 "A ground decoy at plausibility 0.90 against a real target at 1.00"
+### 6.3 "A ground decoy at plausibility 0.90 against a real target at 1.00"
 
 **Wrong because it is a scalar.** A single plausibility number cannot be right,
 because the evidence shows the same physical decoy scoring anywhere from 0.95 to
@@ -495,7 +665,7 @@ Two mechanics worth adding, both supported by the reporting:
 
 ---
 
-## 6. What changes by 2028
+## 7. What changes by 2028
 
 1. **Decoy economics invert.** Once interceptors cost $1,000–$5,000 [H], a
    $10,000 decoy is a losing trade. Expect the pure decoy to die out and the
@@ -526,7 +696,7 @@ Two mechanics worth adding, both supported by the reporting:
 
 ---
 
-## 7. Genuinely uncertain or contested
+## 8. Genuinely uncertain or contested
 
 - **Shahed/Geran RCS** varies across sources by an order of magnitude (0.01 vs
   0.1 m²), and legitimately varies with aspect, band and production batch. Do not
@@ -538,9 +708,21 @@ Two mechanics worth adding, both supported by the reporting:
 - **Inflatech's 30–40% claim** is a vendor claim with an obvious commercial
   interest and no independent verification.
 - **Thermal blanket reduction has no measured figure anywhere in open source.**
-  Every number in Section 5.2 is reasoned, not reported.
+  Every number in Section 6.2 is reasoned, not reported.
 - **Multispectral net performance is unpublished.** Saab quotes solar loading and
   nothing else. Treat all per-band reduction figures as estimates.
+- **The entire per-channel matrix in Section 5.1 is estimated except for three
+  cells** — the 80% solar-loading figure, the ~20 dB toroidal propeller figure,
+  and the 20–30 dB coupon figure for conventional RAM. The *relative ordering* of
+  the matrix is well supported by the qualitative reporting; the absolute
+  multipliers are not measurements and should not be quoted as such outside this
+  document.
+- **Every environmental modifier in Section 5.4 is reasoned from thermal physics,
+  not sourced.** Direction and rough magnitude are defensible; the specific
+  numbers are placeholders for playtesting to move.
+- **Emplacement times in Section 5.5 are extrapolated** from the one published
+  handling figure in the research (25–90 kg decoy kits needing 2–4 people). No
+  source gives net emplacement times.
 - **Time-to-geolocation for an emitting jammer** is described qualitatively
   ("seconds", "short service life") and never quantified.
 - Several results in this research came from outlets of uncertain provenance

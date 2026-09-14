@@ -3,6 +3,11 @@
 Research for the KILL ZONE sensor and signature model. This is a video game
 document: everything below exists to justify a number in a balance table.
 
+Scope note: this ran past the brief's 2,500–4,000 words because the
+coordinator added two requirements mid-task — a full source-level spread with
+named endpoints (§3a) and a computable propagation model rather than a table of
+range guesses (§4, §5, §5a). Sections 1, 2, 3, 6–11 are the original brief.
+
 Confidence markers: **[High]** = multiple independent published sources agree, or
 it is textbook physics. **[Medium]** = one good source, or vendor specification
 not independently verified, or a reasonable extrapolation. **[Low]** = single
@@ -66,6 +71,30 @@ claim, promotional source, or my own inference.
     fire groups.** Effectiveness claims (80 of 84 UAVs in one raid; "95%
     interception") come from advocates and should be treated as marketing.
     **[High on existence and scale, Low on the performance claims]**
+
+11. **Acoustic reach can be computed rather than guessed.** Section 4 gives a
+    band-by-band equation — spherical spreading, ISO 9613 absorption, ground
+    effect, barrier diffraction, refraction, array gain, ambient floor — with
+    every coefficient either sourced or explicitly labelled as my estimate, plus
+    a reference implementation in §5a. The game should use it to *generate* the
+    signature table rather than hand-tune one. **[High on the structure, mixed on
+    individual coefficients]**
+
+12. **Nobody publishes source levels for military airframes.** Consumer
+    multirotors are measured (78–83 dBA at 1 m); Shahed, Orlan, Baba Yaga and
+    small turbojets are not. Every military figure in §3a is my estimate and is
+    marked as one. **[High that the gap exists]**
+
+13. **The night/day swing is the largest environmental effect in the whole
+    channel and the game models none of it.** Ambient falls 10–15 dB from midday
+    to a calm night, and a dawn inversion bends rays downward on top of that.
+    Acoustic should get a ×2–×3 reach multiplier at night and dawn against
+    low-flying targets. **[Medium]**
+
+14. **A diving FPV is only ~30% easier to hear than a cruising one.** Absorption
+    compresses level differences within an airframe class: +6 dB buys +33% range
+    at 4 kHz against +100% in free field. The game does not need a throttle
+    state for acoustics. **[High — arithmetic]**
 
 ---
 
@@ -160,66 +189,460 @@ So, by class:
   it is hard is that it flies at 5–9 km and moves fast, not that it is quiet.
   **[Low on any quantitative figure; Medium on "loud but geometrically hard"]**
 
+### 3a. Source levels, named endpoints, and the throttle question
+
+What is actually published: **consumer multirotor A-weighted SPL at the 1 m
+bystander position**. DJI Air 3S 81 dB, Mavic 4 Pro 83 dB, Phantom 4 ~82 dB,
+Phantom 4 Pro 81 dB; the Mavic/Air/Mini family generally sits in a 70–90 dBA
+band at a few metres. Useful anchors from the same scale: petrol lawnmower
+~90 dB, vacuum cleaner ~75, conversation ~60. **[Medium — hobbyist and vendor
+measurement, not standardised flyover testing]**
+
+What is **not** published, anywhere I could find: source levels at a stated
+reference distance for military airframes — Shahed/Geran, Orlan, Lancet, Baba
+Yaga/Vampire, or any small turbojet drone. Nobody puts a sound level meter next
+to a Shahed and writes it up. Everything in the table below for those rows is my
+estimate, built from the consumer anchors plus rotor and jet noise scaling, and
+labelled as such. Do not cite it as a measurement.
+
+| Airframe | Overall SPL @ 1 m | Dominant band | Basis |
+|---|---|---|---|
+| Micro quad (3", loiter) | ~68 dBA | 3–8 kHz | **estimate** |
+| **Quietest worth modelling:** small electric quad, 7–10", cruise | **78–83 dBA** | 1.5–6 kHz, BPF ~200–250 Hz | measured analogues (DJI) |
+| Same quad, full throttle / terminal dive | **88–93 dBA** | shifts up ~30%, 2–8 kHz | **estimate**, see below |
+| Fixed-wing electric recon, cruise | 75–80 dBA | 0.5–4 kHz | **estimate** |
+| Large electric multirotor (hexa, 15 kg+) | 93–98 dBA | 0.3–3 kHz, BPF ~80–120 Hz | **estimate** |
+| Two-stroke fixed-wing (Orlan class) | 95–100 dBA | 100–400 Hz + firing harmonics | **estimate**, anchored on lawnmower |
+| Piston heavy strike (Shahed-136 / Geran-2, ~50 hp) | 105–110 dBA | 80–250 Hz | **estimate**, anchored on ultralight aero engines |
+| Main battle tank | ~108–112 dBA | 30–200 Hz | **estimate** |
+| **Loudest worth modelling:** small turbojet (TJ100 class) | **125–130 dBA** | 200 Hz–4 kHz, broadband roar + shaft tones | **estimate**; jet mixing noise scales as the eighth power of exhaust velocity, which is why a 1 kN turbojet dwarfs everything propeller-driven |
+
+**The A-weighting trap.** Every published figure above is A-weighted, and
+A-weighting deliberately discounts low frequency — about −16 dB at 125 Hz and
+−26 dB at 63 Hz. That is the right weighting for annoyance and exactly the wrong
+weighting for detection at range, because low frequency is the part that
+survives kilometres of air. A-weighted numbers therefore **understate**
+combustion drones relative to quads by 10–20 dB for our purposes. For the game's
+model, use unweighted band levels: 100–500 Hz for combustion and heavy
+multirotors, 1–5 kHz for small electric. **[High — this is what A-weighting is]**
+
+**Loiter versus acceleration.** Three different answers by airframe:
+
+- **Multirotor.** A hovering multirotor is already near its power limit; it
+  cannot get much quieter without descending. Loiter-to-aggressive-manoeuvre
+  spans maybe **3–5 dB**. Rotor noise scales roughly as 50–60·log₁₀(RPM), so a
+  30% RPM increase is 6–7 dB — that is the dive case, not the loiter case.
+  **[Medium — the RPM scaling law is standard aeroacoustics; the range is my
+  estimate]**
+- **Electric fixed-wing.** Cruise sits well below full power and many designs
+  throttle back or glide on the run-in. **8–12 dB** spread, and the quiet end is
+  genuinely quiet. **[Estimate]**
+- **Combustion fixed-wing.** Cruise throttle is typically 50–70% of maximum;
+  spread **6–10 dB**, and even the quiet end is louder than any electric drone's
+  loud end. **[Estimate]**
+
+**Does it matter at detection range? Less than you would think, and this is
+important.** In free field, +6 dB doubles range. With atmospheric absorption it
+does not. Worked example at 4 kHz, where a quad lives: detection at 300 m needs
+the source to overcome 49.5 dB of spreading plus 9.9 dB of absorption. Give the
+same airframe +6 dB and solve again — the new range is about **400 m, a 33%
+gain, not 100%**. At 125 Hz, where a Shahed lives, absorption is negligible and
++6 dB really does buy close to double the range. **[High — arithmetic on the
+absorption table in §4]**
+
+Two design consequences. First, **a diving FPV is only moderately easier to hear
+than a cruising one** — roughly a 30% range gain, not a transformation, so the
+game does not need a throttle state for acoustics. Second, and more useful:
+**absorption compresses level differences within a class but not between
+classes**. The quad-versus-Shahed gap is a *frequency* gap, not a loudness gap,
+and no amount of throttle closes it.
+
 ---
 
-## 4. Degradation: wind, noise, city
+## 4. Propagation: the equation and its coefficients
 
-- **Wind.** Severe degradation above ~5 m/s is the figure that recurs. The
-  mechanism is twofold: turbulent pressure fluctuations on the diaphragm (a
-  noise-floor problem, fixable with windshields) and refraction (a propagation
-  problem, not fixable at all). In the outdoor range tests, a RØDE NTG-2 with a
-  WS6 windshield extended detection range **31–131%** over the bare microphone
-  in strong wind, depending on azimuth, lowered the low-frequency noise floor by
-  **2–3 dB**, and gained **1.8–4.4 dB** of wideband SNR. **[High]**
-  Refraction produces an **upwind shadow zone**: sound rays bend upward into
-  the wind and downward with it. A sensor downwind of a target hears it far
-  further than one upwind — the azimuth dependence in the windshield result is
-  partly this. I would model a 2:1 or worse downwind/upwind asymmetry.
-  **[Medium — the effect is textbook, the ratio is my estimate]**
-- **Ambient noise.** Detection accuracy falls from 99.88% clean to **77.76% at
-  6 dB SNR**; classification accuracy in the same test fell to 25.27%, a 13.86
-  point increase in classification error and a 16.3 point drop in detection.
-  **[Medium — one study]** Note the asymmetry: noise degrades *identification*
-  far faster than *detection*. A noisy sensor still knows something is up there;
-  it stops knowing what.
-- **Urban.** Reported urban accuracy ~81% with a **14.7% false-alarm rate**, and
-  8–15% false positives in realistic environments generally. Airports, stadiums
-  and dense traffic are described as environments where acoustic simply does not
-  work. Multipath off buildings additionally corrupts time-difference-of-arrival,
-  so localisation degrades faster than detection does. **[Medium]**
-- **Battlefield.** Outgoing artillery, generators and vehicle engines are
-  broadband, loud and continuous. There is published work specifically on
-  "acoustic UAV detection in battlefield scenarios: handling noise, domain shift
-  and weak labels", which tells you the problem is recognised and unsolved.
-  **[Medium]**
+This section is written so that the game can compute audibility from conditions
+rather than look up a table. Everything is per frequency band; evaluate it in
+octave bands and take the best-scoring band, and the whole quad-versus-Shahed
+story falls out of the arithmetic instead of being hand-tuned in.
+
+### 4.1 The equation
+
+For a source radiating `L_src(f)` decibels (unweighted band SPL at 1 m) and a
+receiver at slant range `r` metres:
+
+```
+L_rec(f) = L_src(f)
+         - 20·log10(r)              # spherical spreading
+         - α(f, T, RH) · r / 1000   # atmospheric absorption, α in dB/km
+         - A_ground(f, θ, surface)  # ground effect
+         - A_barrier(f, terrain)    # terrain/building diffraction
+         + A_refract(gradient, wind_bearing)   # signed: −20 … +6 dB
+
+SNR(f)  = L_rec(f) − L_ambient(f) + 10·log10(N_mics)
+
+audible = max over f of SNR(f) ≥ D
+```
+
+with
+
+- `r = sqrt(d_ground² + h²)` — slant range; `θ = atan(h / d_ground)` is the
+  elevation angle.
+- `N_mics` = number of coherently combined microphones. Array gain against
+  *uncorrelated* noise (wind pseudo-noise, sensor self-noise, diffuse ambient)
+  is `10·log10(N)`: 8 mics = +9 dB, 32 = +15 dB, 128 = +21 dB. This is the term
+  that explains the entire range table in §2. Against a *correlated* interferer
+  (one nearby generator) the gain is much smaller unless the array can null it.
+  **[High]**
+- `D` = required SNR. Recommended values, and see §4.8 for why they matter:
+  **D = 10 dB for solid continuous detection, D = 0 dB for intermittent, below
+  0 dB nothing.** A harmonic-comb tracker integrating over several seconds can
+  work a few dB below 0; a plain energy detector needs 6–10 dB. The one measured
+  anchor available: **at 6 dB SNR detection accuracy was 77.8% and
+  classification accuracy 25.3%**. **[Medium]**
+
+### 4.2 Spreading
+
+**20·log10(r), spherical, i.e. 6 dB per doubling of distance.** Valid from about
+one rotor diameter out (nearer than that you are in the aeroacoustic near field
+and the point-source assumption fails) all the way out, for an **airborne source
+and a ground receiver**. There is no cylindrical-spreading regime for a free
+airborne source; 10·log10(r) only applies inside a duct (see §4.5) and in the
+very special case of strong inversion ducting near the ground. **[High]**
+
+Do not add a separate "ground wave" term. Most of the excess attenuation people
+attribute to spreading in real measurements is actually ground effect and
+refraction, which are listed separately below, and double-counting is the
+commonest way to build a model that is 20 dB too pessimistic.
+
+### 4.3 Atmospheric absorption
+
+Standard ISO 9613 octave-band coefficients at **15 °C, 70% RH, 101.325 kPa**,
+converted to the per-100 m units the coordinator asked for:
+
+| Band | dB/100 m | dB/km | Loss over 3 km |
+|---|---|---|---|
+| 63 Hz | 0.01 | 0.1 | 0.3 dB |
+| 125 Hz | 0.04 | 0.4 | 1.2 dB |
+| 250 Hz | 0.10 | 1.0 | 3 dB |
+| 500 Hz | 0.19 | 1.9 | 5.7 dB |
+| 1 kHz | 0.37 | 3.7 | 11 dB |
+| 2 kHz | 0.97 | 9.7 | 29 dB |
+| 4 kHz | 3.28 | 32.8 | 98 dB |
+| 8 kHz | 11.7 | 117 | 351 dB |
+
+**[Medium on the exact digits — the proxy in this environment blocks ISO,
+Acta Acustica and MDPI, so I could not re-open the table; High on the shape,
+which is textbook and which one fetched source corroborates at "about 5 dB/km at
+1 kHz and 160 dB/km at 10 kHz"]**
+
+**Which spectrum survives.** Absorption is the reason the whole subject divides
+into two problems. A usable rule: **beyond range `r`, only frequencies where
+α(f)·r < ~10 dB contribute.** That gives a ceiling frequency of roughly
+
+| Range | Highest useful frequency |
+|---|---|
+| 300 m | ~6 kHz |
+| 1 km | ~2 kHz |
+| 3 km | ~1 kHz |
+| 5 km | ~700 Hz |
+| 10 km | ~400 Hz |
+
+A small quad puts most of its energy above 1.5 kHz; its only sub-500 Hz content
+is the BPF fundamental around 200–250 Hz and its first harmonic, which sit
+10–20 dB below the overall level. So past a few hundred metres the quad has
+almost nothing left to detect. A piston aero engine puts most of its energy at
+80–250 Hz, which is essentially free to propagate. **That single fact is the
+whole quad-versus-Shahed range gap, and it is worth more than any coefficient in
+this document.** **[High]**
+
+**Temperature and humidity.** Absorption at mid and high frequency is governed by
+the vibrational relaxation of oxygen and nitrogen, both catalysed by water
+vapour, so humidity is the dominant variable above ~1 kHz — and it is
+non-monotonic, peaking at low-to-moderate humidity. ISO 9613-1 gives a closed
+form (classical viscothermal term + O₂ relaxation + N₂ relaxation); implement
+that if you want exactness. If you want a multiplier on the 2–4 kHz rows of the
+table, my estimates:
+
+| Condition | Multiplier on α at 2–4 kHz |
+|---|---|
+| 15 °C, 70% RH (baseline) | ×1.0 |
+| 25 °C, 90% RH (warm, humid) | ×0.8 |
+| 20 °C, 20% RH (hot, dry) | ×1.5–2.0 |
+| 0 °C, 80% RH (cold, damp) | ×1.3–1.6 |
+| −10 °C, 60% RH (cold winter) | ×1.5–2.5 |
+
+**[Low–Medium — these are my estimates from the shape of the ISO curves, not
+read off the standard. Below 500 Hz the variation is small enough to ignore, and
+below 500 Hz is where the long-range detections happen, so getting these wrong
+mostly does not matter.]** The practical takeaway: **cold dry air is the worst
+case for hearing a small quad, and barely matters for hearing a Shahed.**
+
+### 4.4 Ground effect
+
+Interference between the direct ray and the ground-reflected ray. Two regimes:
+
+- **Steep elevation angle (θ > ~15°), which is the normal case for an overhead
+  drone.** The reflected ray arrives close in phase and you get up to **+3 dB**
+  (pressure doubling over hard ground, a mic on a concrete pad or on the ground
+  plane) down to about **0 dB** over grass. Positive, not negative. **[Medium]**
+- **Grazing (θ < ~5°), which is the case for a low FPV at 1 km or a
+  ground-to-ground path.** Destructive interference over soft ground produces
+  the classic "ground dip", **−5 to −15 dB** centred somewhere in 200–600 Hz for
+  grass and ploughed earth, less over asphalt or water. **[Medium — ISO 9613-2
+  models this as an A_gr term; the numbers here are typical values, not from a
+  single cited measurement]**
+
+Game-relevant consequence: **raise the microphone.** Zvook's nodes sit on
+10–12 m masts, and that is not an accident — it lifts the grazing geometry away
+from the ground dip and away from ground-level noise. Worth a few decibels, i.e.
+tens of percent of range.
+
+### 4.5 Terrain shadowing and refraction
+
+**Barriers.** A ridge, treeline or building between source and receiver
+diffracts rather than blocks. ISO 9613-2 uses a Fresnel-number form; the
+practical envelope is an insertion loss of roughly **5 dB for a marginal
+obstruction rising to 20–25 dB for a deep one**, and it is **strongly frequency
+dependent — high frequencies are shadowed far harder than low ones.** **[Medium]**
+
+This produces a genuinely useful game asymmetry: **a ridge line substantially
+hides a quadcopter and barely hides a Shahed.** It is also why Fraunhofer can
+advertise detecting drones "around the corner" and outside line of sight — the
+one thing acoustic does that optics categorically cannot. **[High on the
+principle]**
+
+**Refraction.** Sound speed rises with temperature and with downwind component,
+so the vertical gradient of (temperature + wind) bends rays:
+
+- **Daytime lapse** (ground warmer than air above, the normal sunny afternoon):
+  rays bend **upward**, creating a ground-level shadow zone. For a ground-level
+  source this can cost 10–20 dB beyond a few hundred metres. For an **airborne**
+  source the geometry is much kinder — rays reaching the ground are already
+  descending — so the penalty is more like **3–8 dB** at long horizontal range
+  and near zero for a target overhead. **[Medium]**
+- **Dawn / clear calm night inversion** (air above warmer than ground): rays
+  bend **downward** and can be ducted, approaching cylindrical spreading within
+  the duct. **Yes, a dawn inversion genuinely extends detection, and materially.**
+
+  How much: the inversion itself is worth perhaps **+5 to +10 dB** at
+  low frequency over long near-ground paths, and the ambient floor at dawn is
+  **10–15 dB lower** than the same site at midday (§4.7). Combined, call it
+  **+15 to +25 dB of SNR**. At low frequency, where absorption is negligible,
+  +15 dB is a 5.6x range gain in free field. I would **not** model that much — in
+  practice other terms clip it — but a **×2 to ×3 acoustic reach multiplier at
+  dawn and on calm clear nights** is well supported by the mechanism and is
+  consistent with the universal operational observation that Shaheds are heard
+  much further at night. **[Medium on the mechanism and direction, Low on the
+  exact multiplier — this is my estimate]**
+
+  Important limit: **refraction only matters for shallow ray paths.** A target
+  at 3 km altitude is on a steep path, barely bent at all. So the dawn bonus
+  applies to low-flying drones and not to the high ones. This is the opposite of
+  a convenient simplification and should be modelled as such if the game already
+  distinguishes altitude bands.
+
+### 4.6 Wind
+
+Two separate mechanisms, routinely conflated.
+
+**(a) Refractive asymmetry.** A downwind receiver gets downward-bending rays; an
+upwind receiver sits in a shadow zone. This is why the measured windshield
+benefit in the outdoor range tests was **azimuth-dependent (31–131%)** — the
+azimuth dependence is the wind direction. Practical figures, relative to calm:
+
+| Geometry | Range multiplier |
+|---|---|
+| Receiver downwind of target | **×1.3 – ×1.5** |
+| Crosswind | ×0.9 – ×1.0 |
+| Receiver upwind of target | **×0.4 – ×0.6** |
+
+i.e. a **2.5–3x downwind/upwind asymmetry**, growing with wind speed and
+strongest for grazing paths. **[Low–Medium — the effect and its direction are
+textbook and corroborated by the azimuth dependence in the measurements; the
+multipliers are my estimates]**
+
+**(b) Microphone self-noise.** Turbulence on the diaphragm produces
+low-frequency pseudo-noise that rises steeply with wind speed — roughly as the
+cube of wind speed or worse in the band below 200 Hz, which is exactly the band
+the long-range detections live in. Measured mitigation: a **WS6 windshield gave
+2–3 dB of noise-floor reduction, 1.8–4.4 dB of wideband SNR, and 31–131% more
+range in strong wind.** Wind noise is **uncorrelated between spaced microphones**,
+so an array gets its full 10·log10(N) against it — the reason a 128-element
+array survives weather that kills a single microphone. **[High]**
+
+**The speed at which it stops working.** The recurring figure in the literature
+is **severe degradation above ~5 m/s**. Layering the mitigations:
+
+| Wind speed | State |
+|---|---|
+| < 3 m/s | No meaningful penalty |
+| 3–5 m/s | Bare mic degrading; windshielded array fine |
+| 5–8 m/s | Bare mic effectively dead; good windshielded array losing 30–50% of range |
+| 8–12 m/s | Only large windshielded arrays still working, and only on loud low-frequency targets |
+| **> 12 m/s** | **Acoustic detection of small drones is over regardless of array quality** — wind noise on the mics plus vegetation noise plus refraction, and no amount of `10·log10(N)` recovers it |
+
+**[Medium — the 5 m/s figure is from the literature; the rest of the ladder is
+my construction from it]**
+
+### 4.7 Ambient noise floors
+
+Typical broadband A-weighted levels. For the model, remember §3a: what matters
+is the level *in the band you are detecting in*, and low-frequency ambient is
+higher than the A-weighted figure suggests — add roughly 10–15 dB to these
+numbers for an unweighted 100–500 Hz band level.
+
+| Environment | Typical L_ambient (dBA) |
+|---|---|
+| Rural, calm, night | **25–30** |
+| Rural, day, light wind | 35–45 |
+| Open country, 5 m/s wind (vegetation noise) | 45–55 |
+| Suburban, day | 45–55 |
+| Urban street | 65–75 |
+| 10 m from a busy road | 70–80 |
+| Generator or vehicle at 10 m | 70–80 |
+| **On a moving vehicle** | **70–85** |
+| Artillery position between rounds | 60–70 |
+| Artillery muzzle blast, at 1 km | 100+ peak, impulsive |
+
+**[Medium — these are standard environmental-acoustics ranges rather than
+figures from one cited source; the urban and road numbers are corroborated in
+direction by the reported 8–15% urban false-alarm rates]**
+
+Two modelling notes. **Artillery blinds intermittently, not continuously** — the
+floor returns between rounds, so a firing position degrades acoustic detection
+in bursts rather than killing it. And **the moving-vehicle row is why Zvook
+demonstrating a sensor on a moving vehicle in August 2026 was news**: it is a
+20–40 dB harder problem than a mast.
+
+The **night-versus-day difference is 10–15 dB of ambient**, before any
+refraction bonus. That alone is a 3–5x free-field range gain at low frequency
+and is the single largest environmental swing in the whole model. The game
+currently gives acoustic no day/night variation at all.
+
+### 4.8 Why this vindicates the game's structure
+
+Set `D = 0 dB` as the detection limit and `D = 10 dB` as the solid-detection
+limit. At 0.6 of maximum range, spherical spreading alone gives back
+20·log10(1/0.6) = **4.4 dB**, plus whatever absorption is saved on the shorter
+path — for a quad at 4 kHz over 300 m that is another 4 dB, so **8–9 dB of extra
+SNR at 60% of reach**. Against the measured curve (77.8% accuracy at 6 dB SNR,
+99.9% clean) that lands in the high 80s to mid 90s percent. Meanwhile the fringe
+of reach sits at 0–3 dB SNR, where measured performance is well below 78%.
+
+**So the game's "solid inside 60% of reach, and 52% reliable beyond it" is not
+an arbitrary shape — it is close to what the physics and the one measured
+SNR-versus-accuracy curve predict.** That is the strongest defence of any number
+in the acoustic model, and it is worth writing in a comment next to the
+constant.
 
 ---
 
-## 5. Altitude, slant range and whether a high target is findable
+## 5. Altitude and slant range
 
-Take a small quad: about 80 dBA at 1 m. Spherical spreading alone costs
-20·log₁₀(r). At 2,000 m that is 66 dB, leaving 14 dB before absorption; the
-kilohertz content then loses another 20–60 dB to the air. The result is far
-below any plausible noise floor. **A small electric drone at 2 km is not
-acoustically detectable, by anything, ever.** **[High — this is arithmetic]**
+**Altitude sets a floor on range that nothing can beat.** Slant range is
+`sqrt(d² + h²)`, so a target at 3 km altitude is never closer than 3 km however
+directly overhead it passes. Everything else follows from putting that number
+into §4.1.
 
-Now take a Shahed at 2 km. Reporting has Shaheds cruising at 2–2.8 km and diving
-from above 2 km specifically to get above machine guns and small arms. Zvook
-claims 3–5 km on this target class. So a Shahed at 2–3 km slant range sits
-*inside* the claimed envelope — degraded, but not lost. **Acoustic remains a
-usable early-warning channel against piston drones at their operating altitude,
-and that is exactly what Sky Fortress is for.** **[Medium]**
+Take a small quad: about 80 dBA at 1 m, energy at 2–6 kHz. At 2,000 m, spherical
+spreading costs 66 dB and absorption at 4 kHz costs a further 66 dB. The signal
+arrives more than 50 dB below any plausible noise floor. **A small electric drone
+at 2 km is not acoustically detectable, by anything, ever.** **[High — this is
+arithmetic]**
 
-Jet Shaheds at 7 km are the edge case. Running the same arithmetic with a
-turbojet source level and low-frequency-weighted content, the signal arrives
-somewhere in the tens of decibels — detectable on a quiet rural night, marginal
-otherwise, and with a very short engagement window given 600 km/h. Ukrainian
-reporting notes these fly above what most air defence can reach. **[Low — my
-calculation, not a measurement]**
+Take a Shahed at 2 km: 105–110 dBA at 1 m but with its energy at 80–250 Hz.
+Spreading costs the same 66 dB; absorption costs **2 dB**. Arriving level is
+somewhere around 40 dB, which is above a rural night floor of 25–30 dB and
+marginal against a daytime 40 dB. That is exactly consistent with Zvook's
+claimed 3–5 km and with reporting that Shaheds now cruise at 2–2.8 km and dive
+from above 2 km to get above small arms. **Acoustic remains a usable early
+warning channel against piston drones at their operating altitude, and that is
+what Sky Fortress is for.** **[Medium]**
 
-The general rule the game should encode: **altitude does not attenuate acoustic
-detection by a fixed percentage; it separates targets into those whose spectrum
-survives kilometres of air and those whose spectrum does not.**
+Jet Shaheds at 7 km are the edge case. With an estimated 125–130 dB source level
+and broadband content, spreading costs 77 dB and absorption maybe 7–15 dB
+depending on how much of the energy sits below 1 kHz — arriving in the 35–45 dB
+region. Detectable on a quiet rural night, marginal otherwise, and with a very
+short engagement window at 600 km/h. Ukrainian reporting notes these fly above
+what most air defence can reach. **[Low — my calculation, not a measurement]**
+
+**Does looking up change absorption or refraction?** Yes, both, and both
+modestly:
+
+- **Absorption.** Temperature drops about 6.5 °C per km and absolute humidity
+  drops faster. Colder, drier air raises the mid- and high-frequency absorption
+  coefficient, so a 3 km slant path through the real atmosphere loses a few more
+  decibels at kilohertz than the sea-level table predicts. Below 500 Hz the
+  difference is negligible. Net: **it makes high targets slightly harder to hear
+  and changes nothing about which ones are findable.** **[Low — my estimate]**
+- **Refraction.** Steep paths are barely refracted. All the wind and inversion
+  effects in §4.5–4.6 are grazing-path phenomena. **High-altitude acoustic
+  detection is therefore more predictable and less weather-dependent than
+  low-altitude detection, and also weaker.** A useful, counterintuitive rule for
+  the game: dawn, wind direction and terrain should modulate the detection of
+  low-flying drones strongly and of high-flying ones hardly at all. **[Medium]**
+
+And the lag, again: sound from 3 km arrives **8.8 seconds late**. A Shahed at
+180 km/h has moved 440 m; a jet variant at 600 km/h has moved 1.5 km. An
+acoustic track on a high-altitude target is a historical record, not a position.
+
+---
+
+## 5a. Reference implementation
+
+```python
+# Octave-band centres and ISO 9613 alpha at 15 C / 70% RH, dB/km
+BANDS = [63, 125, 250, 500, 1000, 2000, 4000, 8000]
+ALPHA = [0.1, 0.4, 1.0, 1.9, 3.7, 9.7, 32.8, 117.0]
+
+def audible(src_band_spl,      # list, unweighted dB @ 1 m per band
+            d_ground, h,       # metres
+            ambient_band,      # list, dB per band
+            n_mics=8,
+            rh_alpha_mult=1.0, # from the 4.3 table
+            wind_ms=0.0, upwind=False,
+            inversion=False,
+            terrain_blocked=False,
+            surface="grass"):
+    import math
+    r = math.hypot(d_ground, h)
+    theta = math.degrees(math.atan2(h, max(d_ground, 1e-6)))
+    best = -999
+    for i, f in enumerate(BANDS):
+        a = ALPHA[i] * (rh_alpha_mult if f >= 2000 else 1.0)
+        L  = src_band_spl[i] - 20 * math.log10(max(r, 1.0)) - a * r / 1000.0
+
+        # ground effect
+        if theta > 15:   L += 3.0 if surface == "hard" else 0.0
+        elif theta < 5:  L -= 10.0 if 200 <= f <= 600 else 4.0
+
+        # terrain diffraction, frequency dependent
+        if terrain_blocked:
+            L -= 8.0 if f <= 250 else (15.0 if f <= 1000 else 22.0)
+
+        # refraction, grazing paths only
+        if theta < 20:
+            if inversion:      L += 7.0
+            elif wind_ms > 2:  L += (-8.0 if upwind else 3.0)
+
+        # array gain against uncorrelated noise; wind pseudo-noise
+        gain = 10 * math.log10(n_mics)
+        floor = ambient_band[i]
+        if wind_ms > 3 and f <= 250:
+            floor += 6.0 * (wind_ms - 3)      # windshielded estimate
+        best = max(best, L - floor + gain)
+
+    if best >= 10: return "solid"
+    if best >= 0:  return "intermittent"
+    return "nothing"
+```
+
+Coefficients that are **published**: the ALPHA row, the `10·log10(N)` array gain,
+the 20·log10(r) spreading, the 6 dB SNR accuracy anchor. Coefficients that are
+**my estimates and are labelled as such above**: every ground, terrain,
+refraction and wind constant in that function, and the wind-noise slope. They
+are the right sign and roughly the right size; none of them is a measurement.
 
 ---
 
@@ -334,6 +757,28 @@ electric aircraft (which are simply gone at 2 km) and too harsh for combustion
 and jet aircraft (which are exactly what the real high-altitude acoustic nets
 are built to hear). With the corrected signature table it mostly fixes itself,
 because the small-quad values are now tiny:
+
+### Day, night and weather
+
+The game applies day/night scaling to optical and thermal and **nothing to
+acoustic**. That is a real omission: §4.7 puts the ambient swing between midday
+and a calm rural night at 10–15 dB, and §4.5 adds a dawn inversion on top. At
+low frequency, where absorption is negligible, 12 dB is a 4x free-field range
+gain.
+
+> **Recommendation 7. Give acoustic a time-of-day multiplier: ×1.0 by day,
+> ×2.0 at night, ×2.5 at dawn — applied only to low-altitude targets.** High
+> targets sit on steep ray paths that refraction barely touches, so they should
+> get the ambient part (×1.5) and not the refraction part. This makes night a
+> double-edged choice for the attacker: better against optics, worse against
+> microphones, which is a more interesting decision than the current model
+> offers. **[Medium]**
+
+> **Recommendation 8. Wind should modulate acoustic and nothing else.** ×1.0
+> below 3 m/s, ×0.7 at 5–8 m/s, ×0.4 at 8–12 m/s, and **acoustic off entirely
+> above 12 m/s**. If the game ever models wind direction, a downwind listener
+> gets ×1.4 and an upwind one ×0.5. **[Medium on the ladder, Low on the
+> direction multipliers — both are my estimates from §4.6]**
 
 > **Recommendation 5. High-altitude acoustic multiplier 0.35 → 0.50**, applied
 > on top of the new signature values. A Shahed at altitude then gives
@@ -485,6 +930,21 @@ the US Air Force has sought acoustic sensors as well. **[High]**
   value of 95 assumes louder; if anyone finds a measurement, use it.
 - **My tank figure (80) assumes open terrain.** Ground-to-ground acoustic
   propagation is far more terrain-sensitive than air-to-ground.
+- **Every propagation coefficient outside the ISO absorption table is my
+  estimate.** Specifically: the ground-effect values (+3 / −10 dB), the barrier
+  losses (8/15/22 dB by band), the refraction terms (+7 dB inversion, ±8 dB
+  wind), the wind-noise slope (6 dB per m/s above 3 m/s in the low band), the
+  humidity multipliers on α, the wind-speed ladder, and the day/night and
+  dawn multipliers. They are the right sign and roughly the right magnitude,
+  and any one of them could be off by 5 dB. The three things I would defend
+  without qualification are spherical spreading, the absorption curve's shape,
+  and `10·log10(N)` array gain.
+- **No published source level exists for any military airframe in §3a.** The
+  Shahed, Orlan, Baba Yaga, tank and turbojet rows are estimates anchored on
+  consumer multirotor measurements and on standard rotor and jet noise scaling
+  laws. If a real measurement surfaces for any of them, it should overwrite the
+  estimate immediately — the Shahed row in particular is load-bearing for the
+  whole signature table.
 - **The choice of linear rather than square-root scaling for acoustic is a
   modelling decision, not a finding.** The finding is the 10–15x range spread
   between airframe classes. If the design prefers one rule for all five
