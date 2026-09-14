@@ -25,6 +25,13 @@ namespace KZ.Sim
         public int LastEvalTick;
         public bool Reparenting;         // briefly orphaned; the next graph rebuild may save it
 
+        /// <summary>
+        /// Currently outside its own side's satellite coverage. Held rather than
+        /// recomputed so the crossing fires once, in each direction, instead of
+        /// every tick the drone spends over the wrong ground.
+        /// </summary>
+        public bool OutsideCoverage;
+
         public bool IsUnjammable
         {
             get { return Kind == LinkKind.Fiber || Kind == LinkKind.Autonomy; }

@@ -29,6 +29,7 @@ namespace KZ.Sim
         public readonly Terrain Terrain;
         public readonly EntityTable Entities;
         public readonly SignalGrid Signal;
+        public readonly Territory Territory;
         public readonly MeshGraph Mesh;
         public readonly TetherSystem Tethers;
         public readonly RandomStreams Random;
@@ -56,6 +57,13 @@ namespace KZ.Sim
             Terrain = terrain;
             Entities = new EntityTable(entityCapacity);
             Signal = new SignalGrid(terrain.WidthMetres, terrain.HeightMetres);
+
+            // Default: the whole map belongs to nobody, so a satellite link works
+            // nowhere until a mission draws a border. That is deliberately the
+            // inconvenient default - a mission that forgets to say where the
+            // border runs should notice immediately, rather than quietly granting
+            // global coverage the way the old unconditional rule did.
+            Territory = new Territory(terrain.WidthMetres, terrain.HeightMetres);
             Mesh = new MeshGraph();
             Random = new RandomStreams(matchSeed);
             Tethers = new TetherSystem(tetherCapacity, terrain, Random.Get(RandomStream.TetherSnag));
@@ -1167,6 +1175,7 @@ namespace KZ.Sim
                 h = (h ^ Players[t].Crews.StateHash()) * Prime;
             }
 
+            h = (h ^ Territory.StateHash()) * Prime;
             h = (h ^ Random.StateHash()) * Prime;
             return h;
         }

@@ -608,3 +608,61 @@ corrected to something demonstrably more truthful and change no outcome, because
 what was wrong was never the number. Verifying the fix against its own mechanism
 (the probe) said it worked. Verifying it against the game (the control column)
 said it did not.
+
+## 26. The top rung of the link ladder was unconditional, and untested
+
+The control-link ladder is the spine of the game: radio dies to jamming, mesh
+dies with its parent, fiber is unjammable but leashed, satellite is unlimited
+range and scarce capacity, autonomy has nothing to jam and pays in target
+selection. Each rung is supposed to buy something and pay for it somewhere.
+
+Satellite was not paying. `LinkResolver` read:
+
+```csharp
+case LinkKind.Satellite:
+    // Coverage is everywhere; the scarce thing is a channel.
+    return true;
+```
+
+A literal unconditional true. Uplink capacity was the only cost, which makes the
+rung a strictly better radio for anyone who can afford the channel.
+
+The correction came from outside the research corpus - a satellite constellation
+is licensed **by country**, so the coverage boundary is a national border. And a
+border is not a front line. It was drawn before the shooting started and it does
+not move when the fighting does.
+
+Modelling those as two separate things produces a mechanic nobody designed:
+
+> **Push an offensive past your own border and your drones are unsupported over
+> ground you have taken and hold.** The constellation is not watching the war, it
+> is reading a map. The top rung of the ladder is the one that punishes success.
+
+That is now a test. So is the fact that crossing a geofence is **instant** rather
+than a fade - every other way of losing a link in this game degrades through
+amber first, and this one cannot, because the drone did not fly out of range of
+anything.
+
+**The part worth recording is the test coverage.** After making the change, the
+full suite passed - 78 of 78. The default territory is unowned, so that change had
+just made every satellite drone in the game permanently black, and nothing
+failed. A grep explains why: across tests, headless missions and balance
+experiments, the string `Satellite` appeared **zero** times, and exactly one unit
+in the catalog carries the link. An entire rung of the game's central mechanic
+had no coverage at all, and a green suite said nothing was wrong.
+
+This is the third time in this project that a green signal has been worthless
+(see 15 and 25). The pattern is consistent enough to state as a rule: **a passing
+suite is evidence about the paths the suite walks and nothing else**, and the
+most dangerous code is whatever is both important and never constructed in a
+test. Worth an audit of which other catalog entries and enum branches are never
+instantiated anywhere.
+
+What is still missing, and is the interesting half: what a drone *does* past the
+line. No comms and no satellite navigation means onboard sensors, and matching
+what a camera sees against stored imagery requires imagery **of ground you do not
+control** - a resource the defender inherently has more of. That makes deep
+strike a reconnaissance-supply problem as much as a flying one, and it is the
+natural place for the two-tier autonomy split in item 23 to land: crossing the
+geofence is a forced demotion from last-mile guidance to autonomous selection,
+mid-sortie.

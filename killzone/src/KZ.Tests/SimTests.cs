@@ -796,6 +796,83 @@ namespace KZ.Tests
                             + "the old table allowed");
             });
 
+            r.Run("a satellite link ends at a border, not at the front", delegate
+            {
+                // The rung was previously unconditional - "coverage is everywhere"
+                // was a literal return true - and nothing in the suite noticed when
+                // that changed, because nothing in the suite flew a satellite drone
+                // at all. It does now.
+                Terrain t = new Terrain(2048, 2048);
+                t.Fill(TileClass.Open);
+                World w = new World(t, 256, 16, 301, 2);
+
+                // Team 1 owns the west, team 2 the east, with a neutral strip.
+                w.Territory.SetVerticalBorder(1024, 1, 2, 64);
+
+                EntityHandle home = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(400, 1000));
+                EntityHandle across = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(1600, 1000));
+                w.Step();
+
+                Assert.True(LinkResolver.InSatelliteCoverage(w, home.Index),
+                            "over its own ground the constellation is there");
+                Assert.True(!LinkResolver.InSatelliteCoverage(w, across.Index),
+                            "over the other side's ground it is not");
+
+                Assert.Equal((int)LinkPip.Green, (int)w.Entities.Link[home.Index].Pip,
+                             "a link at home is green");
+                Assert.Equal((int)LinkPip.Black, (int)w.Entities.Link[across.Index].Pip,
+                             "and across the border it is black");
+            });
+
+            r.Run("crossing a geofence is instant, not a fade", delegate
+            {
+                // Every other way of losing a link in this game degrades through
+                // amber first. This one does not, and the difference is the whole
+                // character of the rung: there is no warning and nothing the pilot
+                // can do, because the drone did not fly out of range of anything -
+                // it flew across a line on a map.
+                Terrain t = new Terrain(2048, 2048);
+                t.Fill(TileClass.Open);
+                World w = new World(t, 256, 16, 302, 2);
+                w.Territory.SetVerticalBorder(1024, 1, 2, 0);
+
+                EntityHandle d = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(900, 1000));
+                w.Step();
+                Assert.Equal((int)LinkPip.Green, (int)w.Entities.Link[d.Index].Pip,
+                             "green to begin with");
+
+                // One step across. Not a long flight - one tick.
+                w.Entities.Position[d.Index] = P(1100, 1000);
+                w.Step();
+                Assert.Equal((int)LinkPip.Black, (int)w.Entities.Link[d.Index].Pip,
+                             "black on the very next evaluation, with no amber in between");
+            });
+
+            r.Run("advancing past your own border costs you the satellite", delegate
+            {
+                // The consequence nobody designed and the model produced anyway.
+                // A constellation is licensed by country, so its line is political
+                // and fixed. Take ground beyond it and you hold that ground with no
+                // satellite link over it, because the service is not watching the
+                // war - it is reading a map. The top rung of the ladder is the one
+                // that punishes success.
+                Terrain t = new Terrain(2048, 2048);
+                t.Fill(TileClass.Open);
+                World w = new World(t, 256, 16, 303, 2);
+                w.Territory.SetVerticalBorder(1024, 1, 2, 0);
+
+                // Team 1 has pushed its front well east of its own border and is
+                // sitting on ground it controls by every military measure.
+                EntityHandle held = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(1400, 1000));
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(1300, 1000));
+                w.Step();
+
+                Assert.True(!LinkResolver.InSatelliteCoverage(w, held.Index),
+                            "holding the ground does not move the border");
+                Assert.Equal((int)LinkPip.Black, (int)w.Entities.Link[held.Index].Pip,
+                             "so the deeper the advance, the longer drones are on their own");
+            });
+
             r.Run("a fiber drone defeats radio listening completely", delegate
             {
                 // The property that makes fiber worth its leash, and one the old

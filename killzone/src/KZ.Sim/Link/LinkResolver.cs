@@ -44,6 +44,42 @@ namespace KZ.Sim
 
             link.RobustnessEffective = ComputeRobustness(w, i, link);
 
+            // A geofence is not a fade. Every other way of losing a link in this
+            // game degrades - jamming climbs, a mesh parent dies and a child
+            // spends a moment looking for another, a tether frays. Crossing out of
+            // satellite coverage does none of that: one tick the drone is on a
+            // satellite and the next it is on its own, with no warning and nothing
+            // the pilot can do about it. So it skips the amber grace period
+            // entirely and goes straight to black.
+            if (link.Kind == LinkKind.Satellite && !InSatelliteCoverage(w, i))
+            {
+                if (!link.OutsideCoverage)
+                {
+                    link.OutsideCoverage = true;
+                    w.Events.Push(SimEventKind.SatelliteCoverageLost, w.Tick,
+                                  w.Entities.HandleAt(i), EntityHandle.None,
+                                  w.Entities.Team[i], 0);
+                }
+                if (link.Pip != LinkPip.Black)
+                {
+                    link.Pip = LinkPip.Black;
+                    link.BlackTicks = 0;
+                    w.Events.Push(SimEventKind.LinkBlack, w.Tick, w.Entities.HandleAt(i));
+                }
+                link.AmberTicks = 0;
+                link.LastEvalTick = w.Tick;
+                w.Entities.Link[i] = link;
+                ApplyBlackEffects(w, i);
+                return;
+            }
+            if (link.OutsideCoverage)
+            {
+                link.OutsideCoverage = false;
+                w.Events.Push(SimEventKind.SatelliteCoverageRegained, w.Tick,
+                              w.Entities.HandleAt(i), EntityHandle.None,
+                              w.Entities.Team[i], 0);
+            }
+
             bool connected = HasControlPath(w, i, ref link);
             int jam = SampleJam(w, i, link);
             link.JamSampled = (byte)jam;
@@ -110,6 +146,16 @@ namespace KZ.Sim
             return (byte)r;
         }
 
+        /// <summary>
+        /// Whether this drone is over ground its own side's satellite service is
+        /// licensed for. Neutral ground counts as outside - a constellation does
+        /// not light up a strip nobody has claimed.
+        /// </summary>
+        public static bool InSatelliteCoverage(World w, int i)
+        {
+            return w.Territory.OwnerAt(w.Entities.Position[i]) == w.Entities.Team[i];
+        }
+
         static bool HasControlPath(World w, int i, ref LinkState link)
         {
             switch (link.Kind)
@@ -118,8 +164,22 @@ namespace KZ.Sim
                     return w.Tethers.IsConnected(w.Entities.TetherId[i]);
 
                 case LinkKind.Satellite:
-                    // Coverage is everywhere; the scarce thing is a channel.
-                    return true;
+                    // Coverage is not everywhere. A constellation is licensed by
+                    // country, so the link ends at a border - a fixed line drawn
+                    // before any of this started, and emphatically not the front.
+                    //
+                    // This is the constraint that stops satellite being a strictly
+                    // better radio. Everything the rung offers - unlimited range,
+                    // immunity to all but the heaviest jamming - applies only over
+                    // your own ground. The moment a drone crosses out, there is
+                    // nothing to degrade: the link does not weaken with distance,
+                    // it stops.
+                    //
+                    // And it cuts the wrong way on purpose. Push an offensive past
+                    // your own border and your drones are unsupported over ground
+                    // you have taken and hold, because the constellation is not
+                    // watching the war, it is reading a map.
+                    return w.Territory.OwnerAt(w.Entities.Position[i]) == w.Entities.Team[i];
 
                 case LinkKind.Mesh:
                     if (!link.Parent.IsNone && w.Entities.IsAlive(link.Parent)
