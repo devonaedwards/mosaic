@@ -165,6 +165,38 @@ namespace KZ.Tests
                              "fiber samples no jamming at all");
             });
 
+            r.Run("last-mile guidance is what a jammer cannot take away", delegate
+            {
+                // BlackPolicy was declared, read by LinkResolver, and set by not
+                // one of the thirty-five units - so every airframe in the game
+                // aborted, and LastMile and DualLink were unreachable code. Which
+                // also silently contradicted this session's own autonomy work:
+                // seven units were given terminal guidance while still being
+                // configured to orbit and fall out of the sky the moment they lost
+                // their link, which is the exact opposite of what terminal
+                // guidance is for.
+                World w = MakeWorld(801);
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(500, 500));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(600, 500));
+
+                // Designate a point while the link is still good - a human making
+                // the decision in time is precisely what the upgrade buys.
+                w.Entities.Sortie[drone.Index].DesignatedPoint = P(900, 500);
+                w.Entities.Sortie[drone.Index].HasDesignatedPoint = true;
+
+                // Now take the link away for longer than it takes to go black.
+                EntityHandle jammer = w.Spawn(Catalog.IdOf("EW Post"), 2, P(620, 500));
+                for (int i = 0; i < SimConstants.AmberToBlackTicks
+                                  + SimConstants.BlackToLostTicks + 32; i++)
+                    w.Step();
+
+                Assert.True(w.Entities.IsAlive(drone),
+                            "it carries on rather than falling out of the sky");
+                Assert.True(w.Entities.Mover[drone.Index].HasOrder,
+                            "still flying, under its own guidance");
+                Assert.True(w.Entities.IsAlive(jammer), "the jammer is still there");
+            });
+
             r.Run("a drone with no link at all falls out of the sky", delegate
             {
                 World w = MakeWorld(4);

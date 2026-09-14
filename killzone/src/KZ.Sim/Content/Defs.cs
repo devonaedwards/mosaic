@@ -508,6 +508,7 @@ namespace KZ.Sim
                 CostMateriel = 200, BuildTicks = SimConstants.Seconds(8),
                 Hp = M(55), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(22.0),
+                BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true, OneWay = true,
                 WeaponDamage = M(260), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(8), WeaponAcquisitionTicks = 12, IsMeshRepeater = true,
@@ -528,6 +529,7 @@ namespace KZ.Sim
                 CostMateriel = 420, BuildTicks = SimConstants.Seconds(12),
                 Hp = M(70), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(15.0), TurnRateDegreesPerSecond = 140,
+                BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Fiber, LinkRobustness = SimConstants.UnjammableRobustness,
                 SpoolLengthMetres = M(1400), ConsumesCrew = true, OneWay = true,
                 WeaponDamage = M(340), WeaponType = DamageType.Shaped,
@@ -545,6 +547,7 @@ namespace KZ.Sim
                 CostMateriel = 380, BuildTicks = SimConstants.Seconds(14),
                 Hp = M(110), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(19.0),
+                BlackPolicy = BlackPolicy.DualLink,  // reusable and dual-linked: it tries the other link rather than committing
                 Link = LinkKind.Radio, AltLink = LinkKind.Mesh, LinkRobustness = 45,
                 ConsumesCrew = true,
                 WeaponDamage = M(180), WeaponType = DamageType.Shaped,
@@ -563,6 +566,7 @@ namespace KZ.Sim
                 CostMateriel = 300, BuildTicks = SimConstants.Seconds(10),
                 Hp = M(60), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(34.0),
+                BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true, OneWay = true,
                 WeaponDamage = M(0), WeaponType = DamageType.Ram,
                 WeaponRangeMetres = M(12), IsInterceptor = true, InterceptBaseChance = M(0.55), IsMeshRepeater = true,
@@ -580,6 +584,7 @@ namespace KZ.Sim
                 CostMateriel = 900, BuildTicks = SimConstants.Seconds(30),
                 Hp = M(200), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(12.0), TurnRateDegreesPerSecond = 60,
+                BlackPolicy = BlackPolicy.DualLink,  // reusable and dual-linked: it tries the other link rather than committing
                 Link = LinkKind.Radio, AltLink = LinkKind.Mesh, LinkRobustness = 45,
                 ConsumesCrew = true, IsMeshRepeater = true,
                 SensorOptical = M(900),
@@ -636,6 +641,7 @@ namespace KZ.Sim
                 CostMateriel = 550, BuildTicks = SimConstants.Seconds(16),
                 Hp = M(90), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(24.0), TurnRateDegreesPerSecond = 70,
+                BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Mesh, LinkRobustness = 65, ConsumesCrew = true, OneWay = true,
                 WeaponDamage = M(300), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(10),
@@ -658,6 +664,7 @@ namespace KZ.Sim
                 CostMateriel = 700, BuildTicks = SimConstants.Seconds(20),
                 Hp = M(120), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(28.0), TurnRateDegreesPerSecond = 60,
+                BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
                 ConsumesCrew = false, OneWay = true,
                 WeaponDamage = M(420), WeaponType = DamageType.Shaped,
@@ -681,6 +688,7 @@ namespace KZ.Sim
                 CostMateriel = 800, BuildTicks = SimConstants.Seconds(22),
                 Hp = M(210), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(18.0), TurnRateDegreesPerSecond = 35,
+                BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
                 ConsumesCrew = false, OneWay = true,
                 CanChangeAltitude = true,
@@ -706,6 +714,7 @@ namespace KZ.Sim
                 CostMateriel = 1900, BuildTicks = SimConstants.Seconds(34),
                 Hp = M(180), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(55.0), TurnRateDegreesPerSecond = 22,
+                BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
                 ConsumesCrew = false, OneWay = true,
                 WeaponDamage = M(380), WeaponType = DamageType.Shaped,
@@ -761,6 +770,7 @@ namespace KZ.Sim
                 CostMateriel = 620, BuildTicks = SimConstants.Seconds(18),
                 Hp = M(110), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(22.0), TurnRateDegreesPerSecond = 70,
+                BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
                 ConsumesCrew = false, OneWay = true, AutonomyQuality = 55,
                 WeaponDamage = M(320), WeaponType = DamageType.Shaped,

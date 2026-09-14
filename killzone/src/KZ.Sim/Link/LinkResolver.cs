@@ -291,6 +291,19 @@ namespace KZ.Sim
                     // The upgrade that makes a jammer a partial defence rather than
                     // a total one: the drone carries on to the last point it was
                     // told about and finishes the job under its own guidance.
+                    //
+                    // Unless it was never told. A drone jammed before anyone
+                    // designated a point has nothing to carry on to, and the
+                    // honest outcome is the same as having no guidance at all -
+                    // it orbits and comes down. Without this fallback such a drone
+                    // hangs in the air indefinitely, neither flying nor dying,
+                    // because the branch above simply does not fire.
+                    //
+                    // Which is worth a comment rather than a silent else: the
+                    // difference between last-mile guidance and no guidance is
+                    // *a human having made a decision in time*, and a drone that
+                    // was jammed before that decision got made has not earned the
+                    // upgrade it paid for.
                     if (w.Entities.Has(i, ComponentMask.Sortie) && w.Entities.Sortie[i].HasDesignatedPoint
                         && w.Entities.Has(i, ComponentMask.Mover))
                     {
@@ -298,6 +311,19 @@ namespace KZ.Sim
                         w.Entities.Mover[i].OrderPoint = w.Entities.Sortie[i].DesignatedPoint;
                         w.Entities.Mover[i].OrderTarget = EntityHandle.None;
                         w.Entities.Mover[i].SpeedMultiplier = Fix.One;
+                        ReleaseCrew(w, i);
+                        break;
+                    }
+
+                    if (w.Entities.Has(i, ComponentMask.Mover))
+                    {
+                        w.Entities.Mover[i].HasOrder = false;
+                        w.Entities.Mover[i].SpeedMultiplier = Fix.FromDoubleContentOnly(0.30);
+                    }
+                    if (link.BlackTicks >= SimConstants.BlackToLostTicks)
+                    {
+                        w.Events.Push(SimEventKind.DroneLostToLinkLoss, w.Tick, w.Entities.HandleAt(i));
+                        w.Kill(w.Entities.HandleAt(i), EntityHandle.None);
                     }
                     ReleaseCrew(w, i);
                     break;
