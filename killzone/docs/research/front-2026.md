@@ -28,6 +28,16 @@ load-bearing decision on a specific number should open the source and confirm
 it.** Figures not corroborated across two independent results are marked Low
 confidence for that reason alone.
 
+**Second research pass, 14 September 2026.** A later pass was run specifically
+against the four gaps this document had admitted in section 14. It added:
+**section 6A** (autonomy and terminal guidance, and interceptor effectiveness),
+an **artillery ammunition expenditure** subsection and a rewritten **equipment
+losses** subsection in section 5, and a **position manning and rotation**
+subsection in section 10. Section 14 now records which gaps closed, which
+narrowed, and which are still open. The same sourcing caveat applies to all of
+it, and more so: the second pass was **search-snippet only**, with no page
+retrieval at all.
+
 ---
 
 ## 1. Summary
@@ -253,20 +263,128 @@ IISS, is the safest single number. Artillery retains **20-35%** and still
 dominates the *wounded* count. **Do not use 96%**: it is a belligerent's
 video-derived tally and will read as naive to an informed player.
 
-### Equipment losses [Low confidence - genuine gap]
+### Artillery ammunition expenditure in 2026 [Mixed, Medium - added on the second pass]
 
-No well-sourced 2026 breakdown of vehicle losses by cause was obtainable. The
-qualitative findings:
+Gap 4 of the original document, flagged because it arbitrates the argument
+above. Second-pass findings. All are snippet-derived and none comes from a
+source that publishes its method.
 
-- Mass armour assaults are "usually destroyed by a combination of mines,
-  artillery and drones" against fortified positions. [Reported, Medium] Note the
-  *combination* - mines remain a major vehicle killer and are routinely
-  under-credited in drone-centric commentary.
-- A large Russian mechanised assault in July 2026 failed; the column included
-  motorcycle escorts and commercial trucks. [Reported, Medium]
+- **Russia: roughly 10,000-15,000 rounds a day** in 2026, described as having
+  fallen from earlier peaks and stabilised in that band. [Reported, Medium - two
+  independent framings agree on the band.] For scale, Russian *production* in
+  2025 is put at about **7 million rounds** of artillery, mortar, tank and rocket
+  ammunition, roughly **19,000/day**. Russia is therefore firing **below** its
+  production rate and rebuilding stock - Estonian intelligence is cited for a
+  17-fold rise in shell output and an explicit rebuild for future wars.
+- **Ukraine: roughly 2,000 rounds a day** in one 2026 framing, against a stated
+  national requirement of about **1.2 million rounds a year** (~3,300/day).
+  [Reported, **Low-Medium** - the 2,000/day figure appears in a single snippet
+  and its exact month is not stated.] RUSI's standing assessment that **Ukraine
+  fires about five times less artillery ammunition than Russia** is consistent
+  with 2,000 against 10,000-15,000.
+- Older but widely repeated context: Ukrainian 155 mm expenditure has ranged
+  **2,000-7,000 rounds/day** across phases of the war, with ~5,000/day quoted for
+  good periods. [Reported, Low - these are 2024-25 figures being recycled.]
+- **Russia's external supply is thinning.** North Korea is assessed to have sent
+  **6.5 million+ shells since 2023**, with volume falling **by more than half**
+  during 2025 as its own stocks ran down, and with quality complaints - duds,
+  charges missing the de-coppering wire, and burst Russian barrels blamed on
+  them. [Reported, Medium]
+- **Cost.** A 155 mm round is quoted at **$3,000-5,000**; a one-way attack drone
+  at two to three times that. **Per shot, artillery is the cheap option** - the
+  reverse of the popular framing. What makes artillery expensive in 2026 is not
+  the shell; it is that firing reveals the gun.
 
-**[Gap.]** If equipment-loss attribution becomes load-bearing for balance it
-needs its own pass against visual-confirmation data.
+**[Inference, Medium-High]** The expenditure data does not support "drones
+replaced artillery." It supports something more specific: **artillery volume is
+flat to slightly down while drone volume exploded**, so the drone *share* of
+effects rose without artillery doing much less work. The binding constraint on
+artillery in 2026 is survivability and barrel life, not shells.
+
+**For the game:** shells should be cheap and available; **the tube and the crew
+are the scarce things.** Every fire mission should raise a counter-battery
+detection score that ends in an FPV rather than a counter-battery shell. A
+sustained-fire asymmetry of about **5:1** between a Russia-analogue and a
+Ukraine-analogue is defensible if a scenario needs one.
+
+---
+
+### Equipment losses [Medium - partially closed on the second pass]
+
+The original document could not obtain a 2026 breakdown of vehicle losses by
+cause. A second pass got closer but **still did not find a weapon-by-weapon
+attribution against a visual-confirmation corpus.** That specific thing does not
+appear to exist in public. What does exist:
+
+**Volume, from visual confirmation.** By late May 2026 Oryx had visually
+confirmed **4,390 destroyed Russian tanks and 6,429 IFVs** since February 2022,
+about **2.8 tanks a day** averaged across the war. Oryx's own caveat is that
+confirmed figures represent roughly **50-70%** of actual losses. [Reported,
+Medium - the 2026 running total is single-snippet.]
+
+**The loss rate collapsed, and not because drones got worse.** Russian vehicle
+losses ran at roughly **16/day in 2024**, **10/day in 2023**, and **~8/day
+sustained across the seven months to end-2025** - described as the lowest
+sustained daily rate in 46 months. The stated reason is that **the vehicles are
+being used far less**, not that they survive better. Russian storage bases are
+assessed at **46% of tanks, 42% of IFVs and 49% of APCs** remaining against
+February 2022, much of it in poor condition. [Reported, Medium]
+
+**[Inference, High]** This is the single most important thing in the subsection
+and it is easy to misread. **Falling vehicle losses are evidence of the drone
+threat, not evidence against it.** A game that rewards the player for low vehicle
+losses while they keep their armour parked is modelling 2026 correctly.
+
+**Attribution, such as it is.** The available figures disagree in an instructive
+way:
+
+- **FPV drones account for roughly one third of Russian armoured vehicle losses
+  and roughly half of Russian artillery-system losses** - the artillery figure
+  attached to a sample of 646 systems. [**Claimed**/Reported, Medium -
+  Ukrainian-sourced, carried by Defense Express.] The asymmetry is the useful
+  part: **artillery pieces are about 1.5x more drone-attributable than armoured
+  vehicles are.** Guns sit still, radiate heat, and are found by a
+  counter-battery loop that now ends in an FPV.
+- One open-source framing puts **drone-dropped and FPV munitions at 20-35% of
+  tank losses**, with **ATGMs still the largest single kill category** and
+  artillery and mines making up most of the remainder. [**Low confidence** - the
+  provenance of this breakdown could not be established from snippets, and it is
+  the most model-relevant claim here. Treat it as a hypothesis worth testing, not
+  a finding.]
+- Sector-level claims run much higher - "up to 80-90% of enemy equipment
+  destroyed" on the Lyman front - but that figure is **drones *and* artillery
+  combined**. [Claimed, Low. The high numbers are nearly always
+  drones-plus-something.]
+- Mass armour assaults against fortified positions are still described as
+  "usually destroyed by a combination of mines, artillery and drones."
+  [Reported, Medium] The *combination* is the point: mines remain a major vehicle
+  killer and are routinely under-credited in drone-centric commentary. A large
+  Russian mechanised assault in July 2026 failed; the column included motorcycle
+  escorts and commercial trucks. [Reported, Medium]
+
+**What was searched for and not found:** any 2026 mine-attribution share for
+vehicle losses, and any Western-analyst weapon-by-weapon decomposition of the
+Oryx corpus. Mines are described qualitatively as the most cost-effective
+defensive technology of the war, and nobody publishes a share.
+
+**Recommended working figures for balance** [Inference, Medium - a defensible
+guess, clearly labelled as one]:
+
+| Cause | Share of *armoured vehicle* kills | Note |
+|---|---|---|
+| FPV and drone-dropped munitions | **30-35%** | The only category still growing |
+| Mines | **20-25%** | Kills on the approach, before contact; under-reported |
+| Artillery | **20-25%** | Often finishing a vehicle a mine already stopped |
+| ATGM and direct fire | **15-25%** | Contested; one source calls it the largest single category |
+
+**These do not reconcile with "drones cause 70-80% of losses" and they are not
+supposed to: that figure is about people, not vehicles.** Keep two separate
+attribution tables in the model. Personnel losses are drone-dominated; vehicle
+losses are not. A game that uses one number for both will read as naive to
+anyone who has looked at the loss photography.
+
+**[Gap, narrowed.]** A true weapon-by-weapon attribution against the
+visual-confirmation corpus still appears not to exist in public.
 
 ---
 
@@ -317,6 +435,122 @@ producing **empty brigades**.
 establishment and its actual strength are three different things.** A player who
 builds a brigade should get a brigade headquarters and a fraction of a brigade's
 infantry.
+
+---
+
+## 6A. Autonomy: which tier actually became routine in 2026
+
+*Added on the second research pass. This was gap 3 of the original document and
+it is the most load-bearing of the four, because the distinction it settles is a
+design decision rather than a detail.*
+
+**The short answer: tier one became routine during 2026. Tier two did not.**
+
+### Tier one - last-mile machine-vision terminal guidance: ROUTINE [Reported, Medium-High]
+
+- Ukrainian **drones produced from around March 2026 onward already ship with
+  terminal guidance fitted**, and older stock is being retrofitted. [Reported,
+  Medium - the claim recurs across outlets, but the specific "March 2026" date
+  rests on a single snippet.]
+- The standard implementation takes over for the **final 400-500 metres** of
+  flight. One widely referenced module (TFL-1) is described in exactly those
+  terms. The operator still flies the drone in, and still **chooses the target**.
+  The machine only finishes the run.
+- It is cheap: a **~$100 AI add-on** giving "last-metre accuracy in heavy
+  jamming" is the framing used in late-2025 reporting. [Reported, Medium]
+- Terminal guidance is a stated **priority area for 2026** for Ukraine's Brave1
+  cluster, with dozens of firms working on it, and officials at the General
+  Staff, MoD and Ministry of Digital Transformation pushing to scale it.
+
+**Effect size - handle with care.** Two different claims circulate:
+
+| Claim | Manual | With terminal guidance | Source quality |
+|---|---|---|---|
+| A | 10-20% | 70-80% | Single snippet, no method [Low] |
+| B | ~40% | ~80% | Attributed to makers [Claimed, Low-Medium] |
+
+Independent framing puts unaided **FPV hit rates at 30-60%** depending on
+operator skill and jamming, and Ukrainian operator reporting from 2023-24
+recorded a fall from **40-60% in clean conditions to 20-30% or lower in heavily
+jammed sectors**. Claim A's "10-20% manual" is therefore probably describing a
+*jammed* baseline rather than an average one, which is how both claims can be
+true at once.
+
+**Recommended working figures** [Inference, Medium]: unaided FPV hit rate
+**~40% clean / ~20% heavily jammed**; with last-mile terminal guidance
+**~65-75%** - and, the important part, **largely insensitive to jamming**,
+because the last 400 m no longer uses the control link.
+
+### Tier two - autonomous target selection: NOT ROUTINE [Reported, Medium-High]
+
+- Ukraine's best-known EW and drone commentator (Serhii "Flash" Beskrestnov)
+  described autonomous target selection and guidance for strike UAVs in **June
+  2026** as still in the **initial stages of combat testing**, on both sides.
+- Officially Ukraine **does not field** systems that select and engage without a
+  human. Ukraine participates in UN discussions on lethal autonomous weapons and
+  has supported human-in-the-loop language; a Ukrainian commander is quoted
+  refusing to leave target decisions to AI as insufficiently responsible.
+- There is **one contested claim** of a fully autonomous kill: a group of ten
+  drones said to have cut their communications link, searched with onboard AI and
+  struck with no human in the final decision. It originates with a single
+  industry figure (Kokhanovskyy) and was amplified widely in August 2026.
+  [**Claimed**, Low.]
+- A **February 2026** state-announced trial demonstrated **one operator
+  controlling dozens of drones** in a self-planning autonomous network, across
+  seven manufacturer teams. That is the realistic shape of tier two: not "no
+  human", but **one human per swarm instead of one per airframe**. [Announced,
+  Medium]
+- Vendors are productising it - a "universal autonomous targeting system" is
+  described as scaling into production - and at least one company sets out three
+  explicit autonomy levels: manual, last-mile, full.
+
+### What this means for the model [Inference, High]
+
+The game's two-tier autonomy model is the right shape, but **2026 sits almost
+entirely in tier one, and tier one keeps the crew.**
+
+1. **Last-mile guidance should be a cheap, near-universal upgrade** - available
+   to nearly everything by the campaign's mid-point - that raises accuracy and
+   **removes the jamming penalty on the terminal phase only**. It must not reduce
+   crew cost. Its correct price is a rounding error on the airframe.
+2. **Autonomous target selection should be late, expensive, rare and
+   unreliable**: a 2027-28 unlock, not a 2026 baseline. Charge it an error rate
+   and a political or ROE cost, because that is exactly how the real argument is
+   being framed.
+3. **Tier one does not free the crew; tier two multiplies it.** If the game wants
+   a second-tier mechanic, the honest one is not "a drone with no operator" but
+   **one operator commanding many airframes.** The February 2026 demonstration is
+   the template, and it is a far better game mechanic than a crewless drone.
+4. **Fibre-optic control and terminal guidance solve the same problem by
+   different means, and they stack.** Fibre defeats jamming on the way in;
+   machine vision defeats it at the end. A fibre quad with terminal guidance is
+   the 2026 high-end tactical strike unit, and the game's RF-0 fibre quad should
+   be able to take the guidance upgrade.
+
+### Interceptor drones - the same technology, pointed up [Reported, Medium]
+
+This also closes most of gap 5. Interceptor drones use terminal guidance, and
+their published effectiveness figures are among the better-sourced in the corpus.
+
+- Ukraine claimed **5,833 of 6,463** Shahed-type and other drones intercepted
+  over one tallied period - about **90%**. [Claimed, Medium]
+- Independent monitoring of Shahed-136 deployment put the **attacker's** hit rate
+  at **8.07% of launches in June 2026 against 6.65% in May**: the defence leaks
+  roughly **7-8%**, and the leak rate was *rising*. [Reported, Medium-High - the
+  most defensible interceptor-related number available, because it is measured
+  from the attacker's side rather than claimed by the defender.]
+- Interceptor drones specifically accounted for **over 40% of all Shaheds
+  destroyed** in one large raid on 24 May 2026, and their share of intercepts
+  **doubled over four months** to May 2026 while Shahed launches rose about 35%
+  a month.
+- **95% hit-rate** claims exist for specific interceptors, including Merops.
+  [**Claimed**, Low - vendor and operator figures.]
+
+**Working figures** [Inference, Medium]: model layered defence against slow
+one-way attack drones at **~90-93% total attrition**, of which interceptor drones
+supply roughly **40% of the kills and rising**; **leak-through 7-10%**, and
+worsening as raid size grows. Do not use 95% for a single interceptor - it is a
+sales figure.
 
 ---
 
@@ -486,6 +720,76 @@ if it can be avoided. **Robot attrition should be a running cost, not an event.*
   **over 1.5 million** cumulative. [Mixed, Medium - wide error bars, but they
   agree on order of magnitude.]
 
+### Position manning, rotation and the walk in [Reported, Medium-High - added on the second pass]
+
+Gap 2 of the original document. Closed well enough to design against.
+
+**How many people hold a position.** The unit of front-line infantry in 2026 is
+**two to four soldiers** - the same number that conducts an infiltration.
+Ukrainian forces are described as operating "in small teams of between two and
+four soldiers," and the assault groups in section 7 are the same size. No 2026
+reporting describes a continuously manned trench line in the First World War
+sense. What exists is **scattered two-to-four-man positions with gaps between
+them**, which is precisely why infiltration works and why the front is described
+as a multi-kilometre grey zone rather than a line.
+
+**How long they stay.** This is what changed in 2026, and it changed by order:
+
+- **30 April 2026: Syrskyi signed an order making rotation mandatory.**
+  Commanders must create conditions for soldiers to remain in position for **up
+  to two months**, with rotation then completed **within the following month**.
+  The order also mandates medical examination, rest after combat tasks, and
+  timely resupply of ammunition and food, with stated consequences for
+  non-compliance. [Reported, **High** - carried by Ukrainska Pravda, Ukrinform,
+  Kyiv Independent and Defense News within a day of each other.]
+- **The order exists because the reality was much worse.** It came about a week
+  after photographs of emaciated soldiers on combat duty caused a national
+  outcry. Reporting at the time described troops left in place **more than 100
+  days at a time**; there are accounts of positions held for the better part of a
+  year and, in extreme cases, longer. Ukraine's 121st Territorial Brigade
+  reported **four months without rotation**, short of food and water. [Reported,
+  Medium-High]
+- A shorter cycle exists for a different job: search-and-strike groups working
+  the kill zone are described as rotating on roughly **a week**.
+- **A ground robot with a mounted machine gun held a position for almost six
+  weeks** in late 2025, claimed by Ukrainian officials as a first. [Claimed,
+  Medium] It is the clearest one-line statement of why UGVs exist.
+
+**How far they walk in.** Infantry are reported **walking more than 15 km** to
+and from front-line positions - dispersed, at night, under threat from drones,
+artillery and remotely scattered mines. Soldiers describe **getting to and from
+the position as the most dangerous part of the deployment**; one account
+describes taking **five days to get out**. Casualties are taken during rotation
+itself, which is the reason rotation stopped happening and had to be ordered.
+[Reported, Medium-High]
+
+**On the Russian side** the comparable figure that circulates is that newly
+committed assault troops survive **20-35 minutes** on the front line. [**Claimed**,
+**Low** - it originates with Russian pro-war Telegram channels, is repeated
+uncritically by a long tail of outlets, and should not be used as a number. It is
+useful only as an indicator of how the Russian side describes its own assault
+economy.]
+
+**[Inference, High] For the game this is a crew and position mechanic, not
+flavour:**
+
+1. **A position is two to four figures, not a squad.** Any garrison above about
+   six should be a deliberate, expensive, high-signature choice that the sensor
+   model punishes.
+2. **Occupying a position is a one-way trip that costs time and casualties at
+   both ends.** Insertion and extraction should each be a modelled, risky
+   movement of **10-15 km real**, on foot, preferably at night. At the game's
+   12:1 compression that is roughly **1,000-1,250 map metres of exposed
+   approach** - a defensible number to build the mechanic on.
+3. **Tour length should be weeks, with a hard penalty for overstaying.** A
+   two-month cap the player often cannot meet is the authentic mechanic:
+   effectiveness, medical state and supply all decay, and the act of rotating
+   itself risks the unit. The player should feel the same trap the order was
+   written to break.
+4. **Robots substitute for presence, not for fighting.** A UGV that can sit in a
+   position for six weeks without food, water or relief is solving the *manning*
+   problem. Price it accordingly: cheap to hold ground with, poor at taking it.
+
 ### What this constrains [Inference, High confidence]
 
 Both armies generate fires far more easily than they generate men who will cross
@@ -573,6 +877,19 @@ it as mobile, protected, hard-to-locate indirect fire should be rewarded.
 battlefield, and both sides know it. A game in which the player's drone
 operators can be hunted on the ground by three men who walked past the front line
 captures 2026 better than any statistic in this document.
+
+**An eighth, added on the second pass:** *the machine flies the last four hundred
+metres; a person still picks the target.* Terminal guidance became ordinary
+equipment during 2026. Autonomous target selection did not - it is still in
+combat testing and officially not fielded. A game that jumps straight to crewless
+autonomous drones is modelling 2029, and the 2026 version is the better game
+anyway, because the crew is still there to be hunted.
+
+**A ninth, if the balance pass needs it:** *a position is two to four people,
+they walk fifteen kilometres to reach it, and getting them out is more dangerous
+than being there.* Ukraine had to issue a formal order in April 2026 capping
+tours at two months because troops were being left for more than a hundred days.
+Rotation as a costly, risky, mandatory action is a mechanic nobody else models.
 
 ---
 
@@ -707,23 +1024,134 @@ on them.
 - NPR, same attack, 16 Aug 2026 - https://www.npr.org/2026/08/16/nx-s1-5933006/ukraine-aerial-attack-6-dead-russia
 - Wikipedia, 2026 Starobilsk strike - https://en.wikipedia.org/wiki/2026_Starobilsk_strike
 
+**Second-pass sources (September 2026): equipment attribution, artillery expenditure, manning and rotation, autonomy**
+
+*Returned by search on the second pass. Page retrieval was still blocked, so
+these are the locations of the reporting summarised above, not text read in
+full.*
+
+*Autonomy and terminal guidance*
+- Kyiv Post, "Fire and Forget": FPV drones with autonomous terminal guidance - https://www.kyivpost.com/post/60152
+- GlobalSecurity, Ukraine UAV autonomous guidance - https://www.globalsecurity.org/military/world/ukraine/uav-autonomy.htm
+- Defense Post, $100 AI upgrade, last-metre accuracy in heavy jamming, 19 Nov 2025 - https://thedefensepost.com/2025/11/19/ai-upgrade-ukrainian-drones/
+- Defense Express, how Ukrainian FPVs with automated terminal guidance work - https://en.defence-ua.com/weapon_and_tech/how_ukrainian_fpv_drones_with_automated_terminal_guidance_work-14687.html
+- The Defender, terminal guidance on interceptors, May 2026 - https://thedefender.media/en/2026/05/terminal-guidance-interceptor-drones/
+- Ukrainska Pravda, Beskrestnov on autonomous target selection still in combat testing, 24 Jun 2026 - https://www.pravda.com.ua/eng/news/2026/06/24/8040873/
+- Small Wars Journal, "Fully autonomous drones reportedly kill in Ukraine", 17 Aug 2026 - https://smallwarsjournal.com/2026/08/17/fully-autonomous-drones-reportedly-kill-in-ukraine/
+- EUobserver, first fully autonomous drone kill claim - https://euobserver.com/233797/
+- Militarnyi, Trident universal autonomous targeting system - https://militarnyi.com/en/news/ukrainian-trident-develops-universal-autonomous-targeting-system-for-drones/
+- CSIS, Ukraine's vision and capabilities for AI-enabled autonomous warfare - https://www.csis.org/analysis/ukraines-future-vision-and-current-capabilities-waging-ai-enabled-autonomous-warfare
+- Forbes (Craig Smith), fully autonomous drone warfare coming to Ukraine and Iran, 26 Mar 2026 - https://www.forbes.com/sites/craigsmith/2026/03/26/fully-autonomous-drone-warfare-is-coming-to-ukraineand-iran/
+- VGI-9, "From quantity to algorithms: how FPV warfare is changing in 2026" - https://vgi.com.ua/en/from-quantity-to-algorithms-how-fpv-warfare-is-changing-in-2026/
+
+*Interceptor effectiveness*
+- Institute for Science and International Security, monthly analysis of Shahed-136 deployment, Aug 2025 - Jun 2026 - https://isis-online.org/isis-reports/monthly-analysis-of-russian-shahed-136-deployment-against-ukraine
+- Militarnyi, interceptor drones downed over 40% of Shaheds on 24 May - https://militarnyi.com/en/news/interceptor-drones-downed-over-40-of-shahed-uavs-during-massive-may-24-attack/
+- United24, interceptor drone kill rate doubles as Shahed attacks rise 35% - https://united24media.com/world/ukraine-interceptor-drones-double-kill-rate-as-shahed-attacks-rise-35-19051
+- UK Defence Journal, Ukraine claims over 90% interception rate - https://ukdefencejournal.org.uk/ukraine-claims-over-90-percent-drone-interception-rate/
+
+*Equipment loss attribution*
+- Defense Express, FPVs destroy half of Russian artillery and a third of armoured vehicles - https://en.defence-ua.com/news/ukrainian_fpv_drones_at_this_point_destroy_half_of_artillery_and_one_third_of_armored_vehicles_of_russian_army-8417.html
+- iStories, "The Russian army is losing way less equipment now. What's the reason?" - https://istories.media/en/stories/2025/09/09/less-equipment-losses/
+- Euromaidan Press, Russian demechanisation, 6 Jan 2026 - https://euromaidanpress.com/2026/01/06/russian-demechanization/
+- Newsweek, "From Ukraine to Israel, the death of the tank has been greatly exaggerated" - https://www.newsweek.com/tanks-obsolete-drones-ukraine-lebanon-abrams-12020835
+- National Security Journal, Russian tank losses - https://nationalsecurityjournal.org/russia-has-lost-thousands-of-tanks-in-the-ukraine-war-maybe-more-than-10000/
+- Forbes (Vikram Mittal), drones have not replaced artillery but make it harder to fire, 2 Jun 2026 - https://www.forbes.com/sites/vikrammittal/2026/06/02/drones-have-not-replaced-artillery-but-they-make-it-harder-to-fire/
+
+*Artillery ammunition expenditure*
+- Modern War Institute, measuring Russia's munitions throughput - https://mwi.westpoint.edu/the-industrial-window-of-war-how-to-measure-russias-munitions-throughput-and-how-to-disrupt-it/
+- Defense Express / RUSI, Ukraine uses five times less artillery ammunition than Russia - https://en.defence-ua.com/industries/ukraine_uses_five_times_less_artillery_ammunition_than_russia_rusi-9125.html
+- bne IntelliNews, North Korea halves shell supply to Russia - https://www.intellinews.com/north-korea-halves-shell-supply-to-russia-as-stockpiles-run-low-says-ukraine-411593/
+- UAWire, Estonian intelligence on 17-fold rise in Russian shell production to 7 million a year - https://www.uawire.org/estonian-intelligence-says-russia-s-shell-production-rose-17-fold-to-7-million-a-year-as-the-kremlin-rebuilds-reserves-for-future-wars
+- National Interest, "Have drones replaced artillery in the Ukraine war?", Feb 2026 - https://nationalinterest.org/blog/buzz/have-drones-replaced-artillery-in-ukraine-war-sa-022026
+- Lawfare, Ukraine's artillery shell shortfall - https://www.lawfaremedia.org/article/ukraine-s-artillery-shell-shortfall
+- Ukraine MoD via GlobalSecurity, largest 155 mm procurement completed, May 2026 - https://www.globalsecurity.org/wmd/library/news/ukraine/2026/05/ukraine-260525-ukraine-mod01.htm
+- Rheinmetall, 155 mm order for Ukraine, 30 Jun 2026 - https://www.rheinmetall.com/en/media/news-watch/news/2026/06/2026-06-30-major-order-rheinmetall-to-supply-155mm-artillery-ammunition-to-ukraine
+
+*Position manning, rotation and movement*
+- Kyiv Independent, Syrskyi orders mandatory rotation after 2 months - https://kyivindependent.com/syrskyi-orders-soldiers-mandatory-rotation-from-front-line-positions-after-2-months/
+- Ukrainska Pravda, CinC signs order on mandatory rotation, 30 Apr 2026 - https://www.pravda.com.ua/eng/news/2026/04/30/8032469/
+- Ukrinform, CinC Syrskyi signs rotation order - https://www.ukrinform.net/rubric-ato/4118108-cinc-syrskyi-signs-order-on-mandatory-rotation-of-frontline-troops.html
+- Defense News, Ukraine's army chief shakes up troop rotations after outcry, 30 Apr 2026 - https://www.defensenews.com/global/europe/2026/04/30/ukraines-army-chief-shakes-up-troop-rotations-after-outcry/
+- Kyiv Independent, a day in the life of Ukrainian infantry on the zero line near Toretsk - https://kyivindependent.com/eye-of-the-storm-a-day-in-the-life-of-ukrainian-infantry-on-the-zero-line-near-toretsk/
+- European Security & Defence, infantry tactical insights from Ukraine, Mar 2026 - https://euro-sd.com/2026/03/articles/armed-forces/49802/infantry-tactical-insights-from-ukraine/
+- Business Insider via Yahoo, Ukrainian troops walking more and spreading out to avoid drones - https://www.yahoo.com/news/world/articles/ukrainian-troops-walking-more-spreading-113701512.html
+- Business Insider via Yahoo, troops take casualties moving in and out of their own trenches - https://www.yahoo.com/news/world/articles/ukraines-front-lines-dangerous-troops-113001782.html
+- Ukrinform, no clear front line, replaced by a multi-kilometre grey zone - https://www.ukrinform.net/rubric-ato/4105235-no-clear-front-linereplaced-by-a-multikilometer-gray-zone.html
+- Atlantic Council, Ukraine's robot army will be crucial in 2026 but drones can't replace infantry - https://www.atlanticcouncil.org/blogs/ukrainealert/ukraines-robot-army-will-be-crucial-in-2026-but-drones-cant-replace-infantry/
+- CEPA, frontline drones doing the infantry's heavy lifting - https://cepa.org/article/frontline-drones-doing-the-infantrys-heavy-lifting/
+- Kyiv Post, Russian troops survive "20-35" minutes on the front line (Telegram-sourced; low confidence) - https://www.kyivpost.com/post/79204
+- Euromaidan Press, 254 soldiers per square kilometre, 15 Apr 2026 - https://euromaidanpress.com/2026/04/15/254-soldiers-per-square-kilometer-price-russia-is-paying-to-move-front-line/
+
 ---
 
 ## 14. Known gaps in this research
 
-Flagged so nobody mistakes absence for absence of evidence.
+Flagged so nobody mistakes absence for absence of evidence. **Updated on the
+second research pass, September 2026.** The original list of six is reproduced
+with its current status.
 
-1. **Equipment loss attribution by weapon type for 2026.** Not obtained. Needs a
-   dedicated pass against visual-confirmation datasets.
-2. **Infantry position manning and rotation lengths.** How many men hold a
-   position, for how long, and how far they walk in. Searched but not reached
-   before the search budget was exhausted.
-3. **Autonomy and terminal guidance.** Whether machine-vision terminal guidance
-   became routine in 2026 is a significant question for the 2027-28 spec and was
-   not answered here.
-4. **Artillery ammunition expenditure rates for 2026.** Directly relevant to the
-   drone-versus-artillery dispute in section 5 and not obtained.
-5. **Interceptor drone effectiveness rates.** Interceptors are clearly fielded
-   and clearly mattering; no hit-rate figures were obtained.
-6. **Verification of every figure against source text**, for the network reason
-   given in section 0.
+### Closed on the second pass
+
+**3. Autonomy and terminal guidance. CLOSED - see section 6A.** Last-mile
+machine-vision terminal guidance **did** become routine during 2026: production
+drones from roughly March 2026 ship with it, retrofits are under way, and the
+add-on costs on the order of $100. Autonomous **target selection** did **not**
+become routine - as of June 2026 it was still in initial combat testing, is
+officially not fielded, and the one claimed fully autonomous kill rests on a
+single industry source. The game's two autonomy tiers are the right shape, but
+2026 is a tier-one world and tier one keeps the crew.
+
+**2. Infantry position manning and rotation lengths. CLOSED - see section 10.**
+Positions are held by **two to four people**. Syrskyi's order of **30 April
+2026** caps tours at **two months** with rotation inside the following month,
+issued because troops were being left **100+ days** and in some cases the better
+part of a year. Infantry walk **15 km or more** to and from positions, and
+movement in and out is described as the most dangerous part of the deployment.
+
+**5. Interceptor drone effectiveness. MOSTLY CLOSED - see section 6A.** The
+best-sourced figure is from the attacker's side: Shahed hit rate **8.07% of
+launches in June 2026** against **6.65% in May**, i.e. **7-8% leak-through and
+rising**. Interceptor drones supplied **over 40%** of Shahed kills in one large
+May 2026 raid and their share doubled over four months. Vendor 95% claims should
+not be used.
+
+### Partially closed
+
+**1. Equipment loss attribution by weapon type. NARROWED, NOT CLOSED - see
+section 5.** Found: Oryx-confirmed totals (4,390 tanks, 6,429 IFVs by late May
+2026, ~2.8/day), the collapse in Russian daily vehicle losses (16/day 2024 to
+~8/day through 2025) and its cause (vehicles used less; storage at 42-49% of
+pre-war), and a Ukrainian-sourced split of **one third of armoured vehicles and
+one half of artillery systems to FPV**. **Still missing:** any mine-attribution
+share, and any independent weapon-by-weapon decomposition of the
+visual-confirmation corpus. That specific analysis does not appear to exist in
+public. The working table in section 5 is an explicit inference.
+
+**4. Artillery ammunition expenditure for 2026. PARTIALLY CLOSED - see section
+5.** Found: Russia **10,000-15,000 rounds/day**, Russian production ~**7m
+rounds/yr** (~19,000/day), Ukraine **~2,000/day** against a **1.2m rounds/yr**
+requirement, RUSI's standing **5:1** ratio, and the halving of North Korean
+supply. **Weak points:** the Ukrainian daily figure is single-snippet and
+undated; several widely repeated ranges are 2024-25 numbers being recycled as
+current; and nobody publishes rounds-per-tube or barrel-life data, which is what
+would actually settle the drone-versus-artillery argument.
+
+### Still open
+
+**6. Verification of every figure against source text.** Unchanged, and now more
+important rather than less: the second pass added more figures, and every one of
+them is snippet-derived for the network reason given in section 0.
+
+**7. Rounds per tube, barrel life and counter-battery survival times.** The
+single most useful missing artillery number. Searched for; not found.
+
+**8. Mine attribution for vehicle losses.** Qualitatively described as decisive,
+never quantified in anything the searches returned.
+
+**9. Russian rotation practice.** The Ukrainian rotation picture is now well
+sourced. The Russian equivalent is not: what circulates is a Telegram-origin
+"20-35 minutes of survival" claim that should not be used as a number.
+
+**10. What terminal guidance does to *interceptor* hit rates specifically**, as
+opposed to strike FPVs. The two are conflated in most reporting.

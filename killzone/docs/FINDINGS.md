@@ -666,3 +666,65 @@ strike a reconnaissance-supply problem as much as a flying one, and it is the
 natural place for the two-tier autonomy split in item 23 to land: crossing the
 geofence is a forced demotion from last-mile guidance to autonomous selection,
 mid-sortie.
+
+## 27. Robots are not safer. They are cheaper to lose.
+
+From the re-run of the logistics research, which went from nine searches to
+sixty-six and overturned the thing the whole logistics design was resting on.
+
+The assumption - mine, never stated plainly enough to be checked - was that
+ground robots took over the last kilometres because they survive better than a
+vehicle with a person in it. The numbers say the opposite:
+
+| | loss per run |
+|---|---|
+| Pickup or SUV on a logistics run | ~2-3% (derived) |
+| Ground robot | 10-33% |
+
+A robot is **three to ten times more likely to die on a given trip**. The reason
+to send one is not that it lives; it is that when it dies, nobody was aboard, and
+the thing that was lost cost eight to twenty thousand rather than a crew.
+
+That is a completely different mechanic from the one I would have built. Robots
+are not a survivability upgrade to be unlocked, they are a currency conversion:
+**materiel spent instead of people**, at a poor exchange rate that is worth
+taking anyway. It also explains a number that looked wrong - one Ukrainian
+brigade losing two to five robots a day is not a system failing, it is the system
+working as intended.
+
+### Three corrections underneath it
+
+**Signature drives attrition, and it is now sourced.** Robot survival is
+collapsing - a named commander reports the same units going from twelve to
+fifteen missions each, to eight or nine, to **three or four now**. Against that,
+one purpose-built machine engineered to be near-silent and low-heat averages
+**fifty-seven**. That is a fifteen-to-one survival difference attributed
+directly to signature, in the same war, in the same year. The game's five-channel
+signature model has been carrying air units only; this says it belongs on
+anything that moves.
+
+**The position-holding estimate was wrong in the same direction twice.** The old
+figures - three to seven days before degradation, two to three weeks before
+untenable - were labelled designer estimates and were far too generous. One
+brigade went **up to seventeen days without food**, with soldiers stating they
+fainted and could not defend their positions, and two commanders were sacked over
+it. Positions become combat-ineffective at seven to seventeen days and untenable
+in *months*, not weeks. Being cut off is much slower and much grimmer than the
+game was going to model.
+
+**Theatre demand and last-mile delivery differ by a hundred to one.** The
+deep-strike research gives about 200 kg per soldier per day; a forward position
+actually receives about **nine kilograms a day** - chocolate bars, oatmeal, a
+bottle of water. Those are not the same quantity measured twice, they are two
+different flows, and a game with one supply number would be modelling neither.
+
+### The lesson, again
+
+This is the same shape as items 15, 25 and 26. The logistics document was the
+thinnest in the corpus - nine searches - and nothing about reading it revealed
+that. It was fluent, well-structured, and wrong in the specific way that a
+document reasoned rather than researched is wrong: confident exactly where the
+evidence was absent. The tell was not in the text, it was in the search count.
+
+Worth carrying forward: **ask what a document cost to produce before trusting
+what it says.**
