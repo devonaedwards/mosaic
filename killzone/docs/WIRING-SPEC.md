@@ -215,3 +215,27 @@ what the research said and what the code was doing, and an explicit note of any
 
 Findings get amended, never quietly deleted. The record of having been wrong is
 the most useful thing in this repository.
+
+---
+
+## Process note: do not `git add -A` while agents are working
+
+Added after it went wrong. The track-hold work (task 1.1) was complete and
+uncommitted in the working tree when I ran `git add -A` to commit an unrelated
+research document. It swept the agent's code and both its tests into a commit
+about ground-force research, under a message that says nothing about detection.
+
+The code is intact and the tests pass, so nothing was lost — but the history now
+misattributes a significant simulation change, and history is the only record of
+*why* a number is what it is. This repository's whole method depends on being
+able to read back the reasoning behind a change.
+
+The history was not rewritten to fix it: a later commit already builds on top,
+and the tree is shared with running agents. Amending would have been the more
+expensive mistake.
+
+**The rule, from here:** while any build agent is running, stage explicitly by
+path — `git add docs/research/foo.md` — never `git add -A` or `git commit -a`.
+If the tree must be cleared and the ownership of a change is unclear, commit it
+as an explicit work-in-progress snapshot that says whose work it is and that it
+is mid-flight.
