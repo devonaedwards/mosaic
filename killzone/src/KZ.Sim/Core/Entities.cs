@@ -69,7 +69,8 @@ namespace KZ.Sim
         Decoy = 1u << 12,
         Structure = 1u << 13,
         MeshRepeater = 1u << 14,
-        Mine = 1u << 15
+        Mine = 1u << 15,
+        Nav = 1u << 16
     }
 
     public sealed class EntityTable
@@ -111,6 +112,7 @@ namespace KZ.Sim
         public readonly SalvageState[] SalvagePile;
         public readonly DecoyState[] Decoy;
         public readonly MineState[] Mine;
+        public readonly NavState[] Nav;
 
         public readonly int[] TetherId;
 
@@ -150,6 +152,7 @@ namespace KZ.Sim
             SalvagePile = new SalvageState[capacity];
             Decoy = new DecoyState[capacity];
             Mine = new MineState[capacity];
+            Nav = new NavState[capacity];
             TetherId = new int[capacity];
             HasThermalBlanket = new bool[capacity];
 

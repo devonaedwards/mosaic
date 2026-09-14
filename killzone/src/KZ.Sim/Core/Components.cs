@@ -38,6 +38,66 @@ namespace KZ.Sim
         }
     }
 
+    /// <summary>
+    /// Where a drone thinks it is, which stops being the same as where it is the
+    /// moment nobody can tell it.
+    ///
+    /// The research this is built on overturned the obvious design twice, so both
+    /// corrections are recorded here rather than in a commit nobody will read.
+    ///
+    /// <para><b>Celestial navigation is not a position fix.</b> It is tempting to
+    /// treat a star tracker as the answer to satellite denial, and every piece of
+    /// press coverage reads that way. A star tracker measures orientation against
+    /// the star field. Getting a *position* out of that needs the star's angle
+    /// against local vertical, and an aircraft has no horizon, so local vertical
+    /// comes from the inertial unit - which is exactly the thing that was wrong in
+    /// the first place. The conversion is brutal and published: one arc-second of
+    /// vertical deflection is thirty metres of position error. So celestial bounds
+    /// *heading* drift, which kills the fastest-growing term in inertial error
+    /// without ever fixing position. It is a drift-rate modifier, and modelling it
+    /// as a periodic reset to zero would be wrong.</para>
+    ///
+    /// <para><b>And it is not reaching cheap airframes.</b> A fielded daylight-
+    /// capable star tracker is a quarter of a million; the cheap demonstrator is
+    /// night-only and accurate to four kilometres. It belongs on expensive
+    /// platforms and nowhere else.</para>
+    /// </summary>
+    public struct NavState
+    {
+        public NavAid Aid;
+
+        /// <summary>
+        /// Bounds heading drift. Expensive, and deliberately not a position fix -
+        /// see the note above.
+        /// </summary>
+        public bool CelestialHeading;
+
+        /// <summary>
+        /// Current aimpoint error, in map metres. What the drone is wrong by.
+        /// </summary>
+        public Fix ErrorMetres;
+
+        /// <summary>
+        /// Distance flown since the last absolute fix. Error is driven by distance
+        /// rather than by time because for anything cruising, the dominant unknown
+        /// is the wind it has been flying through, not the clock.
+        /// </summary>
+        public Fix MetresSinceFix;
+
+        /// <summary>
+        /// Whether scene matching currently has a lock. Losing it is a cliff, not
+        /// a slope: a recursive estimator degrades quietly and then latches onto
+        /// the wrong answer entirely.
+        /// </summary>
+        public bool HasLock;
+
+        /// <summary>
+        /// Distance flown over ground it can match while trying to get a lock
+        /// back. Re-acquisition is not instant and not free.
+        /// </summary>
+        public Fix ReacquireProgress;
+    }
+
     public struct SortieState
     {
         public int CrewId;              // -1 when no crew is flying this
@@ -286,6 +346,14 @@ namespace KZ.Sim
         public Fix2 OrderPoint;
         public EntityHandle OrderTarget;
         public byte RadiusClass;
+
+        /// <summary>
+        /// How far this thing actually moved on the last tick, after terrain and
+        /// bounds had their say. Navigation error is driven by distance flown
+        /// rather than by time elapsed, so it needs the distance that happened
+        /// rather than the one the speed implied.
+        /// </summary>
+        public Fix LastStepDistance;
     }
 
     /// <summary>

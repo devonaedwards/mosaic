@@ -36,6 +36,8 @@ namespace KZ.Sim
         WeaponReloading,
         MineDetonated,
         MinesLaid,
+        NavLockLost,               // scene matching had nothing to match against
+        NavLockRegained,
         SatelliteCoverageLost,     // crossed a border out of the constellation's licensed ground
         SatelliteCoverageRegained,
         SortieRefusedDaylight,

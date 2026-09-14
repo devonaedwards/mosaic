@@ -30,6 +30,7 @@ namespace KZ.Sim
         public readonly EntityTable Entities;
         public readonly SignalGrid Signal;
         public readonly Territory Territory;
+        public readonly ReferenceImagery Imagery;
         public readonly MeshGraph Mesh;
         public readonly TetherSystem Tethers;
         public readonly RandomStreams Random;
@@ -64,6 +65,7 @@ namespace KZ.Sim
             // border runs should notice immediately, rather than quietly granting
             // global coverage the way the old unconditional rule did.
             Territory = new Territory(terrain.WidthMetres, terrain.HeightMetres);
+            Imagery = new ReferenceImagery(terrain.WidthMetres, terrain.HeightMetres, playerCount + 1);
             Mesh = new MeshGraph();
             Random = new RandomStreams(matchSeed);
             Tethers = new TetherSystem(tetherCapacity, terrain, Random.Get(RandomStream.TetherSnag));
@@ -134,6 +136,17 @@ namespace KZ.Sim
 
             if (def.Link != LinkKind.None)
             {
+                Entities.AddComponent(i, ComponentMask.Nav);
+                Entities.Nav[i] = new NavState
+                {
+                    Aid = def.NavAid,
+                    CelestialHeading = def.HasCelestialHeading,
+                    ErrorMetres = Fix.Zero,
+                    MetresSinceFix = Fix.Zero,
+                    HasLock = def.NavAid == NavAid.SceneMatching,
+                    ReacquireProgress = Fix.Zero
+                };
+
                 Entities.AddComponent(i, ComponentMask.Link);
                 Entities.Link[i] = new LinkState
                 {
@@ -348,6 +361,12 @@ namespace KZ.Sim
             LinkResolver.ResolveAll(this);
             UpdateTethers();
             MovementSystem.Step(this);
+
+            // After movement, because navigation error is driven by the distance
+            // actually flown this tick, and before combat, because what a drone
+            // is wrong by is what it is wrong by when it arrives.
+            NavigationSystem.Step(this);
+
             CombatSystem.Step(this);
             UpdateSalvage();
             UpdateDecoys();
@@ -1176,6 +1195,7 @@ namespace KZ.Sim
             }
 
             h = (h ^ Territory.StateHash()) * Prime;
+            h = (h ^ Imagery.StateHash()) * Prime;
             h = (h ^ Random.StateHash()) * Prime;
             return h;
         }

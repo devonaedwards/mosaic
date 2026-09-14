@@ -46,6 +46,19 @@ namespace KZ.Sim
         public int WeaponCooldownTicks = 32;
         public int WeaponAcquisitionTicks = 16;
         public bool IsInterceptor;
+
+        /// <summary>
+        /// What this airframe can work out about its own position when nothing is
+        /// telling it. Dead reckoning by default, because that is what cheap
+        /// airframes have, and it is the default that makes a border matter.
+        /// </summary>
+        public NavAid NavAid;
+
+        /// <summary>
+        /// A star tracker. Bounds heading drift rather than fixing position, and
+        /// costs a quarter of a million, so it belongs on almost nothing.
+        /// </summary>
+        public bool HasCelestialHeading;
         public Fix InterceptBaseChance;
 
         /// <summary>Degrees per second the mount can traverse. Zero means instant.</summary>
@@ -482,7 +495,7 @@ namespace KZ.Sim
             // lights off.
             Add(new UnitDef
             {
-                Name = "Recon Wing", Tier = 2,
+                Name = "Recon Wing", Tier = 2, NavAid = NavAid.SceneMatching,
                 CostMateriel = 900, BuildTicks = SimConstants.Seconds(30),
                 Hp = M(200), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(12.0), TurnRateDegreesPerSecond = 60,
@@ -525,6 +538,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Mid-Range Striker", Faction = FactionId.KestrelPact, Tier = 3,
+                NavAid = NavAid.SceneMatching,
                 CostMateriel = 700, BuildTicks = SimConstants.Seconds(20),
                 Hp = M(120), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(28.0), TurnRateDegreesPerSecond = 60,
@@ -545,7 +559,7 @@ namespace KZ.Sim
             // and the decision of whether to come down is the player's.
             Add(new UnitDef
             {
-                Name = "Heavy Strike Drone", Tier = 3,
+                Name = "Heavy Strike Drone", Tier = 3, NavAid = NavAid.SceneMatching,
                 CostMateriel = 800, BuildTicks = SimConstants.Seconds(22),
                 Hp = M(210), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(18.0), TurnRateDegreesPerSecond = 35,
@@ -565,6 +579,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Jet Strike Drone", Tier = 3,
+                NavAid = NavAid.SceneMatching, HasCelestialHeading = true,
                 CostMateriel = 1900, BuildTicks = SimConstants.Seconds(34),
                 Hp = M(180), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(55.0), TurnRateDegreesPerSecond = 22,
@@ -609,6 +624,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Autonomous Munition", Faction = FactionId.ObsidianDirectorate, Tier = 3,
+                NavAid = NavAid.SceneMatching,
                 CostMateriel = 620, BuildTicks = SimConstants.Seconds(18),
                 Hp = M(110), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(22.0), TurnRateDegreesPerSecond = 70,

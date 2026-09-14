@@ -80,6 +80,8 @@ namespace KZ.Sim
 
             if (!w.Terrain.InBounds(next)) next = pos;
 
+            mover.LastStepDistance = Fix2.Distance(pos, next);
+
             w.Entities.Position[i] = next;
             w.Entities.Velocity[i] = velocity;
             w.Entities.Mover[i] = mover;

@@ -873,6 +873,134 @@ namespace KZ.Tests
                              "so the deeper the advance, the longer drones are on their own");
             });
 
+            r.Run("crossing the border costs you the operator, not your position", delegate
+            {
+                // The one-line rule the navigation research produced, and the
+                // reason the geofence is a procurement decision rather than a flat
+                // tax. Two drones cross the same line. The cheap one is lost; the
+                // one carrying a map knows exactly where it is and has only lost
+                // the human who was going to pick the target.
+                Terrain t = new Terrain(2048, 2048);
+                t.Fill(TileClass.Forest);      // matchable ground
+                World w = new World(t, 256, 16, 401, 2);
+                w.Territory.SetVerticalBorder(600, 1, 2, 0);
+                w.Imagery.GrantAround(1, P(1200, 1000), Fix.FromInt(600));
+
+                EntityHandle cheap = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(1000, 1000));
+                EntityHandle withMap = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(1000, 1000));
+
+                // A long run, because drift is a fraction of distance flown and a
+                // few seconds of it proves nothing either way.
+                for (int k = 0; k < 1500; k++)
+                {
+                    MovementSystem.OrderMoveTo(w, cheap, P(1950, 1000));
+                    MovementSystem.OrderMoveTo(w, withMap, P(1950, 1000));
+                    w.Step();
+                }
+
+                Fix cheapError = w.Entities.Nav[cheap.Index].ErrorMetres;
+                Fix mapError = w.Entities.Nav[withMap.Index].ErrorMetres;
+
+                Assert.True(cheapError > mapError * Fix.FromInt(3),
+                            "dead reckoning drifts and scene matching does not");
+                Assert.True(w.Entities.Nav[withMap.Index].HasLock,
+                            "the one with imagery of this ground holds its lock");
+            });
+
+            r.Run("open ground is where a drone gets lost", delegate
+            {
+                // The inversion the research turned up, and the one worth keeping.
+                // Matching the *shape* of the ground beats matching its
+                // appearance - shape survives snow, ploughing and craters. But
+                // elevation matching degenerates where the ground is flat, and
+                // this game is set on the East European plain. So the robust
+                // technique is the weaker one across most of the map, and open
+                // steppe is the hazard rather than the safe crossing.
+                Terrain flat = new Terrain(2048, 2048);
+                flat.Fill(TileClass.Open);
+                World w1 = new World(flat, 256, 16, 402, 2);
+                w1.Territory.SetVerticalBorder(600, 1, 2, 0);
+                w1.Imagery.GrantAround(1, P(1200, 1000), Fix.FromInt(600));
+
+                Terrain broken = new Terrain(2048, 2048);
+                broken.Fill(TileClass.Forest);
+                World w2 = new World(broken, 256, 16, 402, 2);
+                w2.Territory.SetVerticalBorder(600, 1, 2, 0);
+                w2.Imagery.GrantAround(1, P(1200, 1000), Fix.FromInt(600));
+
+                EntityHandle a = w1.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(1000, 1000));
+                EntityHandle b = w2.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(1000, 1000));
+                for (int k = 0; k < 200; k++)
+                {
+                    MovementSystem.OrderMoveTo(w1, a, P(1400, 1000));
+                    MovementSystem.OrderMoveTo(w2, b, P(1400, 1000));
+                    w1.Step();
+                    w2.Step();
+                }
+
+                Assert.True(!w1.Entities.Nav[a.Index].HasLock,
+                            "over open steppe there is nothing to match against");
+                Assert.True(w2.Entities.Nav[b.Index].HasLock,
+                            "over broken ground there is");
+                Assert.True(w1.Entities.Nav[a.Index].ErrorMetres
+                            > w2.Entities.Nav[b.Index].ErrorMetres,
+                            "so the same airframe is lost on one map and exact on the other");
+            });
+
+            r.Run("bombardment takes away the map, and a clock does not", delegate
+            {
+                // Reference imagery is a coverage resource, not a freshness one.
+                // Imagery spanning nineteen years has been matched successfully
+                // across seasons, and fielded systems deliberately key on the
+                // things that do not change - so an expiry timer would be a number
+                // nobody has ever measured. What does invalidate it is the ground
+                // being churned into something else, which is an event a player
+                // can watch happen.
+                Terrain t = new Terrain(2048, 2048);
+                t.Fill(TileClass.Forest);
+                World w = new World(t, 256, 16, 403, 2);
+                w.Territory.SetVerticalBorder(600, 1, 2, 0);
+                w.Imagery.GrantAround(1, P(1200, 1000), Fix.FromInt(400));
+
+                Assert.True(NavigationSystem.CanMatchHere(w, 1, P(1200, 1000)),
+                            "imagery of this sector, so it can be matched");
+
+                w.Imagery.Invalidate(P(1200, 1000), Fix.FromInt(200));
+                Assert.True(!NavigationSystem.CanMatchHere(w, 1, P(1200, 1000)),
+                            "and after the sector is churned, it cannot");
+            });
+
+            r.Run("a star tracker slows the drift and never resets it", delegate
+            {
+                // The correction that mattered most in the navigation research.
+                // A star tracker measures orientation, not position; getting a
+                // position out of it needs local vertical, which comes from the
+                // inertial unit that was already wrong. One arc-second of vertical
+                // deflection is thirty metres. So it bounds heading drift - which
+                // removes the fastest-growing term - and never fixes position.
+                // Modelling it as a periodic reset to zero would be wrong.
+                Terrain t = new Terrain(2048, 2048);
+                t.Fill(TileClass.Open);        // nothing to match, so both dead reckon
+                World w = new World(t, 256, 16, 404, 2);
+                w.Territory.SetVerticalBorder(600, 1, 2, 0);
+
+                EntityHandle plain = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(1000, 1000));
+                EntityHandle starry = w.Spawn(Catalog.IdOf("Jet Strike Drone"), 1, P(1000, 1000));
+                for (int k = 0; k < 200; k++)
+                {
+                    MovementSystem.OrderMoveTo(w, plain, P(1500, 1000));
+                    MovementSystem.OrderMoveTo(w, starry, P(1500, 1000));
+                    w.Step();
+                }
+
+                Fix plainError = w.Entities.Nav[plain.Index].ErrorMetres;
+                Fix starryError = w.Entities.Nav[starry.Index].ErrorMetres;
+
+                Assert.True(starryError < plainError, "celestial slows the drift");
+                Assert.True(starryError > Fix.Zero,
+                            "but it is still drifting - it never got a position fix");
+            });
+
             r.Run("a fiber drone defeats radio listening completely", delegate
             {
                 // The property that makes fiber worth its leash, and one the old

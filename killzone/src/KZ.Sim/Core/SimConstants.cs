@@ -200,6 +200,46 @@ namespace KZ.Sim
         /// </summary>
         public static readonly Fix AcousticHighScale = Fix.FromDoubleContentOnly(0.50);
 
+        // ---- navigation, once nobody is telling it where it is ---------------
+
+        /// <summary>
+        /// What scene matching is wrong by, in map metres, when it has a lock.
+        ///
+        /// Four unrelated fielded systems agree on ten to thirty real metres of
+        /// bounded error. At this game's twelve-to-one compression that is one to
+        /// three map metres, which is why this tier is not "more accurate" but
+        /// "knows where it is" - the error rounds to nothing and the interesting
+        /// question becomes whether it has a lock at all.
+        /// </summary>
+        public static readonly Fix SceneMatchErrorMetres = Fix.FromDoubleContentOnly(2.0);
+
+        /// <summary>
+        /// Error added per metre flown on inertial alone. The literature's growth
+        /// is cubic in time, but for anything cruising the dominant unknown is the
+        /// wind, which scales with distance - and percent-of-distance is the law a
+        /// player can actually reason about. Three percent is the pessimistic end
+        /// of the published one-to-three band, which is where an expendable
+        /// airframe's inertial unit belongs.
+        /// </summary>
+        public static readonly Fix NavDriftRateInertial = Fix.FromDoubleContentOnly(0.03);
+
+        /// <summary>
+        /// The same, with a star tracker aboard.
+        ///
+        /// Celestial navigation does not fix position - it bounds heading, which
+        /// removes the fastest-growing term in the error. So it is a smaller slope
+        /// and never a reset. The exact figure is an estimate: the research gives
+        /// the mechanism firmly and no number for this class of airframe, because
+        /// this class of airframe does not carry one.
+        /// </summary>
+        public static readonly Fix NavDriftRateCelestial = Fix.FromDoubleContentOnly(0.008);
+
+        /// <summary>
+        /// How far a drone must fly over matchable ground to get a lost lock back.
+        /// The research puts re-acquisition at roughly 700-1,300 real metres.
+        /// </summary>
+        public static readonly Fix NavReacquireMetres = Fix.FromDoubleContentOnly(80.0);
+
         // ---- how reliable any of this is ------------------------------------
 
         /// <summary>
