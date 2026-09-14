@@ -55,6 +55,15 @@ namespace KZ.Sim
         public NavAid NavAid;
 
         /// <summary>
+        /// What pushes this along. Weather sorts on propulsion rather than on size
+        /// or cost, and it is the reason weather is the one system in this game
+        /// that is deliberately asymmetric: the side flying cheap electric
+        /// quadcopters loses half its year, and the side flying two-stroke engines
+        /// above the cloud deck does not.
+        /// </summary>
+        public Propulsion Propulsion;
+
+        /// <summary>
         /// A star tracker. Bounds heading drift rather than fixing position, and
         /// costs a quarter of a million, so it belongs on almost nothing.
         /// </summary>
@@ -421,7 +430,7 @@ namespace KZ.Sim
         {
             Add(new UnitDef
             {
-                Name = "Scout Quad", CanChangeAltitude = true, Tier = 1,
+                Name = "Scout Quad", CanChangeAltitude = true, Tier = 1, Propulsion = Propulsion.SmallElectric,
                 CostMateriel = 120, BuildTicks = SimConstants.Seconds(6),
                 Hp = M(40), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(16.0),
@@ -433,7 +442,7 @@ namespace KZ.Sim
             // The workhorse: ammunition with a pilot. It does not come home.
             Add(new UnitDef
             {
-                Name = "FPV Team", CanChangeAltitude = true, Tier = 1,
+                Name = "FPV Team", CanChangeAltitude = true, Tier = 1, Propulsion = Propulsion.SmallElectric,
                 CostMateriel = 200, BuildTicks = SimConstants.Seconds(8),
                 Hp = M(55), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(22.0),
@@ -448,7 +457,7 @@ namespace KZ.Sim
             // thread an enemy can find and follow back to the operator.
             Add(new UnitDef
             {
-                Name = "Fiber FPV Team", Tier = 2,
+                Name = "Fiber FPV Team", Tier = 2, Propulsion = Propulsion.SmallElectric,
                 CostMateriel = 420, BuildTicks = SimConstants.Seconds(12),
                 Hp = M(70), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(15.0), TurnRateDegreesPerSecond = 140,
@@ -462,7 +471,7 @@ namespace KZ.Sim
 
             Add(new UnitDef
             {
-                Name = "Multirole Quad", CanChangeAltitude = true, Tier = 2,
+                Name = "Multirole Quad", CanChangeAltitude = true, Tier = 2, Propulsion = Propulsion.SmallElectric,
                 CostMateriel = 380, BuildTicks = SimConstants.Seconds(14),
                 Hp = M(110), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(19.0),
@@ -480,6 +489,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Interceptor FPV", CanChangeAltitude = true, Tier = 2, CanEngageAir = true,
+                Propulsion = Propulsion.SmallElectric,
                 CostMateriel = 300, BuildTicks = SimConstants.Seconds(10),
                 Hp = M(60), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(34.0),
@@ -496,6 +506,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Recon Wing", Tier = 2, NavAid = NavAid.SceneMatching,
+                Propulsion = Propulsion.SmallElectric,
                 CostMateriel = 900, BuildTicks = SimConstants.Seconds(30),
                 Hp = M(200), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(12.0), TurnRateDegreesPerSecond = 60,
@@ -508,6 +519,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Night Bomber", CanChangeAltitude = true, Tier = 2, NightOnly = true,
+                Propulsion = Propulsion.HeavyElectric,
                 MinesCarried = 4, MineDamage = M(600),
                 CostMateriel = 1100, BuildTicks = SimConstants.Seconds(34),
                 Hp = M(480), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
@@ -521,7 +533,7 @@ namespace KZ.Sim
 
             Add(new UnitDef
             {
-                Name = "Loitering Munition", Tier = 2,
+                Name = "Loitering Munition", Tier = 2, Propulsion = Propulsion.Combustion,
                 CostMateriel = 550, BuildTicks = SimConstants.Seconds(16),
                 Hp = M(90), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(24.0), TurnRateDegreesPerSecond = 70,
@@ -538,6 +550,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Mid-Range Striker", Faction = FactionId.KestrelPact, Tier = 3,
+                Propulsion = Propulsion.Combustion,
                 NavAid = NavAid.SceneMatching,
                 CostMateriel = 700, BuildTicks = SimConstants.Seconds(20),
                 Hp = M(120), Armour = ArmourClass.AirFixed, Layer = Layer.High,
@@ -560,6 +573,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Heavy Strike Drone", Tier = 3, NavAid = NavAid.SceneMatching,
+                Propulsion = Propulsion.Combustion,
                 CostMateriel = 800, BuildTicks = SimConstants.Seconds(22),
                 Hp = M(210), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(18.0), TurnRateDegreesPerSecond = 35,
@@ -578,7 +592,7 @@ namespace KZ.Sim
             // less for the money.
             Add(new UnitDef
             {
-                Name = "Jet Strike Drone", Tier = 3,
+                Name = "Jet Strike Drone", Tier = 3, Propulsion = Propulsion.Turbojet,
                 NavAid = NavAid.SceneMatching, HasCelestialHeading = true,
                 CostMateriel = 1900, BuildTicks = SimConstants.Seconds(34),
                 Hp = M(180), Armour = ArmourClass.AirFixed, Layer = Layer.High,
@@ -597,7 +611,7 @@ namespace KZ.Sim
             // real strike is spent on it instead.
             Add(new UnitDef
             {
-                Name = "Decoy Drone", Tier = 3,
+                Name = "Decoy Drone", Tier = 3, Propulsion = Propulsion.Combustion,
                 CostMateriel = 130, BuildTicks = SimConstants.Seconds(7),
                 Hp = M(90), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(20.0), TurnRateDegreesPerSecond = 40,
@@ -613,6 +627,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Mothership", Faction = FactionId.ObsidianDirectorate, Tier = 3,
+                Propulsion = Propulsion.HeavyElectric,
                 CostMateriel = 1400, BuildTicks = SimConstants.Seconds(38),
                 Hp = M(520), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(13.0), TurnRateDegreesPerSecond = 50,
@@ -624,6 +639,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Autonomous Munition", Faction = FactionId.ObsidianDirectorate, Tier = 3,
+                Propulsion = Propulsion.Combustion,
                 NavAid = NavAid.SceneMatching,
                 CostMateriel = 620, BuildTicks = SimConstants.Seconds(18),
                 Hp = M(110), Armour = ArmourClass.AirFixed, Layer = Layer.High,

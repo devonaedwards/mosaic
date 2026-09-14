@@ -200,6 +200,49 @@ namespace KZ.Sim
         /// </summary>
         public static readonly Fix AcousticHighScale = Fix.FromDoubleContentOnly(0.50);
 
+        // ---- weather ---------------------------------------------------------
+
+        /// <summary>
+        /// What each weather state does to each sensor channel, as a multiplier on
+        /// reach. The ordering is the point rather than the exact figures.
+        ///
+        /// Rain takes a bite out of the cameras and a smaller one out of the
+        /// heat sensors. Fog takes almost everything from both and nothing at all
+        /// from radar and passive listening - which is the whole reason a player
+        /// buys radar, and the reason fog is an opportunity rather than a
+        /// misfortune. Wind touches none of them and kills microphones outright,
+        /// because what stops a microphone is not the air being turbulent, it is
+        /// the wind roaring across the element.
+        /// </summary>
+        public static readonly Fix WetOpticalScale = Fix.FromDoubleContentOnly(0.55);
+        public static readonly Fix WetThermalScale = Fix.FromDoubleContentOnly(0.60);
+        public static readonly Fix WetRadarScale = Fix.FromDoubleContentOnly(0.90);
+
+        /// <summary>
+        /// Fog, with the corrected coefficients. The first set had long-wave at
+        /// about a tenth of visible, which would have made thermal imaging a
+        /// near-complete answer to fog. It is not: measured work puts visible,
+        /// near-infrared and mid-wave comparable to one another, with long-wave
+        /// somewhere between half and equal. Front-line reporting says the same
+        /// thing more bluntly - in fog at fifty yards it makes no difference
+        /// whether the drone carries a thermal camera or a night one.
+        /// </summary>
+        public static readonly Fix MurkOpticalScale = Fix.FromDoubleContentOnly(0.15);
+        public static readonly Fix MurkThermalScale = Fix.FromDoubleContentOnly(0.30);
+
+        /// <summary>Cold halves an electric airframe. Small ones suffer more.</summary>
+        public static readonly Fix FrozenEnduranceScale = Fix.FromDoubleContentOnly(0.50);
+
+        /// <summary>
+        /// What mud does to a vehicle that leaves the road. Not a slowdown - a
+        /// reason not to try, which is the point: it funnels everything onto the
+        /// corridors that are already the most watched ground on the map.
+        /// </summary>
+        public static readonly Fix MudOffRoadScale = Fix.FromDoubleContentOnly(0.25);
+
+        /// <summary>Frozen ground is better than firm for going across country.</summary>
+        public static readonly Fix FrozenOffRoadScale = Fix.FromDoubleContentOnly(1.15);
+
         // ---- navigation, once nobody is telling it where it is ---------------
 
         /// <summary>

@@ -56,7 +56,8 @@ namespace KZ.Sim
             ushort desiredYaw = Trig.Atan2(direction.Y, direction.X);
             w.Entities.Yaw[i] = Trig.RotateToward(w.Entities.Yaw[i], desiredYaw, mover.TurnRateBamPerTick);
 
-            Fix speed = mover.SpeedMetresPerSecond * mover.SpeedMultiplier;
+            Fix speed = mover.SpeedMetresPerSecond * mover.SpeedMultiplier
+                        * GroundScale(w, i);
             Fix2 velocity = direction * speed;
 
             // A fiber drone at full stretch keeps whatever part of its intended
@@ -128,6 +129,35 @@ namespace KZ.Sim
                 w.Entities.Sortie[i].DesignatedPoint = w.Entities.Position[target.Index];
                 w.Entities.Sortie[i].HasDesignatedPoint = true;
             }
+        }
+
+        /// <summary>
+        /// What the state of the ground does to a vehicle on it.
+        ///
+        /// Mud does not slow a road down - a road in the rain is still a road. What
+        /// it does is delete everything either side of the road, and the effect of
+        /// that is not that vehicles go slower, it is that they all end up in the
+        /// same place. Every wheel on the map gets funnelled onto the handful of
+        /// hard surfaces, which are already the most watched ground there is.
+        ///
+        /// Frozen ground is the opposite and is genuinely better than firm: the
+        /// whole landscape becomes driveable at once. It costs somewhere else, in
+        /// what the cold does to every battery in the air.
+        ///
+        /// Aircraft are unaffected by all of it, which is the point of aircraft.
+        /// </summary>
+        public static Fix GroundScale(World w, int i)
+        {
+            if (w.Entities.EntityLayer[i] != Layer.Ground) return Fix.One;
+            if (w.Ground == GroundState.Firm) return Fix.One;
+
+            TileClass tile = w.Terrain.AtPosition(w.Entities.Position[i]);
+            bool onRoad = tile == TileClass.Road;
+
+            if (w.Ground == GroundState.Mud)
+                return onRoad ? Fix.One : SimConstants.MudOffRoadScale;
+
+            return onRoad ? Fix.One : SimConstants.FrozenOffRoadScale;
         }
     }
 }

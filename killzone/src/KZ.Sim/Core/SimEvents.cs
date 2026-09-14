@@ -41,6 +41,7 @@ namespace KZ.Sim
         SatelliteCoverageLost,     // crossed a border out of the constellation's licensed ground
         SatelliteCoverageRegained,
         SortieRefusedDaylight,
+        SortieRefusedWeather,
         DayPhaseChanged
     }
 

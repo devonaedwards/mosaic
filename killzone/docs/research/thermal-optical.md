@@ -467,6 +467,19 @@ which it reproduces. Treat them as calibrated, not measured, and tune them first
 
 Extinction coefficient α, per kilometre, by band and condition. All **[T]**.
 
+> **Correction, from `weather.md`.** The fog row below is wrong by four to six
+> times and should not be used. It puts long-wave at 0.13x visible; measured work
+> puts visible, near-IR and mid-wave *comparable to each other*, with long-wave
+> roughly half to equal visible below a few hundred metres of visibility. Use
+> **+18 mid-wave / +11 long-wave at V = 200 m** instead. Front-line reporting
+> agrees: in fog at fifty yards it does not matter whether the drone carries a
+> thermal or a night camera.
+>
+> Two smaller ones. The visible column is right - it is Koschmieder throughout -
+> but it mixes "add" and "total" conventions and will double-count if coded
+> straight from the table. And the smoke row is right for fog-oil and white
+> phosphorus and wrong for carbon, which measures the same in both bands.
+
 | Condition | 3–5 µm | 8–12 µm | Visible |
 |---|---|---|---|
 | Cold dry clear (0 °C, 50 % RH) | 0.08 | 0.11 | 0.13 |

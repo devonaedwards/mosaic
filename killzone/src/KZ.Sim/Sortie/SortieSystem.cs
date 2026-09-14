@@ -21,7 +21,8 @@ namespace KZ.Sim
         NoTetherAvailable = 3,
         InsufficientMateriel = 4,
         EntityCapacityReached = 5,
-        DaylightRefused = 6
+        DaylightRefused = 6,
+        WeatherRefused = 7
     }
 
     public static class SortieSystem
@@ -46,6 +47,24 @@ namespace KZ.Sim
                 w.Events.Push(SimEventKind.SortieRefusedDaylight, w.Tick, EntityHandle.None,
                               EntityHandle.None, team, defId);
                 return LaunchResult.DaylightRefused;
+            }
+
+            // Weather grounds by what an airframe burns, not by what it costs.
+            // Wind takes the small electrics - a quadcopter cannot hold station in
+            // eighteen metres a second and an interceptor cannot catch anything.
+            // Rain, and in winter icing, takes every electric: a quarter of the
+            // thrust is gone inside the first minute of accretion, and no de-icing
+            // is reaching expendable airframes this decade.
+            //
+            // Nothing grounds a two-stroke engine above the cloud deck. That is
+            // the asymmetry, and it is the one place this game is deliberately
+            // unfair: the side flying cheap quadcopters loses half its year and
+            // the side flying combustion strike drones does not.
+            if (WeatherGrounds(w.Weather, def.Propulsion))
+            {
+                w.Events.Push(SimEventKind.SortieRefusedWeather, w.Tick, EntityHandle.None,
+                              EntityHandle.None, team, defId);
+                return LaunchResult.WeatherRefused;
             }
 
             if (player.Materiel < Fix.FromInt(def.CostMateriel))
@@ -200,6 +219,25 @@ namespace KZ.Sim
                 w.Entities.Sortie[i].CrewId = -1;
             }
             w.Entities.Sortie[i].Phase = SortiePhase.None;
+        }
+
+        /// <summary>
+        /// Whether this weather stops this kind of airframe leaving the ground.
+        /// Murk is absent on purpose: fog grounds nothing at all, it only blinds -
+        /// which is exactly what makes it the window to attack through.
+        /// </summary>
+        public static bool WeatherGrounds(WeatherState weather, Propulsion propulsion)
+        {
+            switch (weather)
+            {
+                case WeatherState.Wind:
+                    return propulsion == Propulsion.SmallElectric;
+                case WeatherState.Wet:
+                    return propulsion == Propulsion.SmallElectric
+                        || propulsion == Propulsion.HeavyElectric;
+                default:
+                    return false;
+            }
         }
     }
 }

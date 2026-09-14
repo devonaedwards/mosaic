@@ -41,6 +41,15 @@ namespace KZ.Sim
         public int Tick { get; private set; }
         public DayPhase Phase { get; private set; }
 
+        /// <summary>
+        /// The weather, and the state of the ground. Two dials rather than one,
+        /// because they run on completely different clocks - the sky changes in an
+        /// hour and the ground changes over six weeks - and because collapsing
+        /// them would hide that mud and fog ask opposite questions.
+        /// </summary>
+        public WeatherState Weather = WeatherState.Clear;
+        public GroundState Ground = GroundState.Firm;
+
         readonly List<EntityHandle> pendingDeaths = new List<EntityHandle>();
         readonly int[] meshNodeSlotByEntity;
 
@@ -900,7 +909,8 @@ namespace KZ.Sim
         {
             if (sensorRange.Raw <= 0 || signature == 0) return false;
 
-            Fix effective = sensorRange * modifier * SignatureScale(signature, channel);
+            Fix effective = sensorRange * modifier * WeatherScale(channel)
+                            * SignatureScale(signature, channel);
             if (effective.Raw <= 0) return false;
             if (distSq > effective * effective) return false;
 
@@ -1002,6 +1012,43 @@ namespace KZ.Sim
                 case SensorChannel.Thermal: return 84;
                 case SensorChannel.Radar: return 78;    // birds, clutter, small returns
                 default: return 52;                     // microphones, in any wind at all
+            }
+        }
+
+        /// <summary>
+        /// What the weather is doing to one sensor channel.
+        ///
+        /// Note which way fog cuts. It takes almost everything from the cameras and
+        /// the heat sensors and nothing whatsoever from radar and passive listening,
+        /// so the side that paid for radar is briefly the only side that can see.
+        /// That makes fog an opportunity to be waited for rather than a misfortune
+        /// to be suffered, which is the opposite of how a "bad weather" state
+        /// usually reads.
+        /// </summary>
+        public Fix WeatherScale(SensorChannel channel)
+        {
+            switch (Weather)
+            {
+                case WeatherState.Wet:
+                    if (channel == SensorChannel.Optical) return SimConstants.WetOpticalScale;
+                    if (channel == SensorChannel.Thermal) return SimConstants.WetThermalScale;
+                    if (channel == SensorChannel.Radar) return SimConstants.WetRadarScale;
+                    return Fix.One;
+
+                case WeatherState.Murk:
+                    if (channel == SensorChannel.Optical) return SimConstants.MurkOpticalScale;
+                    if (channel == SensorChannel.Thermal) return SimConstants.MurkThermalScale;
+                    return Fix.One;
+
+                case WeatherState.Wind:
+                    // Wind does nothing to anything that looks and ends anything
+                    // that listens. What defeats a microphone is not turbulence,
+                    // it is the wind roaring across the element itself.
+                    if (channel == SensorChannel.Acoustic) return Fix.Zero;
+                    return Fix.One;
+
+                default:
+                    return Fix.One;
             }
         }
 
@@ -1114,7 +1161,7 @@ namespace KZ.Sim
             }
 
             if (nominal.Raw <= 0 || strength == 0) return Fix.Zero;
-            return nominal * mod * SignatureScale(strength, channel);
+            return nominal * mod * WeatherScale(channel) * SignatureScale(strength, channel);
         }
 
         /// <summary>The best reach any channel of one sensor has against one target.</summary>
@@ -1196,6 +1243,8 @@ namespace KZ.Sim
 
             h = (h ^ Territory.StateHash()) * Prime;
             h = (h ^ Imagery.StateHash()) * Prime;
+            h = (h ^ (ulong)Weather) * Prime;
+            h = (h ^ (ulong)Ground) * Prime;
             h = (h ^ Random.StateHash()) * Prime;
             return h;
         }

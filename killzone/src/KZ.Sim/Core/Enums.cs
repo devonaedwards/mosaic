@@ -200,6 +200,83 @@ namespace KZ.Sim
         SceneMatching = 1
     }
 
+    /// <summary>
+    /// The weather, as four states rather than a slider.
+    ///
+    /// Four and not one because the states are not degrees of the same badness -
+    /// two of them are opposites. Rain grounds aircraft and leaves the sensors
+    /// working; fog grounds nothing and blinds everything. Collapse those into a
+    /// single "bad weather" axis and the only interesting decision disappears.
+    ///
+    /// The other reason there are four: each one kills a different thing. Wind
+    /// kills the small, wet kills the electric, murk kills the sensors. A player
+    /// can hold three rules in their head and plan against them, which is the
+    /// whole test - a mechanic that needs a submenu gets cut.
+    /// </summary>
+    public enum WeatherState : byte
+    {
+        Clear = 0,
+
+        /// <summary>
+        /// Twelve to eighteen metres per second. Kills the small and cheap:
+        /// quadcopters and interceptors cannot hold station, and fixed-wing
+        /// aircraft are stopped by their landing limits rather than their cruise
+        /// limits. Microphones stop working entirely. Cameras do not care.
+        /// </summary>
+        Wind = 1,
+
+        /// <summary>
+        /// Rain, and in winter this is icing instead, which is a hard stop rather
+        /// than a penalty - a quarter of thrust is gone inside the first minute of
+        /// accretion. Kills the electric. Combustion strike drones fly through it,
+        /// which is the asymmetry that makes winter the attacker's season.
+        /// </summary>
+        Wet = 2,
+
+        /// <summary>
+        /// Fog, or a cloud base on the deck. Grounds nothing at all and blinds
+        /// almost everything - and radar and passive listening are untouched, so
+        /// the side that bought radar is suddenly the only side that can see.
+        /// This is the assault window, and it is the state a designer is most
+        /// likely to get wrong by filing it under "bad weather".
+        /// </summary>
+        Murk = 3
+    }
+
+    /// <summary>
+    /// What the ground is doing, on a six-week clock rather than an hourly one -
+    /// which is why it is separate from the weather rather than a fifth state.
+    ///
+    /// Mud does not slow the roads. It deletes everything that is not a road,
+    /// which funnels every vehicle onto exactly the netted corridors that are
+    /// already the most watched ground on the map.
+    /// </summary>
+    public enum GroundState : byte
+    {
+        Firm = 0,
+        Mud = 1,
+
+        /// <summary>
+        /// Better than firm for going across country, and it halves the endurance
+        /// of every electric airframe at the same time. Deep winter is a window
+        /// rather than a penalty, and it opens for whoever burns fuel.
+        /// </summary>
+        Frozen = 2
+    }
+
+    /// <summary>
+    /// What pushes an airframe along, which turns out to be the thing weather
+    /// actually sorts on. Not size, not cost - what it burns.
+    /// </summary>
+    public enum Propulsion : byte
+    {
+        None = 0,
+        SmallElectric = 1,   // quadcopters, interceptors: grounded by wind and by wet
+        HeavyElectric = 2,   // heavy multirotors: grounded by wet
+        Combustion = 3,      // flies through all of it
+        Turbojet = 4
+    }
+
     public enum FactionId : byte
     {
         Neutral = 0,

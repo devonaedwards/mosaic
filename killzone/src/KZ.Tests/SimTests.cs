@@ -1001,6 +1001,88 @@ namespace KZ.Tests
                             "but it is still drifting - it never got a position fix");
             });
 
+            r.Run("fog grounds nothing and blinds everything", delegate
+            {
+                // The weather state a designer is most likely to get wrong, by
+                // filing it under "bad weather" along with the rain. It is the
+                // opposite of the rain: nothing stops flying and almost nothing can
+                // see - except radar and passive listening, which do not care at
+                // all. So the side that bought radar is briefly the only side with
+                // eyes, and fog becomes a window to attack through rather than a
+                // misfortune to sit out.
+                World w = MakeWorld(501);
+                EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(1000, 1000));
+                EntityHandle bomber = w.Spawn(Catalog.IdOf("Night Bomber"), 1, P(1000, 1000));
+                EntityHandle target = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 2, P(1300, 1000));
+                w.Step();
+
+                Fix clearOptical = w.DetectionRangeFor(bomber.Index, target.Index, SensorChannel.Optical);
+                Fix clearThermal = w.DetectionRangeFor(bomber.Index, target.Index, SensorChannel.Thermal);
+                Fix clearRadar = w.DetectionRangeFor(mast.Index, target.Index, SensorChannel.Radar);
+
+                w.Weather = WeatherState.Murk;
+                w.Step();
+
+                Fix fogOptical = w.DetectionRangeFor(bomber.Index, target.Index, SensorChannel.Optical);
+                Fix fogThermal = w.DetectionRangeFor(bomber.Index, target.Index, SensorChannel.Thermal);
+                Fix fogRadar = w.DetectionRangeFor(mast.Index, target.Index, SensorChannel.Radar);
+
+                Assert.True(fogOptical < clearOptical / Fix.FromInt(4), "cameras lose nearly everything");
+                Assert.True(fogThermal < clearThermal / Fix.FromInt(2),
+                            "and thermal is not the answer to fog that it is to darkness");
+                Assert.Equal(clearRadar.Raw, fogRadar.Raw, "radar does not care about fog at all");
+
+                Assert.True(!SortieSystem.WeatherGrounds(WeatherState.Murk, Propulsion.SmallElectric),
+                            "and nothing at all is grounded by it");
+            });
+
+            r.Run("weather sorts on what an airframe burns", delegate
+            {
+                // The one place this game is deliberately unfair, and it is unfair
+                // in the direction the reporting describes. Wind takes the small
+                // electrics; rain and icing take every electric; a two-stroke
+                // engine above the cloud deck flies through all of it. So winter
+                // degrades the side flying cheap quadcopters and interceptors, and
+                // does not degrade the side flying combustion strike drones.
+                Assert.True(SortieSystem.WeatherGrounds(WeatherState.Wind, Propulsion.SmallElectric),
+                            "a quadcopter cannot hold station in eighteen metres a second");
+                Assert.True(!SortieSystem.WeatherGrounds(WeatherState.Wind, Propulsion.HeavyElectric),
+                            "a heavy multirotor has the mass to stay put");
+                Assert.True(SortieSystem.WeatherGrounds(WeatherState.Wet, Propulsion.HeavyElectric),
+                            "but icing takes a quarter of its thrust in the first minute");
+                Assert.True(!SortieSystem.WeatherGrounds(WeatherState.Wet, Propulsion.Combustion),
+                            "and the engine flies on");
+                Assert.True(!SortieSystem.WeatherGrounds(WeatherState.Wind, Propulsion.Combustion),
+                            "in either kind of weather");
+            });
+
+            r.Run("mud does not slow the road, it deletes everything else", delegate
+            {
+                // Which is a different mechanic and a much more interesting one. A
+                // road in the rain is still a road; what changes is that it becomes
+                // the only road, and every vehicle on the map ends up on the same
+                // few hard surfaces - the ones already under the most observation.
+                Terrain t = new Terrain(2048, 2048);
+                t.Fill(TileClass.Open);
+                for (int tx = 0; tx < t.WidthTiles; tx++) t.Set(tx, 60, TileClass.Road);
+                World w = new World(t, 256, 16, 502, 2);
+
+                EntityHandle onRoad = w.Spawn(Catalog.IdOf("Supply Truck"), 1, P(500, 60 * 8 + 4));
+                EntityHandle offRoad = w.Spawn(Catalog.IdOf("Supply Truck"), 1, P(500, 900));
+                w.Step();
+
+                w.Ground = GroundState.Mud;
+                Assert.Equal(Fix.One.Raw, MovementSystem.GroundScale(w, onRoad.Index).Raw,
+                             "the road is unaffected");
+                Assert.True(MovementSystem.GroundScale(w, offRoad.Index) < Fix.One / Fix.FromInt(2),
+                            "and leaving it stops being worth doing");
+
+                // Frozen ground is the opposite, and is better than firm.
+                w.Ground = GroundState.Frozen;
+                Assert.True(MovementSystem.GroundScale(w, offRoad.Index) > Fix.One,
+                            "deep winter opens the whole landscape up again");
+            });
+
             r.Run("a fiber drone defeats radio listening completely", delegate
             {
                 // The property that makes fiber worth its leash, and one the old
