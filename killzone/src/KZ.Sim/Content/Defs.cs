@@ -313,6 +313,31 @@ namespace KZ.Sim
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
 
+            // TEST-ONLY. Not a shipping unit and never presented to a player -
+            // it exists so KZ.Balance's GunRangeExperiment can sweep the mount's
+            // reach as its one independent variable without silently overwriting
+            // the real Gun Mount's 85 m (AUDIT-UNWIRED.md F33: three experiments
+            // used to do exactly that, and reported the result as if it were the
+            // shipped gun). 550 is not a design value or a citation - it is the
+            // old, wrong "detection reach used as kill ring" figure the Gun Mount
+            // comment above corrects, kept here as the sweep's upper bound so the
+            // experiment still shows how much that mistake was worth. Every other
+            // field is copied from Gun Mount so the sweep isolates range alone.
+            Add(new UnitDef
+            {
+                Name = "Test Long Mount", IsStructure = true, Tier = 2,
+                CanEngageAir = true,
+                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
+                WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
+                WeaponRangeMetres = M(550), WeaponCooldownTicks = 24,
+                CanReachHigh = false,
+                TraverseDegreesPerSecond = 150,
+                AmmoCapacity = 5, ReloadSeconds = 20,
+                SensorOptical = M(600), SensorAcoustic = M(200),
+                SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
+                SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
+
             Add(new UnitDef
             {
                 Name = "Uplink Terminal", IsStructure = true, Faction = FactionId.KestrelPact, Tier = 3,
@@ -583,13 +608,25 @@ namespace KZ.Sim
                 // about ten times the FPV's radiating area, and these are
                 // intercepted at night by infrared; visual 30 (was 55), which was
                 // too high for a 1.5 m airframe against a tank at 100.
-                // Radar 38 (was 58): radar-rf.md §5, heavy multirotor at 0.08 m².
-                // The old value put this below-Shahed airframe above both the
-                // Heavy Strike Drone (52) and the Jet Strike Drone (50), inverting
-                // the ordering the fourth-root law exists to express. The rest of
-                // the column is on the research's own scale (decoy 92 / strike 52
-                // against its 90 / 48, FINDINGS §25), so 38 goes in as written.
-                SigRadio = 60, SigThermal = 32, SigAcoustic = 35, SigVisual = 30, SigRadar = 38,
+                // Radar stays at 58, and the reason is a trap worth marking. The
+                // two radar documents use different offsets for identical physics:
+                // decoys-masking.md reads S = 2*dBsm + 80, which is what this
+                // column implements, and radar-rf.md reads 2*dBsm + 60. A figure
+                // from the second converts to this scale by adding twenty.
+                //
+                // radar-rf.md §5 puts a heavy multirotor at 0.08 m², which is
+                // -11 dBsm, which is 2(-11) + 80 = 58 here. Reading its 38 across
+                // unconverted would have made this airframe a tenth of its true
+                // cross-section and, worse, would have looked like a fix, because
+                // 38 sits below the strike drones where intuition says a
+                // multirotor belongs.
+                //
+                // Intuition is wrong on that. A Baba Yaga is physically larger
+                // than a Shahed, and cross-section follows geometry rather than
+                // menace. The two documents genuinely disagree about the Shahed
+                // itself - 0.25 m² against 0.016 - and that disagreement is real
+                // and unresolved, but it is not this row's problem.
+                SigRadio = 60, SigThermal = 32, SigAcoustic = 35, SigVisual = 30, SigRadar = 58,
                 SensorArcDegrees = 60});
 
             Add(new UnitDef
