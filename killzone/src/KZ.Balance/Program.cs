@@ -5,6 +5,48 @@
 // This exists because arguing about balance from a stat table is guesswork. If
 // the question is "can five drones take a gun position", the honest answer comes
 // from running it two hundred times, not from multiplying numbers on a page.
+//
+// AUDIT-UNWIRED.md F33/F34: until this pass, three experiments (Saturation,
+// Approach, Night, via RunAssault's old default) quietly overwrote the Gun
+// Mount's range back to 550 m after FINDINGS 2 corrected it to 85, and every
+// experiment ran on Fill(Open) with clear weather, firm ground, an ownerless
+// map and no imagery - conditions the game never produces. Both are fixed
+// below: the override is gone (a synthetic "Test Long Mount" catalogue entry
+// takes its place for the one experiment - GunRangeExperiment - whose actual
+// purpose is to vary range), and every experiment now runs on
+// MakeRealisticWorld's mixed terrain, stated weather/ground state, an owned
+// border and per-side imagery by default, printed in its own output.
+//
+// What actually moved, real Gun Mount (85 m) vs. the old 550 m override, same
+// seeds, same trial counts, terrain/weather/territory held aside (Stacking,
+// Vertical, Decoy Escort, Aperture, Mines and Sensors already used the real
+// 85 m and are numerically unchanged - occlusion, navigation and imagery are
+// not yet consumed by anything these experiments exercise, see F1/F5/F6):
+//
+//   SATURATION (n drones at 1,200 m) - "arrived" up by ~0.2-0.4 across every
+//   row; "gun killed" at n=3 rose 60% -> 80%, at n=5 rose 88% -> 100%. A
+//   correctly short-ranged mount gets far less time to shoot, but its
+//   five-round magazine was already the binding constraint at higher counts
+//   under the old 550 m figure too - so the low end of FINDINGS 15's
+//   saturation table is what actually needs amending, not all of it.
+//
+//   REACH (GunRangeExperiment) - now includes an 85 m row (3.9 s exposure,
+//   7.8/8 arrived, 100% gun killed) alongside the old hypothetical sweep, so
+//   the deployed figure is visible in the same table as the mistake it
+//   replaced.
+//
+//   APPROACH - "arrived" up by ~0.1-0.5 per row; the launch-pad set was tuned
+//   around the old 550 m edge (1,100 m) and barely resolves the real one
+//   (1,565 m) - see the in-output note.
+//
+//   DARKNESS (NightExperiment) - day reach printed as a measured 127 m (was
+//   asserted as 600 m), night as 48 m (was asserted as ~210 m); day "gun
+//   killed" at n=3 rose 60% -> 80%, matching Saturation's n=3 row exactly, as
+//   it should since both run the same RunAssault scenario at dawn.
+//
+// FINDINGS 2, 13, 15, 16 and 18 were measured against the 550 m figure and
+// need amending against these numbers; FINDINGS 25's decoy-escort numbers
+// were already correct because that experiment never had the override.
 
 using System;
 using KZ.Sim;
