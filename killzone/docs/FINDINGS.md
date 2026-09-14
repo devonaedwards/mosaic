@@ -881,3 +881,72 @@ terrain do" but **whether a tactical game on a phone can afford to know** —
 detection is already the most expensive thing per tick, and a per-pair,
 per-channel visibility test may simply not fit. A cheaper abstraction that
 captures most of the behaviour would be a legitimate answer.
+
+## 30. An audit of what was researched and never wired, and it is bad
+
+FINDINGS 29 found that terrain occlusion was specified in the research and absent
+from the code. The obvious next question was how many more there were. The answer
+is **thirty-four dead, thirty-two missing, fourteen contradicted**, and it
+invalidates several conclusions in this very document.
+
+### The three that matter most
+
+**The two-second track hold does not exist.** `SimConstants.TrackHoldTicks` has
+zero call sites. Item 21 above — "nothing is a switch" — states it as implemented
+and builds its conclusion on it. `Reaches()` keys its edge roll on target, tick
+and channel and is deliberately memoryless, so every fringe contact flickers
+thirty-two times a second. **Item 21 is wrong about its own mechanism.**
+
+**The Gun Mount has neither a traverse rate nor a magazine.** Neither field is
+set on it, so the slew code returns early and reload accounting is skipped
+entirely. Which means **items 13 through 18 measured a turret with infinite
+ammunition and instant slew** — including item 18's conclusion that the re-laying
+penalty was "badly understated", when for that unit it was exactly zero. Every
+turret conclusion in this document was drawn against a weapon that does not
+behave the way the document says it does.
+
+**There is no income.** Salvage is never collected, `SalvageCollected` is never
+pushed, and `Materiel` only ever decreases. Tasking Points are credited and never
+spent. The economy has one direction.
+
+### The part that is my own work, this session
+
+Worse, because it was written after the lesson was available:
+
+- `NavState.ErrorMetres` is computed by the entire navigation system and read by
+  nothing but tests.
+- `ReferenceImagery.GrantAround` and `Invalidate` have zero callers.
+- **`Territory` is never populated outside tests** — so in any actual match every
+  satellite link is permanently black and scene matching can never lock.
+
+I built three systems this session, wrote passing tests for each, and shipped all
+three inert. The tests pass because the tests construct the state; nothing else
+ever does.
+
+And one outright regression: adding the autonomy tier early-return killed target
+selection on three strike drones that had tuned `AutonomyQuality` and no tier.
+Fixed by giving them terminal guidance — a Shahed-class airframe flies to
+coordinates a human chose, so it never selects anything and its quality figure
+was meaningless — which leaves the Autonomous Munition as the only
+target-selecting unit in the game. That is the correct rarity and it should have
+been the design from the start.
+
+### The harness was lying too
+
+Three balance experiments overwrite the Gun Mount's range **back to 550** — the
+figure item 2 corrected to 85. And every experiment world is built with
+`Fill(Open)`, clear weather, firm ground and no territory owner. So the
+experiments ran on a flat, empty, weatherless map with a turret whose corrected
+range had been undone.
+
+### What to actually take from this
+
+Not "the project is broken". The research is good, the systems are written, the
+tests pass. What is missing is the wire between them, and **a passing test proves
+the wire exists only where the test itself built it.**
+
+The mechanical checks that would have caught nearly all of this are cheap and I
+was not running them: a public symbol with zero call sites, a constant never
+referenced, an enum value never compared, a def field never read outside the file
+that declares it. That is the same lesson as items 27 and 29, arriving for the
+third time, which means it is not a lesson yet — it needs to be a build step.

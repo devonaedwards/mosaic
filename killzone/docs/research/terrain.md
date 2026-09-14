@@ -626,3 +626,877 @@ Satellite ignores terrain entirely (it looks up). Autonomy has no link to lose.
 | **Passive RF (ESM)** | Diffracts; huge margin absorbs it | **Range multiplier ≈ 0.3–0.5 when occluded**, never a cut [E] |
 | **Control link (not a sensor channel, but the same physics)** | Diffracts; no margin | **Binary drop** for Radio; restored by an elevated mesh node; **ignored entirely by Fibre and Satellite** |
 
+---
+
+## 3. Trenches and field fortification
+
+### 3.1 What changed, and why
+
+The short history from the reporting: *"by late 2022 and into 2023 it became
+clear that many early positions were too shallow and exposed, and once FPVs
+became widespread, brigades started asking for deeper shelters, stronger
+overhead cover and better camouflage"*; *"with drones, FPVs and guided bombs
+constantly in the air, trenches must now be deeper, stronger and properly
+camouflaged"* [R]. The ICDS assessment frames 2025 as the year Ukraine
+*"discarded Cold War-era doctrines to embrace a paradigm of scattered,
+low-observable and fluid strongholds supported by distant fire control"* [R,
+ICDS Oct 2025].
+
+The design principles ICDS lists are worth quoting because they are the
+specification a game can build from: *"robust overhead cover for all elements
+above ground, blast entrances, and the internal segmentation of trenches to
+mitigate shrapnel and blast effects"*, plus *"multiple concealed entry and exit
+points to covered or subterranean passages, and as great a shelter depth as
+local hydrogeological conditions permit"*, and — the one that connects
+fortification to terrain — *"careful siting of positions within natural cover
+like tree lines, and the construction of access and egress routes to permit safe
+manoeuvre"* [R].
+
+**That last clause is the design-relevant one.** A position is not a thing you
+place on open ground. It is a thing you place *in a tree line*, with a *covered
+approach*. Reporting on failure says the same from the other side: Ukrainian
+journalists explaining that some fortifications *"proved ineffective because
+they are built in open fields and cannot actually be used by soldiers"* [R].
+
+### 3.2 Dimensions and overhead cover
+
+I looked hard for current Ukrainian trench profile dimensions and **did not find
+them**. Searches returned WWI figures (which I am discarding as irrelevant) and
+2026 commentary without numbers. What I did find:
+
+| Figure | Value | Confidence |
+|---|---|---|
+| Overhead cover on fighting positions | **20–40 cm of compacted earth over steel reinforcement**, stated as sufficient to defeat drone-dropped grenades and PG-7 warheads | [R] — **single aggregator source, not corroborated. Treat as indicative, not measured.** |
+| Overhead cover on Russian command posts | **~3 m**, reinforced with concrete slabs, wooden decking and packed earth, *"intended to absorb the effects of air-delivered bombs"* | [R] |
+| Prefabricated shelter module | corrugated steel, with drainage, ventilation, waterproofing and internal passageways | [R] |
+| A specific modular build | six expanded steel bunkers, each **7.6 m long × 2.5 m wide**, assembled into an underground hospital | [R] |
+| Materials for improvised overhead cover | timber, compacted earth, metal sheeting, lightweight concrete — *"survive most conventional munitions"* | [R] |
+
+**The two-tier structure is the useful pattern.** [I] A fighting position gets
+tens of centimetres — enough for fragmentation and a dropped grenade. A command
+post gets metres — enough for a glide bomb. The game should have exactly two
+cover tiers and not three, because that is what the evidence supports.
+
+### 3.3 What overhead cover actually defeats
+
+| Threat | Defeated by 20–40 cm? | Basis |
+|---|---|---|
+| Artillery fragmentation and airburst | **Yes** — *"defensive positions must have overhead protection to shield occupants from direct impacts and air bursts"*, and indirect fire is *"responsible for almost two thirds of casualties on both sides"* | [R] |
+| Drone-dropped grenade (top attack, small shaped or frag charge) | **Yes**, and this is the stated design case | [R] |
+| PG-7-class shaped charge dropped or flown in | **Claimed yes** | [R, same single source] |
+| Overhead thermal observation | **Yes** for the covered volume; **no** for entrances, vents and anyone outside | [I, §2.2d] |
+| Optical observation | **Yes** for the covered volume; **no** for the spoil — *"fresh soil mounds at the edges of fields"* are named as something drones observe | [R] |
+| Purpose-built penetrator | **No.** A 2026 Ukrainian *"square, fence-post-like penetrator drone bomb"* with a reinforced nose and delayed-action fuse is described as designed to *"bust bunkers and overcome nets and cages"*, rendering previous shelters unsafe, and causing visible alarm on Russian channels | [R] |
+| Thermobaric | **No.** *"The munition of choice for attacking troops in bunkers, trenches and buildings"*; precision allows one to *"fly into a bunker entrance"* | [R] |
+
+**[I, high] The game rule this supports is a scissors:** overhead cover should
+give a large, flat damage reduction against the *cheap, numerous* munitions and
+essentially none against two *expensive, specific* ones. That makes cover a
+real investment with a real counter, rather than a hit-point multiplier.
+
+### 3.4 How much of a position is actually covered
+
+The honest answer is that I could not close this. The strongest statement found
+was *"all fighting positions now have reinforced overhead cover"* from the same
+single aggregator [R, low confidence], against ICDS's normative *"robust
+overhead cover for all elements above ground"* [R] — a requirement, not an
+observation — and against a long tail of 2024–2026 reporting on inadequate
+fortifications: *"relentless Russian shelling, lack of equipment and crippling
+bureaucracy plague construction across the vast 1,000 km front"*; *"rudimentary
+earthen fortifications, often with only a connecting trench for infantry to
+reach firing positions, but little else"* [R].
+
+**[E, and marked clearly as an estimate]** For a designer who must pick a
+number: model a prepared position as **roughly 50–70% of its length under
+overhead cover**, with the fighting bays and the rest bay covered and the
+connecting runs open, and make the uncovered fraction a *buildable upgrade*
+rather than a constant. That fits the evidence in both directions — doctrine
+demands full cover, reality delivers partial — and it makes "finish your
+position" a decision the player makes with time they may not have.
+
+### 3.5 Digging: time and equipment
+
+This is the best-sourced part of the fortification material.
+
+| Task | Without machines | With machines | Source character |
+|---|---|---|---|
+| Infantry platoon bunker | **2 weeks, 8 people** | **~3 days, 3 people** | [R] — the same pairing appeared in two separate snippets, so it is at least consistently reported |
+| One-man fighting hole (~60 ft³) | **2.5 hours, 1 soldier**; **1.25 hours, 2 soldiers** | — | [R, doctrinal rather than Ukrainian] |
+| Continuous trench, purpose-built digger (BTM-3 class) | — | **~730 m/hour** at ~1.5 m deep × ~0.9 m wide (quoted as "800 yards an hour", "five feet deep and three feet wide") | [R] |
+| Theatre-wide output | — | *"more than 300 excavators digging 23 km of fortifications a day across all sectors"* | [R, OSINT monitoring group — **claimed**, methodology unknown] |
+| Equipment base | — | Soviet MDK-3 and BTM-3 trenchers, BAT-2; ~**500 engineering vehicles** from Western partners, including German Dachs | [R] |
+| Funding | — | **₴17.5 bn** allocated by the Cabinet of Ministers for engineering and fortification works | [R] |
+
+**The ratio that matters, and it is stark:** machines make a platoon position
+**roughly 12× cheaper in man-days** (112 man-days → 9). **[M, arithmetic on the
+reported pairing]** That is the single best argument for making engineering
+vehicles a distinct, valuable, targetable unit class in the game rather than an
+abstract build timer. It also explains why they are hunted.
+
+**The counterweight.** Digging is done under observation. *"Speed is essential
+in drone-saturated conditions"* [R], and once troops leave cover they are
+*"often spotted within minutes and engaged"* [R]. An excavator is large, hot,
+loud and stationary — in the game's own signature terms, close to a main battle
+tank on thermal, acoustic and visual. **[I]** Building fortifications forward
+should be a high-risk activity conducted at night, not a background process.
+
+### 3.6 Anti-drone netting over trenches specifically
+
+Road netting is covered in `ground-logistics.md` §8 and I am not repeating it.
+Netting over *positions* is a different, smaller, older practice:
+
+- Russian forces *"started covering trenches with anti-drone screens"*; both
+  sides use *"protective netting over trench positions and physical anti-drone
+  obstacles — 'dacha' frame structures over trench tops"* [R].
+- *"Canopies and improvised screen protections over their positions... enclose
+  trenches from above and the sides"* [R].
+- The mechanism is entrapment or premature detonation: *"an incoming drone can
+  be harmlessly captured, as flying into the net stops it without detonating its
+  warhead. Soft structures are preferred as these can catch a drone; harder
+  structures are more likely to set it off, but can be effective if they are far
+  enough from what is being defended"* [R].
+- Russian field manuals reportedly advise *"everything from fishing nets to
+  chain-link fencing to purpose-built metal structures"* [R].
+- Specific defeat: *"attacks by drones with vertically falling droppable
+  grenades become more difficult, the same goes for manually directed FPV drone
+  strikes"* [R].
+- The counter is already fielded: the penetrator bomb described in §3.3 is
+  explicitly designed to *"overcome nets and cages"* [R].
+
+**[I] Netting over a position is a stand-off layer, not armour.** The right game
+model is a **fixed probability that an arriving top-attack munition is stopped
+or detonates early**, applied before damage, with the penetrator munition
+bypassing it. A value of **0.35–0.55** is my estimate [E]; the sources support
+"materially helps, does not solve".
+
+**Does netting block sensors?** I found no source either way. **[I, medium]**
+Physically, a nylon or chain-link mesh is a partial optical screen at shallow
+angles and nearly transparent at normal incidence; it is transparent to LWIR and
+to radio. So: a small optical concealment bonus, nothing else. I would not give
+it more than that without evidence.
+
+---
+
+## 4. Tunnels and underground positions
+
+**The honest characterisation is "exceptional but recurring, and now
+industrialising".** It is not a Gaza-style tunnel war, and it is not a handful of
+anecdotes either. Three distinct things are going on and the game should treat
+them separately.
+
+**(a) Using infrastructure that is already there.** This is the best-attested
+and it is opportunistic:
+
+- **Avdiivka, 2024**: Russian troops *"spent several days clearing and preparing
+  an infiltration route through several kilometres of sewer pipe approximately
+  1.4 m in diameter"* [R] — the dimension appears in two independent snippets.
+- **Sudzha, March 2025**: *"Ukrainian forces were surprised by Russian soldiers
+  who crept through an unused underground gas pipeline"* [R].
+- **Toretsk**: *"the enemy trying to use underground utilities to enter the rear
+  of Ukrainian troops on certain streets"* [R].
+- **Kupiansk**: *"Russian troops using underground gas and water pipelines to
+  bypass drone surveillance and frontline observation, forcing Ukrainian units
+  to adapt by damaging, flooding, mining and fortifying the pipelines while
+  monitoring entrances and exits with drones and thermal surveillance"* [R].
+- **Azovstal, 2022**: an 11 km² complex with *"a massive, multi-level system of
+  Soviet-era underground tunnels and bunkers"* [R] — the outlier case, and a
+  steelworks, not a tunnel network anyone dug for this war.
+
+**(b) Digging tunnels as an assault technique.** Attested but thinner: Russian
+forces *"digging tunnels for logistical support or to carry out demolitions of
+Ukrainian defensive structures"*, tunnelling in the Kharkiv direction, a 2018
+Avdiivka industrial-zone tunnel [R]. One snippet headline records a Toretsk
+tunnel assault being destroyed. **[I]** This is a sapper technique with a long
+history and a poor success rate; I would not build a game system around it.
+
+**(c) Deliberate linked underground positions — the one that matters.** This is
+new, it is 2026, and it is engineering:
+
+- Ukrainian construction firms built **2 km of defensive infrastructure linking
+  12 underground fortified positions with internal communication routes**, using
+  corrugated steel shelters with *"drainage, ventilation, waterproofing and
+  internal passageways"*, reportedly already in use by troops [R, Jan 2026].
+- Broader description: *"increasingly sophisticated underground systems
+  connecting trench networks, fighting positions, command nodes and logistics
+  hubs, equipped with fibre-optic communications, ventilation systems,
+  reinforced concrete protection and concealed corridors"* [R].
+- The stated purpose is unambiguous: *"tunnelling allows movement without
+  exposure to drone observation"*; positions *"connect through tunnel systems
+  designed specifically to defeat persistent drone surveillance, allowing troops
+  to move between firing positions and command centres without exposing
+  themselves to aerial observation"* [R].
+- Russian higher headquarters are doing the same: *"drones and missiles made
+  rear areas a myth, so HQs dig in underground"* [R].
+
+**What underground defeats:** all five sensor channels, completely, for the
+volume that is actually underground. What it does not defeat: entrances (see
+§2.2d and the Kupiansk counter-tactic of watching exits with thermal), and the
+approach to the entrance.
+
+**[E] The game mechanic.** Not a tunnel *terrain type* — a **buildable link
+between two structures** that (i) transfers units between them with no exposure
+and no transit through the kill zone, (ii) costs a lot of build time and
+engineering material, (iii) has two endpoints that are themselves detectable
+structures, and (iv) can be severed by destroying either endpoint. That
+reproduces all three reported behaviours — resupply, rotation without loss, and
+command-post survival — with one system. It also directly addresses the
+`ground-logistics.md` §9 finding that the binding constraint on a position is
+*"whether anyone can physically reach it to relieve or evacuate"*.
+
+Scale it by the reported figure: **2 km of link per 12 positions** [R] — so a
+link should be short, expensive, and connect adjacent positions, not distant
+ones.
+
+---
+
+## 5. Tree cover and forest
+
+### 5.1 The geometry that makes this the most important section
+
+Two numbers decide the whole terrain model for this game.
+
+**Ukraine's field shelterbelts are spaced 800 m to 1.6 km apart** and **mature
+windbreaks reach 19–23 m tall** [R, from agricultural and forestry sources;
+the spacing figure appeared with the context that the belts were planted
+perpendicular to prevailing winds under the 1948 planting programme, with
+**446,000 ha of belts protecting 13 million ha of cropland** before 2022].
+
+Put those against `radar-rf.md`'s worked masking case — a **15 m** treeline at
+1 km from a 10 m mast blanks everything below 35 m out to 5 km — and the
+conclusion is immediate and, I think, the single most useful finding in this
+document:
+
+> **[M/I] In this theatre a ground-based sensor of any kind can expect a 19–23 m
+> vertical obstruction across its entire field of view every 800–1,600 m, by
+> design, everywhere there is farmland. The terrain is not the occluder. The
+> agriculture is.**
+
+At the game's 12:1 compression, 800–1,600 m real is **67–133 map metres**. On a
+map where the Gun Mount reaches 600 map metres optically and the Radar Mast
+1,400, a sensor is looking through **five to twenty** tree lines at its own
+maximum range. The reason the current flat-empty model produces recognisable
+behaviour at all is that the designers tuned the ranges down to compensate
+without knowing that was what they were doing. **[I]**
+
+CEPA's framing of the southern battlefield matches: *"much of the southern
+Ukrainian battlefield is flat and open, with dense forests sprinkled into the
+landscape, with large fields separated by treelines. Treelines and forests are
+where the Russian army has dug its forward defences, while tree cover hides
+supporting arms including tanks and artillery"* [R].
+
+And the tactical unit of the war is sized to it: *"fighting positions hidden in
+tree lines can consist of just two fighting holes dug into the undergrowth, with
+three riflemen in each, connected by two radios and supported by a stationary
+drone"* [R] — which lines up precisely with `front-2026.md` §10's two-to-four
+soldiers per position.
+
+### 5.2 Per-channel, and seasonally
+
+| Channel | Tree line in leaf (summer) | Tree line bare (winter) |
+|---|---|---|
+| **Optical** | Near-total block for a static target; partial for movement. *"Bare trees in winter offer fewer opportunities for concealment"*; *"leafless landscapes left Russian infantry exposed to Ukrainian drones"* [R] | Substantially degraded screen — trunks only. **[E] ~50–60% of the summer screening value** |
+| **Thermal** | **Worse than optical**, per §2.2c — an opaque, sun-heated, high-variance clutter field | **Better than optical** — bare branches are thermally near-transparent and the loss of background clutter *"can increase target detection"* [R] |
+| **Radar** | Clutter σ0 −15 dB; reach multiplier **0.65**; and as a physical obstruction, an absolute block [`radar-rf.md`] | Marginally better clutter; the **obstruction is unchanged** — trunks and branches block a 3 cm wave nearly as well as leaves do. **[I]** |
+| **Acoustic** | **Nearly season-independent**, because the mechanism is *"scattering from the trunks and limbs; absorption by leaves is not a significant contributor"* [M] | Same |
+| **Passive RF / control link** | ITU-R P.833: **0.3–0.8 dB/m at 2 GHz, 0.5–1.5 dB/m at 5 GHz** in leaf [M]; in-leaf ~**20% higher dB/m** than leafless at 1 GHz [M]; a broader claim of **3–10 dB more with full foliage** [R] | ~20% less per metre; **still enough to kill a link through 20 m of belt** |
+
+**The seasonal inversion is the design gift here.** [I, high] Summer helps
+optical concealment and hurts thermal detection; winter does the reverse. The
+game already has a day/night cycle driving optical and thermal scalars in
+opposite directions. A season (or a single "canopy state" flag on Forest tiles)
+that does the same thing spatially is the same mechanic rotated 90°, costs
+almost nothing, and reproduces a documented rhythm of the war: *"the leaves of
+2022 protected the Ukrainians from the Russian onslaught; in the summer of 2023
+the leaves gave the Russians protection from Ukrainian precision artillery and
+drones"*, and the whole *"Russian obfuscation doctrine... relies on a single
+factor — an eternal summer providing a thicket of protective leaves above"* [R].
+
+### 5.3 Do drones fly under canopy, and what does it cost
+
+Yes, and the cost is the link.
+
+- *"Traditional radio-controlled FPV drones find it very difficult to descend
+  into the middle of forests because the radio signal disappears"* [R].
+- *"FPV drones struggle if the operator is behind a hill or if the drone flies
+  into a building or deep into woods, because the radio signal is blocked"* [R].
+- Fibre changes this completely: *"fibre-optic drones can fly low between
+  buildings or through forests without losing signal, which means areas
+  previously safe from drone attacks can now be hit"* [R].
+- And it is not free: the Serebryanskyi forest is described as wrapped in
+  discarded fibre — *"silvery strands drape over the treetops... trailing across
+  branches, bushes and grass until they wrap the forest like a cocoon"* [R].
+  That is the game's `SnagRatePerSecond(Forest) = 0.040` rendered in prose.
+
+Forest fighting itself is attested as a distinct, slower, ambush-heavy regime:
+*"the sandy ground and thick blanket of the Serebryanskyi forest obstruct a
+Russian advance and provide cover from drones"*; *"where there is forest, it's
+harder for Russians to advance, and easier for Ukrainians to defend"* [R].
+
+### 5.4 What Forest should do in the game beyond snag rate
+
+**[E] Six things, in priority order:**
+
+1. **Occlude optical, thermal and radar** as a 20 m occluder.
+2. **Attenuate acoustic** by the §2.4 band-dependent diffraction plus a
+   per-metre forest term.
+3. **Break Radio and Mesh control links** passing through it, and leave Fibre,
+   Satellite and Autonomy untouched. This is the mechanic that makes fibre make
+   sense.
+4. **Carry a canopy state** (in-leaf / bare) that flips the optical and thermal
+   terms in opposite directions.
+5. **Reduce a unit's own signature while stationary inside it** — the treeline
+   ambush is the single most-described tactic in the corpus.
+6. **Keep the existing tether snag.** It is already right.
+
+---
+
+## 6. Urban and rubble
+
+### 6.1 Intact settlement
+
+Short sight lines are the defining feature, and the vertical dimension is now
+genuinely used. Forbes, May 2026: *"FPVs are changing the rules of urban
+warfare, with drones taking the lead instead of infantry. Increasing numbers of
+videos show FPVs searching through buildings and trenches... videos show FPV
+drones searching through large apartment blocks, with some equipped with thermal
+imagers to locate enemies indoors. Small and agile, flying at 40 mph or more,
+these drones are extremely difficult targets for small arms fire even at low
+altitude. **Drones do not need stairs or ladders, and the sixteenth floor is as
+accessible as ground level.**"* [R]
+
+Sensor behaviour in the urban case:
+
+- **Optical and thermal**: sight lines drop to street length. Micro-drones exist
+  specifically to solve this — *"in the rubble of Bakhmut, micro-drones provide
+  a bird's-eye view of whatever is around the next corner, over the next wall,
+  or inside the next building"* [R].
+- **Radar**: worst case on both terms. Clutter σ0 −8 dB gives reach ×**0.45** and
+  edge reliability ×**0.40** [`radar-rf.md`], and independently, *"radar systems
+  in urban environments often struggle to distinguish small plastic drones from
+  birds or ground clutter — the urban canyon effect"* [R]. Multipath is the
+  named mechanism: *"radars cannot avoid the dramatic fading effects of
+  multipath when scanning the horizon"*, and the discrimination problem is
+  *"a 1 m² moving target against a reflection potentially 115,000 times
+  larger"* [R].
+- **Acoustic**: clutter and reverberation, and the sources are specific.
+  *"In urban areas, drones near activity are rarely the loudest source, with
+  their signature potentially being partially masked, intermittent, and embedded
+  in echoes and reverberation"*; *"buildings, vegetation and terrain features
+  increase masking and multipath, allowing drones flying low and slow near
+  roadways, industrial sites or urban noise to blend into the acoustic
+  background"*; classical beamforming *"relies on simplifying assumptions — that
+  the environment is anechoic... which frequently break down"* with *"multipath
+  reflections from buildings"* [R]. Note that reverberation degrades
+  *localisation* worse than *detection*, which fits `acoustic.md` §6's
+  detection-versus-localisation split.
+- **Control link**: *"signal can be easily blocked by trees, buildings, or even
+  the pilot's body"* [R]. Urban is where fibre and relays earn their cost.
+
+### 6.2 Rubble, which is a different material
+
+This is the finding I would most want a designer to take away from §6.
+
+Satellite assessment of Bakhmut: **97% of multi-storey housing destroyed**; of
+344 buildings assessed, **6.7% irrecoverable ruin and only 2.6% still
+functional** [R]. Mariupol: *"up to 90% of buildings damaged or destroyed"* [R].
+
+And the structural specifics: *"entire rows of apartment buildings gutted, just
+the outer walls left standing and the roofs and interior floors gone"* [R].
+
+**[I, high confidence] That is a precise statement about which occlusions
+survive destruction and which do not:**
+
+| Property | Intact settlement | Rubble |
+|---|---|---|
+| Blocks horizontal sight lines | **Yes** | **Yes** — walls stand |
+| Blocks overhead sight lines | **Yes** — roofs | **No** — roofs gone |
+| Provides overhead cover from top attack | **Yes** | **No** |
+| Blocks radio | **Yes** | **Mostly** — masonry remains |
+| Interior fighting space, vertical | **Yes** — sixteen floors | **No** — floors gone |
+| Ground mobility | Roads | **Degraded to impassable for vehicles** — rescue and resupply by vehicle into Bakhmut was cancelled and civilians told to *"flee by foot"* [R] |
+| Acoustic character | Reverberant | **More** reverberant, more scattering surfaces, no absorbing interiors [I] |
+
+The game has both `Rubble` and (implicitly) buildings-as-`Impassable`, and
+currently distinguishes them only by tether snag rate. **Rubble should be the
+tile that hides you from the side and not from above.** That is a genuinely
+interesting tactical object: good against a ground assault, useless against a
+drone, and it converts from the good version to the bad version when the
+settlement is destroyed — which is something the player can cause.
+
+---
+
+## 7. Man-made masking that is not a fortification
+
+### 7.1 Berms and revetments
+
+Doctrinal, and the language is precise: *"proper placement of a berm or
+revetment in front of an object can deflect or stop fragmentation and
+direct-fired projectiles, and these structures may also be used to provide blast
+protection"* [R, US engineering field guidance]. Aircraft revetments are
+*"surrounded by protective blast walls on three sides, designed to shield parked
+aircraft from blast overpressure, fragmentation and shrapnel, channelling
+potential explosions upward and away"* [R].
+
+**[I] What a berm stops, per channel:** everything at ground level from the
+screened direction — optical, thermal, radar, control link — and nothing from
+above. It is the purest example of *directional* occlusion in this document, and
+it is the one object that makes an argument for direction-aware occlusion rather
+than a simple "in cover" flag.
+
+**[I] What it does not stop:** anything rising above it. A running engine's
+exhaust plume, a heated shelter's vent, dust, and the vehicle's own antenna. A
+berm plus a thermal sensor looking at the air above the berm is a real detection
+mode and a nice tell.
+
+### 7.2 Hardened shelters and cut-and-cover
+
+Active construction, 2026, and the counter-drone motivation is explicit:
+*"construction work at multiple bases has been adding many dozens of new
+hardened aircraft shelters to better shield aircraft from drone attacks and
+other indirect fire"*; four new arched aviation hangars begun late April 2026 at
+Chkalovsk; reinforced hangars in Kaliningrad *"intended to reduce the
+vulnerability of aircraft to potential attacks, including drone strikes"* — and,
+usefully for this document, *"such shelters can also limit satellite and optical
+reconnaissance"* [R].
+
+**[I]** A hardened shelter is the only object in this document that provides
+**both** complete occlusion on every channel **and** protection, at the cost of
+being immobile, expensive and itself an obvious feature. That is a good building
+in a game. It should be expensive, take a long time, and be visible from the
+moment it exists.
+
+### 7.3 Cope cages and vehicle screens
+
+The consensus in the reporting is narrow and consistent:
+
+**What they stop.** *"FPV drones frequently target thinner top armour and
+vulnerable openings, and even relatively simple physical barriers can disrupt a
+drone's fusing sequence or detonate a warhead before direct impact"*; they *"may
+offer some level of protection against small bomblets dropped by commercial
+drones"*; the mechanism is spaced armour *"designed to induce the premature
+detonation or malfunction of incoming munitions"* [R].
+
+**What they do not stop.** *"Useless against anti-tank guided missiles and large
+air-dropped munitions"*; *"the cages provide no defence against side attacks"*;
+and effectiveness *"varies, with some looking jury-rigged and crudely built"*
+[R]. And the counter exists: the penetrator bomb of §3.3 is designed to
+*"overcome nets and cages"* [R].
+
+**[E] Game model:** a top-attack-only damage reduction of **0.3–0.5**, zero
+against side attacks and against the two named munition classes, with a small
+mobility or visibility penalty. Cope cages are also visually enormous, which
+argues for a small **visual signature increase** — a caged tank is a
+distinctively shaped tank.
+
+### 7.4 Dazzle paint and computer-vision deception
+
+`ground-logistics.md` §8 has this and I will not repeat it, except to note the
+key framing that belongs in a terrain document too: the dazzle schemes are
+assessed as *"aimed at the computer-vision systems in drone targeting workflows,
+not at human eyes"* [R]. As autonomy becomes the norm (per `front-2026.md` §6A
+tier one being routine), masking increasingly targets the *classifier*, not the
+*sensor*. A terrain that confuses a classifier — clutter, edges, repeated
+structures — is different from a terrain that blocks a sensor. I flag that as a
+2027–28 direction, not something to build now.
+
+### 7.5 Urban netting as a terrain feature
+
+Now at civic scale: *"white nylon nets now stretch over roads and city
+streets"*; Izium with *"roads and sidewalks completely covered in overhead
+netting"*; a government plan for *"some 2,500 miles of drone nets on frontline
+roads by the end of 2026"* [R, NPR March 2026]. `ground-logistics.md` §8 has the
+kilometre series and the contested-effectiveness argument.
+
+**[I]** For terrain purposes the relevant point is that netting is becoming a
+*persistent map feature of settlements near the front*, not a temporary
+expedient — which makes it a legitimate terrain overlay rather than a structure.
+
+---
+
+## 8. The engagement clock: detection to intercept
+
+*Added at the coordinator's request. Terrain masking decides how far out a
+defence sees something; this section asks whether that warning converts into a
+shot. It is the same problem from the other end.*
+
+**The units caveat, stated once and applied throughout.** This simulation has no
+single coherent time scale — movement implies roughly 7:1 compression, the
+day/night cycle roughly 240:1, against a 12:1 distance scale. **Absolute seconds
+cannot be transplanted.** Everything below is given as a ratio.
+
+### 8.1 The stages, and which one dominates
+
+| Stage | What is published | Character |
+|---|---|---|
+| **Detection** | A single fixed radar-RF-EO-IR node gives *"meaningful detection coverage out to roughly 2–5 km"* [R]. Ukraine's national acoustic layer — Sky Fortress and Zvook — reportedly totals *"north of 24,000 individual listening posts for a combined cost under $5 million"* [R] | Wildly scale-dependent; see §8.4 |
+| **Track and classify** | *"The acoustic network hears a Shahed enter Ukrainian airspace near the border and starts a track; radar picks it up and refines that track with speed, altitude and heading"* [R]. Radar *"immediately shows what type of drone is approaching"* [R] | Aided by the target's own behaviour: Shahed-class drones *"fly on a predictable course and do not manoeuvre"*, and are *"much more visible on radar due to their larger size"*, which *"reduces the time from launch to detection"* [R] |
+| **Decide and authorise** | *"Positive identification is mandatory before any kinetic engagement can be authorised"* in most frameworks [R]; but the kill chain *"must function at machine speed with human oversight rather than human decision-making at every step"* [R] | Being automated away — see §8.2 |
+| **Alert and prepare** | An interceptor crew is *"three or four people: the pilot, the navigator who tracks the target's movement and assists with targeting, the technician who prepares the drone for launch, and an engineer who equips the warhead before flight"* [R] | The warhead is fitted before flight, which is why readiness state matters |
+| **Launch** | One tailsitter interceptor quotes *"deployment time of launch within 30 seconds"* [R, vendor] | Small |
+| **Fly to intercept** | Interceptor speeds **315–343 km/h** (Sting) and **326 km/h** (Zerov) [R, vendor]; climb rates **30 m/s** and *"up to 40 m/s, reaching 6,000 m in a few minutes"* [R, vendor]; engagement range *"up to 25 km"*, tactical radius with return **18.5 km**, combat radius **up to 20 km** [R, vendor] | **This is the dominant stage** |
+
+**The dominant stage is flight, by a wide margin, against a high-altitude
+crosser.** Work it: a Geran-4 class target cruises at **300–350 km/h at
+4,000–5,000 m** [R]. An interceptor climbing at 30 m/s needs **~2.2 minutes** to
+reach 4,000 m, and transiting 20 km at 315 km/h needs **~3.8 minutes**; the two
+overlap, so call the interceptor's flight **3–6 minutes**. [M, arithmetic on
+vendor figures]
+
+Against that, published total counter-UAS latency from first detection to defeat
+is **15–40 seconds** [R], and launch alone is ~30 s [R].
+
+> **[I, the ratio the designer needs] Pre-launch latency is on the order of
+> one-tenth to one-sixth of interceptor flight time for a high-altitude
+> engagement. Flight time is the clock; reaction time is a rounding error on
+> it.**
+
+**And the ratio inverts completely at short range.** The same literature gives
+*"for FPV drones travelling above 100 km/h, response timelines are measured in
+seconds"* and, at the extreme, *"three seconds is the window from detection to
+decision to destruction"* [R]. In that regime the interceptor's flight time is
+also seconds, so **pre-launch latency is 30–100% of the total** and reaction
+time is the whole game.
+
+**[E] The game rule that follows.** Give the interceptor a **reaction delay
+expressed as a fraction of its own expected flight time to the target**, not as
+a constant. Something like: delay = max(a small floor, 0.12 × flight time)
+against a Layer.High crosser, and a flat, large fraction against a Layer.Low
+close-in target. That is one multiply, it produces both regimes, and it survives
+any rescaling of the game's time base.
+
+### 8.2 Readiness states
+
+The evidence says the difference is real and that it is being engineered away.
+
+- Mobile fire groups have an explicit posture: *"Readiness number one sends all
+  mobile fire groups to positions after Shaheds are launched"*, and *"the drones
+  arrive in 40 minutes"* [R]. That is a named readiness state with a named
+  warning interval.
+- Interceptor crews are described as needing infrastructure to be ready at all:
+  *"interception is possible only if there is a ground station with a control
+  console, a catapult for launching aircraft-type drones, the interceptor drones
+  themselves, specialised vehicles for mobile teams, and access to radar data
+  that tracks both the target and the interceptor drone"* [R].
+- The warhead is fitted by a dedicated crew member *before* flight [R] — so a
+  cold airframe is not minutes from launch, it is a preparation task.
+- Automation is collapsing the difference on the decision side: one Ukrainian
+  system *"automates 95 percent of the interception process from launch to
+  impact"* and *"integrates directly with the country's radar network"*; the
+  operator *"simply selects the target in a specialised interface and issues the
+  strike command"* [R].
+
+**[I, medium] Two readiness states, not three.** *Ready* — crew present,
+airframe armed, radar feed live, launch within the small floor delay. *Cold* —
+everything else, and the transition costs a substantial, visible time. The
+scarce resource is the **crew**, not the airframe: *"a salvo of 500 drones
+saturates the number of trained pilots available to fly intercepts long before
+it saturates the number of airframes on the shelf"* [R]. That matches
+`front-2026.md` §10's finding that trained crews are the binding constraint, and
+it is a better game economy than airframe count.
+
+### 8.3 Vectoring: ground control to a predicted point, then handoff
+
+**Both, in sequence, and the handoff range is published.**
+
+The human description: *"a pilot flies the interceptor to the right point using
+the radar network, then finds the target by eye, chases it, and attacks"* [R].
+The automated description: *"in lock mode, the operator selects a target,
+triggering a zoomed identification window for confirmation. Once verified, the
+system transitions to automatic guidance mode, in which the drone independently
+navigates toward the object"* [R]. And the cueing sources: *"Ukraine's most
+common intercepts start with cueing through radar tracks, acoustic spotters, and
+feeds from Ukraine's Mission Control battlefield management system that put a
+pilot in the right place at the right time"* [R].
+
+**Handoff ranges — the numbers that decide whether the game needs a real
+predicted-intercept-point calculation:**
+
+| Seeker | Lock-on range | Source |
+|---|---|---|
+| LITAVR optical/vision terminal guidance | **up to 2 km** | [R] |
+| Commercial 24 GHz radar seeker (25° × 14° FoV), offered at ~$4,000 | **1 km** | [R] |
+| Thermal acquisition of a Shahed-type target | **up to 500 m** | [R] |
+
+Terminal guidance itself is neural-network "pixel lock" trained on *"thousands
+of hours of real flight and simulation data"*, with GPS-free navigation [R].
+
+**[I, high] The design answer.** The terminal seeker covers the **last 0.5–2 km**
+of a **20 km** engagement — **2.5% to 10% of the run**. Everything before that is
+ground-controlled flight to a computed point. So **yes, the game needs a real
+predicted-intercept-point calculation**; the seeker does not rescue a bad
+vector, it only closes a good one. But the PIP calculation is cheap: a constant-
+velocity lead solve is one quadratic per engagement, computed once at launch and
+refreshed on the mesh-rebuild cadence, not per tick.
+
+The failure mode when the vector is good and the seeker is not is documented and
+is worth a mechanic: *"the Shahed might be two hundred metres away and ground
+radar knows it's there, but the pilot can't see a damn thing"* in fog or cloud,
+and *"interceptor success rates fall off a cliff once winter or weather sets
+in"* [R]. The game's `WeatherScale` should apply to the **terminal phase
+specifically**, not just to search.
+
+### 8.4 How much warning time is actually available
+
+This has two answers and the gap between them is the finding.
+
+**Strategic warning: enormous, and not the constraint.** 40 minutes from launch
+to arrival for mobile fire groups [R]. Confirmed intercepts of Russian drones
+*"over 50 km from their launch point"* [R]. Against a 3–6 minute interceptor
+flight, that is a warning-to-reaction ratio of roughly **7:1 to 13:1**. [M,
+arithmetic] Detection range is not the constraint here; **crew count and
+positioning are**.
+
+**Local warning: catastrophically short, and it is the constraint.** A single
+sensor node sees 2–5 km [R]. A target at 350 km/h (97 m/s) crosses 5 km in
+**51 seconds**; a Geran-5 class at 450–600 km/h cruise [R] crosses it in
+**30–40 seconds**. Against an interceptor that needs minutes of flight, local
+detection provides **less warning than the interceptor needs to arrive** — the
+ratio is roughly **0.2:1**. [M, arithmetic]
+
+> **[I, high] The binding constraint is not detection range and it is not
+> reaction time. It is whether detection happens far enough out that the
+> interceptor can be launched to a point *ahead of* the target. Extra detection
+> range is worth almost nothing until it crosses the threshold at which a lead
+> solution becomes feasible, and then it is worth everything.**
+
+That is a step function, not a gradient, and it is precisely the thing the
+current game cannot express — because with no reaction delay and no lead
+pursuit, early warning buys nothing, which is why the radar-reflector decoy
+measured zero effect.
+
+### 8.5 How often the chain fails, and why
+
+The best available arithmetic: Ukrainian interceptor teams flew *"roughly 6,300
+sorties in February 2026, destroying more than 1,500 Russian drones"* [R,
+carried by several outlets]. That is **one kill per 4.2 sorties — a 24% sortie
+success rate** [M, arithmetic on reported figures].
+
+Set that against *"interceptors accounted for more than 70 percent of Shahed
+downings over Kyiv that month"* [R], a unit-reported *"95 percent intercept
+rate"* for one system [C, operator-reported, explicitly flagged as
+unverified in the source], and *"overall system intercept rates across
+documented C-UAS networks run closer to 70 percent"* [R].
+
+**[I, medium-high] Roughly three sorties in four do not produce a kill.** The
+sources do not decompose that, so I will not pretend they do — but they do name
+the causes:
+
+- **Speed deficit.** *"The interceptor drones that closed Ukraine's
+  cost-exchange gap were built against a 185 km/h target and cannot catch a
+  500 km/h one"* [R]. Ratio: **0.37**. The game's 34 vs 55 is **0.62** — better,
+  still not enough. See §9.
+- **Geometry.** *"In a tail-chase scenario, the maximum target speed is
+  120 km/h before the geometry becomes unfavourable"*; against head-on targets
+  *"closing speed sums to 200+ km/h and the engagement window shrinks to 2–3
+  seconds"* [R].
+- **Weather at the terminal phase** [R, §8.3].
+- **Crew saturation** [R, §8.2].
+- **Low ingress defeating the cue** — under-100-foot flight *"defeats radar line
+  of sight and shortens the engagement window to seconds"* [R]. This is the
+  direct link back to terrain masking: **the target's altitude choice is a
+  choice about your detection range, and therefore about your warning time,
+  and therefore about whether a lead solution exists at all.**
+
+**[E] The single number a designer can take:** make an interceptor sortie
+against a fast crosser succeed about **one time in four** when everything is
+nominal, and let the player's decisions — mast height, sensor siting, readiness
+state, launch position relative to the threat axis — move that. Today the game
+has no dial that moves it at all.
+
+---
+
+## 9. Evasion, routing, and the geometry of a slow pursuer
+
+*Second extension. The question put to me was whether evasion effectiveness
+scales with speed ratio rather than turn rate. It does, and the reason is exact
+enough to implement directly.*
+
+### 9.1 Does an attack drone know it is being engaged?
+
+**The assumption needs correcting, and the correction is recent and datable.**
+
+The baseline is as assumed: *"the baseline Geran-2 navigates autonomously along
+a pre-programmed route using an inertial navigation system aided by satellite
+navigation, requiring no operator control after launch"* [R]. No radar warning
+receiver appears anywhere in the corpus, and I would not expect one on a
+$20–50k expendable airframe.
+
+**But rearward-facing cameras are now standard-ish, and they are explicitly for
+this.** The sequence from the reporting:
+
+- Interceptor drones became *"regular and widespread"* from around **late summer
+  2024** [R].
+- Russia's counter-measure: *"installing a rearward-facing camera on fixed-wing
+  drones of various types"* [R]. Observed on Geran-2 by around **December 2025**
+  — *"Geran-2 UAVs are increasingly being equipped with rear-facing cameras,
+  both underneath and on top. Video from these cameras is transmitted via radio
+  mesh modems to Russia. This may allow evasive manoeuvring from interceptors,
+  or for flight corridor reconnaissance"* [R — the "may allow" is the source's
+  own hedge and I keep it].
+- By **mid-to-late July 2026**, analysis of a recovered *"Seeker"* Geran-2 near
+  Odesa describes *"a dual-camera arrangement connected to a mesh modem through
+  an onboard Ethernet switch: one camera provides a rearward view, allowing
+  operators to monitor the surrounding airspace and maintain situational
+  awareness during flight; the second forward-facing camera is designed for
+  target acquisition and includes zoom"* [R].
+- The intent is stated: *"Russians have added cameras and computer-vision
+  systems to enable their drones to undertake evasive manoeuvres to avoid
+  counter-drones"*; *"updated Geran drones can manoeuvre in response to threats,
+  alter their routes, and take evasive action when confronted by Ukrainian air
+  defences"*; *"a rearward-facing camera can be used to trigger evasive
+  manoeuvres as the interceptor drone approaches"* [R].
+- Separately, **infrared countermeasures** have been added *"to defeat drone
+  interceptors and possible missiles fired by fighters, employing electrically
+  heated cylindrical blocks to generate blooming infrared energy"* [R].
+
+**[I, medium-high] So the correct model is three tiers, not two:**
+
+| Tier | Threat awareness | Reaction |
+|---|---|---|
+| Cheap one-way attack drone, pre-2025 baseline | None | **Pre-planned route only** |
+| Camera-equipped Geran-class, late 2025 onward | **Optical, rearward, over a live mesh link to a human or a classifier** | Route change plus terminal evasion; plus IR decoying against seekers |
+| FPV / crewed drone | Operator sees everything the drone sees | Full reactive |
+
+The coordinator's instinct is still the better *game* design and is still
+correct for most of the roster: **ingress routing as a pre-launch player
+decision with a cost** is well-supported and is the older, better-attested
+behaviour. Routing is real and deliberate: *"circuitous routes rather than
+directly to their target city, which appears to be an attempt to confuse the
+defenders and further complicate the placement of defensive assets"*; *"routes
+previously selected by reconnaissance UAVs where it is hoped Ukraine will have
+fewer defending assets"*; *"taking indirect routes to the target to avoid known
+air defences"*; and even *"a data link to reprogram the drones with a new flight
+plan during an attack"* [R]. Add terrain following: *"routing along highways,
+riverbeds and estuaries"* [R].
+
+**[E]** Build routing as the primary mechanic — waypoints, a fuel/range cost for
+indirection, and terrain-following as a speed-and-exposure trade. Then make
+reactive evasion a **late-game upgrade on specific airframes**, not a universal
+behaviour. That is both truer and better.
+
+### 9.2 The geometry, which is exact
+
+Here is the analytic result, and it is the most implementable finding in this
+document.
+
+Let the pursuer have speed `v_p`, the target `v_t`, and let `γ = v_p / v_t`.
+The set of points the pursuer can reach before the target is bounded by the
+**Apollonius circle** — the locus of points `X` with `|PX| / |EX| = γ`. For
+`γ < 1` this is a finite circle *around the pursuer*, and the target is outside
+it. [M, classical pursuit-evasion geometry; the Apollonius construction appeared
+in the search results with exactly this framing: *"even when a pursuer is slower
+than the evader, there exists a circular region where the pursuer can reach any
+point before the faster evader can, defining a dominated angular sector of the
+evader's possible escape routes."*]
+
+Placing the pursuer at the origin and the target at distance `d` along the axis,
+the circle has centre at `−γ²d/(1−γ²)` and radius `γd/(1−γ²)`. [M, derivation]
+The half-angle subtended at the target is:
+
+> **θ_max = arcsin(γ) = arcsin(v_p / v_t)**
+
+and it is **independent of range `d`**. [M]
+
+**Read that carefully, because it is the whole mechanic.** An intercept solution
+exists if and only if the target's velocity vector lies within `±arcsin(γ)` of
+the bearing from the target to the pursuer. Outside that cone there is **no
+feasible intercept at any range, under any guidance law, however well the
+interceptor flies**. Turn rate does not enter. Range does not enter.
+
+**Applied to the game's own numbers:**
+
+| Pairing | `v_p / v_t` | `θ_max` | Consequence |
+|---|---|---|---|
+| Interceptor 34 vs jet strike drone 55 | **0.618** | **38.2°** | Target must be within 38° of head-on. A **39° course change breaks the intercept entirely.** |
+| Interceptor 34 vs combustion heavy strike (slower) | > 1 | undefined (all aspects) | Capture feasible from any aspect; **only then does turn rate matter** |
+| Real analogue: 343 km/h interceptor vs 185 km/h target | 1.85 | all aspects | The regime the interceptors were designed for |
+| Real analogue: 343 vs 500–600 km/h Geran-3/5 | **0.57–0.69** | **35–43°** | Matches the reporting exactly |
+
+And the reporting does match, independently: *"a small interceptor at 343 km/h
+cannot catch a Geran-3 cruising at 500–600 km/h from behind since the closing
+speed is negative, so the chase is physically impossible — the Geran-3 has to be
+engaged head-on"*; *"an interceptor that must be positioned ahead of its target
+needs a track good enough to compute where the target will be, delivered early
+enough to fly there"*; *"interceptors slower than the fastest jet-powered
+variants remain useful only where launch geometry can be arranged in advance"*
+[R]. Three independent statements of the same 38-degree fact in operational
+language.
+
+### 9.3 So: does evasion effectiveness scale with speed ratio rather than turn rate?
+
+**Yes, and the inversion the coordinator's user proposed is correct.** The
+reasoning, laid out:
+
+1. **A fast target turns badly in radius and fine in what matters.** Turn radius
+   `R = v² / (g·n)` scales with the *square* of speed, so a 55-unit target turns
+   in **2.7× the radius** of a 34-unit one at the same load factor. But turn
+   *rate* `ω = g·n / v` scales as `1/v`, so it is only **1.6× slower in
+   degrees per second**. [M, standard kinematics]
+2. **The heading change required to escape is set by `arcsin(γ)`, not by how
+   fast you can execute it.** At γ = 0.618 it is under 40°. A sluggish fast
+   target turning at, say, 5°/s executes that in **8 seconds** — trivially
+   inside a 3–6 minute engagement. [I]
+3. **Therefore the fast target's poor agility costs it nothing, and its speed
+   buys it the entire escape cone.** A nimble slow target with γ > 1 against it
+   has *no* escape cone at all; it can only degrade the intercept by forcing
+   the pursuer to expend energy and by out-turning the seeker's terminal
+   geometry. **The fast sluggish target is strictly harder.** [I, high]
+4. **The second-order effect reinforces it.** A heading change displaces the
+   predicted intercept point by roughly `v_t × t_flight × sin(Δψ)`. At
+   `t_flight` of minutes and `v_t` of 97 m/s, a 20° change displaces the PIP by
+   **kilometres** — far beyond a 0.5–2 km seeker acquisition envelope [R, §8.3].
+   So even *inside* the feasible cone, a modest heading change can push the
+   interceptor's arrival point outside its own seeker's field of regard. [I]
+
+**What actually defeats an interceptor against a fast crosser, ranked:**
+
+1. **Pursuer speed deficit** — sets the escape cone, and is the only one that
+   can make intercept *impossible* rather than merely unlikely. [M]
+2. **Guidance-law and cueing limits** — a lead solve needs a track good enough
+   and early enough; low ingress defeats the cue [R].
+3. **Seeker field of view and acquisition range** — 0.5–2 km, 25° × 14° on one
+   published radar seeker [R]; a PIP error larger than that is a clean miss.
+4. **Target manoeuvre** — effective *because of* (1), not independently of it.
+5. **Energy** — an interceptor that has climbed to 4,000 m and chased has little
+   left; relevant, but the sources do not quantify it and I will not.
+
+### 9.4 Terminal manoeuvres and transit weaving
+
+Thinner evidence, honestly reported.
+
+**Terminal dive is real and is a tactic, not an evasion:** *"Russia has a new
+drone tactic: dive-bombing with Shaheds from on high to avoid small arms fire"*
+[R], and the Geran-5 is described as *"cruising 450–600 km/h, maximum ~650, up
+to 800 km/h in a terminal dive"* [R]. So the terminal dive is a **speed
+increase**, which by §9.2 *widens the escape cone further* at exactly the moment
+the defence most needs it narrow. [I]
+
+**Programmed weaving or corkscrewing in transit: I found no evidence.** Searches
+for corkscrew, jinking and weaving returned nothing on these airframes. What
+they returned instead was *circuitous routing at the operational scale* — a
+different thing, measured in tens of kilometres rather than metres. **I am
+recording this as not found rather than filling the space.** The fuel cost of
+indirection is likewise unquantified in anything I saw; the only anchor is that
+route length trades directly against the 450–850 km reported range of the
+Geran-4 class [R].
+
+### 9.5 The game rules this section produces
+
+**[E] Four changes, in descending order of value per line of code:**
+
+1. **The aspect gate.** Before committing an interceptor, test
+   `cos(angle between target velocity and bearing-to-interceptor) ≥ cos(θ_max)`
+   where `θ_max = arcsin(min(1, v_p/v_t))`. If it fails, **there is no
+   engagement** — the interceptor should not launch, or should be recalled. One
+   normalised dot product and one precomputed constant per unit pair. This alone
+   makes speed a meaningful stat, makes decoys work, and makes launch position
+   a player decision.
+2. **A reaction delay expressed as a fraction of flight time** (§8.1).
+3. **Lead pursuit to a predicted intercept point**, solved once at launch and
+   refreshed on a slow cadence, not per tick (§8.3).
+4. **Evasion as a heading change with a magnitude, not a dodge**, available to
+   airframes that carry rear-facing observation, and gated by whether the target
+   currently holds a detection on the interceptor (§9.1). Its effect falls out
+   of rule 1 automatically — which is the elegant part. You do not need an
+   evasion stat; you need a heading and a speed.
+
