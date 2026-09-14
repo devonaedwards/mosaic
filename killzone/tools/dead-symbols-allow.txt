@@ -1,0 +1,42 @@
+# KILL ZONE - the dead-symbol checker's allowlist.
+#
+#   <category>  <Symbol>  # <tag>: <why>
+#
+# An entry without a reason is a bug being suppressed, so the checker rejects
+# one: no reason, an unknown tag, or a reason too short to judge fails the build
+# the same way a dead symbol does.
+#
+# The reason has to open with one of these tags, and the tag is the point - a
+# reviewer should be able to accept or reject an entry from the tag alone, and
+# read the prose only when the tag surprises them:
+#
+#   interface-layer  for the renderer, interface or telemetry layer, which does
+#                    not exist yet
+#   planned:<thing>  a named task or system will wire it
+#   symmetry         kept so a small vocabulary is complete
+#   external         consumed outside src/ - tools, data authoring, mods
+#   language         C# or the runtime requires it to exist
+#   unique           a stat exactly one unit is meant to carry, and the code
+#                    that reads it handles the default correctly
+#
+# Two things are exempt in the checker itself rather than here, because they are
+# structural rather than judgement calls: object's own members (Equals,
+# GetHashCode, ToString, Main, Dispose) and an enum's `None = 0`, which C# hands
+# to every default-initialised field whether or not anything writes it by name.
+#
+# This list starts deliberately short. Everything else the checker found on its
+# first run is in docs/DEAD-SYMBOLS.md as a warning, waiting for the agent who
+# owns it to wire it, delete it, or come back here and justify it. A large
+# opening allowlist would have made the instrument agree with the codebase,
+# which is not what it is for.
+#
+# "referenced only by tests" is NOT a reason, and test-only is not an ordinary
+# category. A symbol only the test suite touches is the exact failure that
+# produced FINDINGS 30 - three systems with green tests and no production
+# caller. It gets its own block in the report, and an entry here needs a reason
+# that survives that.
+
+sim-public    SortieSystem.LaunchableCount   # interface-layer: the sidebar's honest "how many can I launch" count, which weighs crews and uplink channels rather than money; audit F20 records it as expected until there is a UI
+sim-public    Fix.CompareTo                  # language: Fix declares IComparable<Fix>, so the method must exist whether or not anything sorts a Fix today
+sim-constant  SimConstants.TicksPerCommandTurn  # planned:networking - the lockstep command-turn length; nothing can read it until network play exists, and audit F20 records it as expected
+enum-value    NavAid.DeadReckoning           # symmetry: the zero value and the documented default in UnitDef - every airframe with no nav aid carries it, so it is constructed constantly and never written by name

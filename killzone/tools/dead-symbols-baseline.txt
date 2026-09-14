@@ -1,0 +1,99 @@
+# KILL ZONE - the dead-symbol checker's debt ledger.
+#
+# Every finding here already existed when tools/check_dead_symbols.py was
+# added. They warn; they do not fail the build. Anything NOT in this file is
+# new, and fails.
+#
+# These entries carry no reason on purpose. A reason would make this an
+# allowlist, and none of these is justified - they are recorded, owned by a
+# task in docs/WIRING-SPEC.md, and listed with their consequences in
+# docs/DEAD-SYMBOLS.md.
+#
+# When you wire or delete one, delete its line here too. The checker warns
+# about lines that no longer match anything, so the ledger only goes down.
+# Regenerate with: python3 tools/check_dead_symbols.py --update-baseline
+
+sim-event       SimEventKind.SalvageCollected
+sim-event       SimEventKind.TetherFound
+component-flag  ComponentMask.Producer
+component-flag  ComponentMask.Tethered
+unitdef-field   UnitDef.BuildTicks
+unitdef-field   UnitDef.Faction
+unitdef-field   UnitDef.FootprintTiles
+unitdef-field   UnitDef.Id
+unitdef-field   UnitDef.IsFlyingDecoy
+unitdef-field   UnitDef.Tier
+unitdef-default UnitDef.BlackPolicy
+unitdef-default UnitDef.SignatureWhileEmitting
+sim-constant    SimConstants.AutonomySmokePenalty
+sim-constant    SimConstants.CrewRecoveryPriorityTicks
+sim-constant    SimConstants.DawnTicks
+sim-constant    SimConstants.FrozenEnduranceScale
+sim-constant    SimConstants.MaxEntitiesCompact
+sim-constant    SimConstants.MaxEntitiesStandard
+sim-constant    SimConstants.MaxTethersCompact
+sim-constant    SimConstants.MaxTethersStandard
+sim-constant    SimConstants.MeshAcquisitionPenaltyTicksPerHop
+sim-constant    SimConstants.TetherSegmentsPerTick
+sim-constant    SimConstants.VisionCellMetres
+unitdef-single  UnitDef.Ammo
+unitdef-single  UnitDef.AmmoCapacity
+unitdef-single  UnitDef.AutonomyQuality
+unitdef-single  UnitDef.CanReachHigh
+unitdef-single  UnitDef.HasCelestialHeading
+unitdef-single  UnitDef.MineDamage
+unitdef-single  UnitDef.MinesCarried
+unitdef-single  UnitDef.NightOnly
+unitdef-single  UnitDef.SensorAcoustic
+unitdef-single  UnitDef.SpoolLengthMetres
+unitdef-single  UnitDef.TraverseDegreesPerSecond
+test-only       AutonomyClassifier.IsPilotedWithClearFeed
+test-only       CrewPool.SetHomeQuarters
+test-only       DetRandom.ChancePercent
+test-only       EventRing.CountOf
+test-only       Fix.Ratio
+test-only       Fix2.ClampMagnitude
+test-only       GroundState.Frozen
+test-only       ReferenceImagery.GrantAround
+test-only       ReferenceImagery.Invalidate
+test-only       TetherSystem.AnySegmentNear
+test-only       Trig.Direction
+enum-value      CommandKind.DropPin
+enum-value      CommandKind.SetAutonomyBox
+enum-value      CrewState.Reserved
+enum-value      RandomStream.AIJitter
+enum-value      SortiePhase.Engaged
+enum-value      SortiePhase.Returning
+enum-value      SortiePhase.Terminal
+write-only      AutonomyState.BoxExpiryTick
+write-only      AutonomyState.BoxMax
+write-only      AutonomyState.BoxMin
+write-only      AutonomyState.HasBox
+write-only      DecoyState.Mimics
+write-only      JamEmitter.Source
+write-only      MeshNode.IsRepeater
+write-only      MineState.LaidByTeam
+write-only      MoverState.RadiusClass
+write-only      SalvageState.CreatedTick
+write-only      SimEvent.A
+write-only      SimEvent.B
+write-only      SortieState.EgressUntilTick
+write-only      SortieState.SpawnTick
+write-only      Tether.Anchor
+write-only      TetherNode.Tile
+sim-public      Fix.Half
+sim-public      Fix.Lerp
+sim-public      Fix.Max
+sim-public      Fix.Sign
+sim-public      Fix.ToInt
+sim-public      Fix2.FromInts
+sim-public      Fix2.Perpendicular
+sim-public      MeshGraph.MaxNeighbourCandidates
+sim-public      SignalGrid.EmitterCount
+sim-public      SignalGrid.GetEmitter
+sim-public      SignalGrid.JamAtCell
+sim-public      SimConstants.Millis
+sim-public      SortieSystem.Recover
+sim-public      Terrain.BlocksGroundSight
+sim-public      TetherSystem.LiveCount
+sim-public      Trig.BamPerEntry

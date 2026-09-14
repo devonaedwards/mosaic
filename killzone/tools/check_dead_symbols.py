@@ -30,6 +30,8 @@
 #   unitdef-single   a UnitDef field exactly one unit sets - the Gun Mount shape
 #   enum-value       an enum value never constructed or compared against
 #   component-flag   a ComponentMask flag never tested
+#   write-only       a public field in src/KZ.Sim assigned everywhere and read
+#                    nowhere - the value goes in and never comes out
 #   test-only        any of the above that only src/KZ.Tests touches
 #
 # test-only is deliberately its own category rather than an allowlist reason.
@@ -52,37 +54,53 @@ import os
 import re
 import sys
 
+try:                      # so piping the report into head is not a crash
+    import signal
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+except (ImportError, AttributeError, ValueError):
+    pass
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 FIXTURE = os.path.join(HERE, "testdata", "dead-symbols")
 
 # ---------------------------------------------------------------------------
-# Severity.
+# What fails the build, and what only warns.
 #
 # A checker that cries wolf gets disabled within a week, and then the next dead
-# system ships. So the first run does not get to be a wall of eighty failures:
-# the categories whose backlog is large start as warnings with a stated
-# condition for promotion, and the categories that are small and unambiguous
-# fail now. docs/DEAD-SYMBOLS.md carries the first-run counts these were set
-# from, and the promotion conditions in full.
+# system ships. The first honest run of this one found eighty-odd symbols across
+# nine categories - a wall of failures nobody caused and nobody could clear in a
+# sitting, which is the fastest known way to have a build step deleted.
 #
-# Raising one of these to "error" is a one-word edit here. Lowering one needs a
-# reason in the commit message, because that is the move that turns this file
-# back into a lesson nobody learns.
+# So it is a ratchet rather than a wall:
+#
+#   - every finding already in tools/dead-symbols-baseline.txt is recorded debt.
+#     It warns. It is in docs/DEAD-SYMBOLS.md with an owner in WIRING-SPEC.
+#   - every finding NOT in that file is new, and fails the build, in every
+#     category. Introducing a fresh dead symbol is the thing worth stopping, and
+#     it is always cheap to fix at the moment you introduce it.
+#   - a baseline entry that stops being found warns too, asking you to delete
+#     the line. The ledger only goes down.
+#
+# That answers "should some categories warn rather than fail" better than a
+# per-category severity would: nothing is softened for the future, only for the
+# past, and the past is written down and shrinking.
 CATEGORIES = {
-    "sim-event":       ("error", "an event kind nothing pushes is a system that never reports itself"),
-    "component-flag":  ("error", "a flag nothing tests is a component that does nothing"),
-    "unitdef-field":   ("error", "a def field nothing reads is the stat block lying about the game"),
-    "unitdef-default": ("error", "a def field no unit sets means the default is the only value in the game"),
-    "sim-constant":    ("warn",  "promote once the F20 constants are wired or deleted - see DEAD-SYMBOLS.md"),
-    "unitdef-single":  ("warn",  "promote once the single-carrier stats are either spread or allowlisted"),
-    "test-only":       ("warn",  "promote once WIRING-SPEC Phase 2 lands and the production paths exist"),
-    "enum-value":      ("warn",  "promote once the F20 dead enum values are wired or deleted"),
-    "sim-public":      ("warn",  "promote once the Phase 4/5 backlog in DEAD-SYMBOLS.md is worked off"),
+    "sim-event":       "an event kind nothing pushes is a system that never reports itself",
+    "component-flag":  "a flag nothing tests is a component that does nothing",
+    "unitdef-field":   "a def field nothing reads is the stat block lying about the game",
+    "unitdef-default": "a def field no unit sets means the default is the only value in the game",
+    "sim-constant":    "a constant nothing reads is the TrackHoldTicks failure exactly",
+    "unitdef-single":  "a stat one unit carries is the Gun Mount failure exactly",
+    "test-only":       "green tests and no production caller is the FINDINGS 30 failure exactly",
+    "enum-value":      "a state nothing can enter",
+    "write-only":      "a value that goes in and never comes out",
+    "sim-public":      "a public member with no caller - the strongest signal of unfinished work",
 }
 
 CATEGORY_ORDER = ["sim-event", "component-flag", "unitdef-field", "unitdef-default",
-                  "sim-constant", "unitdef-single", "test-only", "enum-value", "sim-public"]
+                  "sim-constant", "unitdef-single", "test-only", "enum-value", "write-only",
+                  "sim-public"]
 
 # Reason tags an allowlist entry may use. The tag is the point: a reviewer
 # judges the entry from the tag alone and only reads the prose when the tag
@@ -557,7 +575,12 @@ def check_unitdef_fields(files, index, decls, raw_defs_text):
                 reads.setdefault(m.group(1), []).append((sf, lineno))
 
     # --- set by which units ----------------------------------------------
-    carriers = {}          # field -> [unit name]
+    # Which unit defs set which field. A unit whose name starts with "Test " is
+    # a harness fixture, and a harness unit carrying a stat is not evidence that
+    # the game uses it - that is the rule this whole checker exists to enforce,
+    # applied to the catalogue instead of to the test suite.
+    carriers = {}          # field -> [real unit name]
+    harness = {}           # field -> [harness unit name]
     stamped = set()        # fields assigned outside an initializer, e.g. d.Id
     text = raw_defs_text
     for m in re.finditer(r"new\s+UnitDef\s*\{", text):
@@ -571,8 +594,9 @@ def check_unitdef_fields(files, index, decls, raw_defs_text):
         block = text[m.end():i - 1]
         nm = re.search(r'\bName\s*=\s*"([^"]*)"', block)
         unit = nm.group(1) if nm else "(unnamed def)"
+        bucket = harness if unit.startswith("Test ") else carriers
         for field in sorted(set(re.findall(r"(?:^|[,{])\s*(\w+)\s*=[^=]", block))):
-            carriers.setdefault(field, []).append(unit)
+            bucket.setdefault(field, []).append(unit)
     for m in re.finditer(r"\b\w+\s*\.\s*(\w+)\s*=[^=]", "\n".join(defs_file.lines)):
         stamped.add(m.group(1))
 
@@ -580,6 +604,7 @@ def check_unitdef_fields(files, index, decls, raw_defs_text):
         got = reads.get(d.name, [])
         prod = [r for r in got if not r[0].is_test]
         held = carriers.get(d.name, [])
+        rig = harness.get(d.name, [])
 
         if not got:
             findings.append(Finding(
@@ -591,19 +616,28 @@ def check_unitdef_fields(files, index, decls, raw_defs_text):
                 "test-only", "UnitDef." + d.name, d.sf, d.line, "def field",
                 "read only from src/KZ.Tests (%s)" % where(got),
                 "the simulation ignores this stat; the test reads the number back out of the table"))
-        elif not held and d.name not in stamped:
+        elif not held and not rig and d.name not in stamped:
             findings.append(Finding(
                 "unitdef-default", "UnitDef." + d.name, d.sf, d.line, "def field",
                 "read by the simulation and set by none of the %d unit defs, so the "
                 "declared default is the only value the game can ever see" % count_defs(text),
                 "give the units that should carry it a value, delete it, or allowlist it with a reason"))
-        elif len(held) == 1:
+        elif not held and rig:
             findings.append(Finding(
                 "unitdef-single", "UnitDef." + d.name, d.sf, d.line, "def field",
-                "carried by exactly one unit (%s); every other unit gets the default, "
-                "and the code that reads this stat is written to skip the default" % held[0],
+                "carried only by the harness unit %s; every unit the game actually "
+                "fields gets the default" % rig[0],
+                "a harness fixture carrying a stat is not the game using it - give a real "
+                "unit the value, or allowlist it with a reason"))
+        elif len(held) == 1:
+            also = " (and the harness unit %s)" % rig[0] if rig else ""
+            findings.append(Finding(
+                "unitdef-single", "UnitDef." + d.name, d.sf, d.line, "def field",
+                "carried by exactly one unit, %s%s; every other unit gets the default, "
+                "and the code that reads this stat is written to skip the default"
+                % (held[0], also),
                 "check the units that ought to carry it too - this is the Gun Mount shape "
-                "from audit F4 - then allowlist it as unique: if one carrier is correct"))
+                "from audit F4 - then allowlist it as unique: if one carrier is right"))
     return findings
 
 
@@ -623,6 +657,13 @@ def check_enum_values(files, index, decls):
     for d in decls:
         if d.kind != "enumvalue" or d.owner in own or not d.sf.is_sim:
             continue
+        if d.name == "None":
+            # The zero value. C# hands it to every default-initialised field, so
+            # instances of it exist whether or not anything writes it by name.
+            # Structural, not a judgement call, so it is exempt here rather than
+            # in the allowlist. Any *other* zero-valued member is a judgement
+            # call and stays flagged.
+            continue
         refs = index.qrefs(d.owner, d.name, exclude=[d.span])
         prod = [r for r in refs if not r[0].is_test]
         if not refs:
@@ -635,6 +676,40 @@ def check_enum_values(files, index, decls):
                 "test-only", d.owner + "." + d.name, d.sf, d.line, "enum value",
                 "used only from src/KZ.Tests (%d refs: %s)" % (len(refs), where(refs)),
                 "nothing in the simulation ever puts an entity in this state"))
+    return findings
+
+
+def check_write_only(files, index, decls, already):
+    """A field the simulation fills in and never reads back.
+
+    Half of a dead wire looks exactly like a live one from the writing end -
+    World.Spawn copying a stat into a component reads as wiring, right up until
+    you look for the other end. JamEmitter.Team is the audit's example: captured
+    at spawn, ignored by SignalGrid, so a jammer jams its own side's drones
+    identically to the enemy's. That may be intended, but nothing said so."""
+    findings = []
+    for d in decls:
+        if d.kind != "field" or not d.sf.is_sim:
+            continue
+        if d.owner in ("SimConstants", "UnitDef") or d.key in already:
+            continue  # those have their own, sharper checks
+        refs = index.refs(d.name, exclude=[d.span])
+        if not refs:
+            continue  # zero references at all: sim-public owns that finding
+        reads, writes = 0, []
+        for sf, lineno in refs:
+            line = sf.lines[lineno - 1]
+            for m in re.finditer(r"\b%s\b" % re.escape(d.name), line):
+                if re.match(r"\s*=(?!=)", line[m.end():]):
+                    writes.append((sf, lineno))
+                else:
+                    reads += 1
+        if reads == 0 and writes:
+            findings.append(Finding(
+                "write-only", d.key, d.sf, d.line, "public field",
+                "assigned in %d place(s) (%s) and read nowhere - the value goes in "
+                "and never comes out" % (len(writes), where(writes)),
+                "read it where it was meant to matter, delete it, or allowlist it with a reason"))
     return findings
 
 
@@ -720,20 +795,71 @@ def load_allowlist(path):
     return entries, errors
 
 
+def load_baseline(path):
+    """The debt ledger: findings that already existed when the guard was added.
+
+    No reasons here, deliberately. A baseline entry is not justified, only
+    recorded - the justified ones live in the allowlist and say why. This file
+    exists so that a backlog nobody caused does not fail everybody's build,
+    and it is expected to shrink to nothing."""
+    entries = set()
+    if not os.path.exists(path):
+        return entries
+    with open(path, "r") as fh:
+        for raw in fh:
+            line = raw.split("#", 1)[0].strip()
+            if not line:
+                continue
+            parts = line.split()
+            if len(parts) == 2:
+                entries.add((parts[0], parts[1]))
+    return entries
+
+
+def write_baseline(path, findings):
+    lines = [
+        "# KILL ZONE - the dead-symbol checker's debt ledger.",
+        "#",
+        "# Every finding here already existed when tools/check_dead_symbols.py was",
+        "# added. They warn; they do not fail the build. Anything NOT in this file is",
+        "# new, and fails.",
+        "#",
+        "# These entries carry no reason on purpose. A reason would make this an",
+        "# allowlist, and none of these is justified - they are recorded, owned by a",
+        "# task in docs/WIRING-SPEC.md, and listed with their consequences in",
+        "# docs/DEAD-SYMBOLS.md.",
+        "#",
+        "# When you wire or delete one, delete its line here too. The checker warns",
+        "# about lines that no longer match anything, so the ledger only goes down.",
+        "# Regenerate with: python3 tools/check_dead_symbols.py --update-baseline",
+        "",
+    ]
+    for f in sorted(findings, key=lambda f: (CATEGORY_ORDER.index(f.category), f.key)):
+        lines.append("%-16s%s" % (f.category, f.key))
+    with open(path, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
 # ---------------------------------------------------------------------------
 # Run.
 
 
 class Result(object):
-    def __init__(self, kept, suppressed, stale, allow_errors, stats):
-        self.kept = kept
+    def __init__(self, new, known, suppressed, stale, fixed, allow_errors, stats):
+        self.new = new              # not in the baseline: these fail the build
+        self.known = known          # recorded debt: these warn
         self.suppressed = suppressed
-        self.stale = stale
+        self.stale = stale          # allowlist entries that match nothing
+        self.fixed = fixed          # baseline entries that match nothing any more
         self.allow_errors = allow_errors
         self.stats = stats
 
+    @property
+    def kept(self):
+        return self.new + self.known
 
-def analyse(root, allowlist_path):
+
+def analyse(root, allowlist_path, baseline_path):
     files = load_sources(root)
     index = Index(files)
     decls = []
@@ -753,6 +879,8 @@ def analyse(root, allowlist_path):
     findings += check_unitdef_fields(files, index, decls, raw_defs)
     findings += check_enum_values(files, index, decls)
     owned = set(f.key for f in findings)
+    findings += check_write_only(files, index, decls, owned)
+    owned |= set(f.key for f in findings)
     findings += check_sim_public(files, index, decls, owned)
 
     seen, unique = set(), []
@@ -772,66 +900,109 @@ def analyse(root, allowlist_path):
     live = set(f.key for f in unique)
     stale = [(c, s, r) for (c, s), (r, _n) in sorted(allow.items()) if s not in live]
 
+    baseline = load_baseline(baseline_path)
+    new, known = [], []
+    for f in kept:
+        (known if (f.category, f.key) in baseline else new).append(f)
+    still = set((f.category, f.key) for f in kept)
+    fixed = sorted(e for e in baseline if e not in still)
+
     stats = {
         "files": len(files),
         "members": sum(1 for d in decls if d.sf.is_sim and d.kind in ("type", "method", "property", "field")),
         "enums": sum(1 for d in decls if d.sf.is_sim and d.kind == "enumvalue"),
         "units": count_defs(raw_defs),
     }
-    return Result(kept, suppressed, stale, allow_errors, stats)
+    return Result(new, known, suppressed, stale, fixed, allow_errors, stats)
 
 
-def report(res):
+def show(findings, indent="    "):
+    for f in findings:
+        print("%s%s:%d  %s" % (indent, f.sf.rel, f.line, f.key))
+        print("%s    %s - %s" % (indent, f.what, f.detail))
+        print("%s    fix: %s" % (indent, f.fix))
+
+
+def report(res, show_all=False):
     s = res.stats
     print("dead-symbol check: %d source files, %d public members, %d enum values, %d unit defs"
           % (s["files"], s["members"], s["enums"], s["units"]))
 
-    by_cat = {}
-    for f in res.kept:
-        by_cat.setdefault(f.category, []).append(f)
-
-    for cat in CATEGORY_ORDER:
-        items = by_cat.get(cat)
-        if not items:
-            continue
+    if res.new:
+        by_cat = {}
+        for f in res.new:
+            by_cat.setdefault(f.category, []).append(f)
         print("")
-        print("  %-5s %s  (%d)" % (CATEGORIES[cat][0].upper(), cat, len(items)))
-        for f in items:
-            print("    %s:%d  %s" % (f.sf.rel, f.line, f.key))
-            print("        %s - %s" % (f.what, f.detail))
-        print("        fix: %s" % items[0].fix)
-
-    if res.stale:
-        print("")
-        print("  WARN  allowlist entries that no longer match a finding (%d)" % len(res.stale))
-        for cat, sym, _reason in res.stale:
-            print("    %s  %s - now live, renamed or deleted; drop the entry" % (cat, sym))
+        print("  FAIL  %d symbol(s) not in the baseline - something new is dead" % len(res.new))
+        for cat in CATEGORY_ORDER:
+            items = by_cat.get(cat)
+            if not items:
+                continue
+            print("")
+            print("    %s - %s" % (cat, CATEGORIES[cat]))
+            show(items, indent="      ")
 
     if res.allow_errors:
         print("")
-        print("  ERROR allowlist is malformed (%d)" % len(res.allow_errors))
+        print("  FAIL  the allowlist is malformed (%d). An entry without a reason a reviewer"
+              % len(res.allow_errors))
+        print("        can judge is a bug being suppressed, so it is rejected.")
         for e in res.allow_errors:
             print("    %s" % e)
 
-    errors = [f for f in res.kept if CATEGORIES[f.category][0] == "error"]
-    warns = [f for f in res.kept if CATEGORIES[f.category][0] == "warn"]
+    if res.known:
+        by_cat = {}
+        for f in res.known:
+            by_cat.setdefault(f.category, []).append(f)
+        print("")
+        print("  WARN  %d symbol(s) of recorded debt - docs/DEAD-SYMBOLS.md, owned by WIRING-SPEC"
+              % len(res.known))
+        for cat in CATEGORY_ORDER:
+            items = by_cat.get(cat)
+            if not items:
+                continue
+            if show_all:
+                print("")
+                print("    %s (%d) - %s" % (cat, len(items), CATEGORIES[cat]))
+                show(items, indent="      ")
+            else:
+                print("    %-16s %3d   %s" % (cat, len(items), CATEGORIES[cat]))
+        if not show_all:
+            print("        (--all lists them; --list is the machine-readable form)")
+
+    if res.fixed:
+        print("")
+        print("  WARN  %d baseline entr(y/ies) no longer found. Wired or deleted - good." % len(res.fixed))
+        print("        Delete the line from tools/dead-symbols-baseline.txt so the ledger goes down.")
+        for cat, sym in res.fixed:
+            print("    %-16s%s" % (cat, sym))
+
+    if res.stale:
+        print("")
+        print("  WARN  %d allowlist entr(y/ies) match nothing. Drop them." % len(res.stale))
+        for cat, sym, _reason in res.stale:
+            print("    %-16s%s" % (cat, sym))
+
     print("")
-    print("  %d error, %d warning, %d allowlisted"
-          % (len(errors) + len(res.allow_errors), len(warns), len(res.suppressed)))
-    for cat in CATEGORY_ORDER:
-        if CATEGORIES[cat][0] == "warn" and by_cat.get(cat):
-            print("  %-15s warning for now: %s" % (cat, CATEGORIES[cat][1]))
-    if errors or res.allow_errors:
+    print("  %d new, %d known, %d allowlisted with a reason"
+          % (len(res.new) + len(res.allow_errors), len(res.known), len(res.suppressed)))
+
+    if res.new or res.allow_errors:
         print("")
         print("  A dead symbol is not a tidiness problem. Three shipped systems did nothing at")
         print("  runtime for exactly this reason - terrain occlusion, the track hold, and the")
-        print("  gun mount's magazine. The backlog and the rules are in docs/DEAD-SYMBOLS.md.")
-    return 1 if (errors or res.allow_errors) else 0
+        print("  gun mount's magazine. Wire it, delete it, or put it in")
+        print("  tools/dead-symbols-allow.txt with a reason a reviewer can judge in one line.")
+        return 1
+    return 0
 
 
 def list_mode(res):
+    new = set(id(f) for f in res.new)
     for f in sorted(res.kept, key=lambda f: (CATEGORY_ORDER.index(f.category), f.sort_key())):
-        print("%s\t%s\t%s:%d\t%s\t%s" % (f.category, f.key, f.sf.rel, f.line, f.what, f.detail))
+        print("%s\t%s\t%s\t%s:%d\t%s\t%s"
+              % ("new" if id(f) in new else "known", f.category, f.key,
+                 f.sf.rel, f.line, f.what, f.detail))
 
 
 # ---------------------------------------------------------------------------
@@ -853,12 +1024,14 @@ EXPECTED = {
     ("sim-constant", "SimConstants.TrackHoldTicks"),
     ("unitdef-single", "UnitDef.TraverseDegreesPerSecond"),
     ("unitdef-single", "UnitDef.AmmoCapacity"),
+    ("unitdef-single", "UnitDef.ReloadSeconds"),
     # one of each remaining category
     ("sim-event", "SimEventKind.SalvageCollected"),
     ("component-flag", "ComponentMask.Producer"),
     ("unitdef-field", "UnitDef.Tier"),
     ("unitdef-default", "UnitDef.BlackPolicy"),
     ("enum-value", "CrewState.Reserved"),
+    ("write-only", "MoverState.RadiusClass"),
     ("test-only", "Territory.SetVerticalBorder"),
     ("test-only", "SimConstants.SceneMatchTicks"),
     ("test-only", "EventRing.CountOf"),
@@ -866,7 +1039,7 @@ EXPECTED = {
 
 
 def selftest():
-    res = analyse(FIXTURE, os.path.join(FIXTURE, "allow.txt"))
+    res = analyse(FIXTURE, os.path.join(FIXTURE, "allow.txt"), os.path.join(FIXTURE, "baseline.txt"))
     got = set((f.category, f.key) for f in res.kept)
     ok = True
 
@@ -883,6 +1056,12 @@ def selftest():
     if not extra:
         print("  PASS no false positives: every live symbol in the corpus stayed clear")
 
+    ratchet = ([f.key for f in res.known] == ["SimConstants.TrackHoldTicks"]
+               and res.fixed == [("sim-public", "World.GoneAway")])
+    print("  %s the ratchet: a baselined finding warns, a vanished one asks to be removed"
+          % ("PASS" if ratchet else "FAIL"))
+    ok = ok and ratchet
+
     supp = sorted((f.key for f, _r in res.suppressed))
     print("  %s allowlist suppressed %s"
           % ("PASS" if supp == ["World.DebugDumpState"] else "FAIL", supp))
@@ -893,7 +1072,8 @@ def selftest():
         for e in res.allow_errors:
             print("  FAIL allowlist: %s" % e)
 
-    bad = analyse(FIXTURE, os.path.join(FIXTURE, "allow-malformed.txt"))
+    bad = analyse(FIXTURE, os.path.join(FIXTURE, "allow-malformed.txt"),
+                  os.path.join(FIXTURE, "baseline.txt"))
     caught = len(bad.allow_errors)
     print("  %s allowlist entries without a usable reason are rejected (%d of 4)"
           % ("PASS" if caught == 4 else "FAIL", caught))
@@ -908,17 +1088,26 @@ def main(argv):
     if "--root" in argv:
         root = os.path.abspath(argv[argv.index("--root") + 1])
     allowlist = os.path.join(root, "tools", "dead-symbols-allow.txt")
+    baseline = os.path.join(root, "tools", "dead-symbols-baseline.txt")
     if "--allowlist" in argv:
         allowlist = os.path.abspath(argv[argv.index("--allowlist") + 1])
+    if "--baseline" in argv:
+        baseline = os.path.abspath(argv[argv.index("--baseline") + 1])
 
     if "--selftest" in argv:
         return selftest()
 
-    res = analyse(root, allowlist)
+    res = analyse(root, allowlist, baseline)
+
+    if "--update-baseline" in argv:
+        write_baseline(baseline, res.kept)
+        print("wrote %d entries to %s" % (len(res.kept), os.path.relpath(baseline, root)))
+        return 0
     if "--list" in argv:
         list_mode(res)
         return 0
-    status = report(res)
+
+    status = report(res, show_all="--all" in argv)
     return 0 if "--warn-only" in argv else status
 
 

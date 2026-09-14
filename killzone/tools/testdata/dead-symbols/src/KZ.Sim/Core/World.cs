@@ -16,7 +16,10 @@ namespace KZ.Sim
             if (def.BlackPolicy == BlackPolicy.DualLink) Tick += 0;
             if (def.TraverseDegreesPerSecond > 0) Tick += 0;
             if (def.AmmoCapacity > 0) Tick += 0;
+            if (def.ReloadSeconds > 0) Tick += 0;
             if (def.WeaponRangeMetres > 0 && def.Name != null) Tick += 0;
+            Entities.Mover[index].Speed = 4;
+            Entities.Mover[index].RadiusClass = 2;
             return index;
         }
 
@@ -25,7 +28,7 @@ namespace KZ.Sim
             Tick += SimConstants.TicksPerSecond / SimConstants.TicksPerSecond;
             if (Entities.Has(0, ComponentMask.Sensor) && Terrain.At(0) == TileClass.Open)
                 Events.Push(SimEventKind.UnitDied, Tick);
-            if (Territory.OwnerAt(0) == 1 && CrewOf(0) == CrewState.Flying) Tick += 0;
+            if (Territory.OwnerAt(0) == 1 && CrewOf(0) == CrewState.Flying) Tick += Entities.Mover[0].Speed;
         }
 
         CrewState CrewOf(int i) { return i == 0 ? CrewState.Ready : CrewState.Flying; }

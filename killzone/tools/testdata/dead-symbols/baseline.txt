@@ -1,0 +1,5 @@
+# The corpus's debt ledger. One finding that is recorded (so it must warn rather
+# than fail) and one entry that matches nothing (so the checker must ask for the
+# line to be deleted). Both halves of the ratchet, in three lines.
+sim-constant    SimConstants.TrackHoldTicks
+sim-public      World.GoneAway

@@ -18,6 +18,9 @@ namespace KZ.Sim
         /// <summary>SINGLE CARRIER: the magazine, likewise.</summary>
         public int AmmoCapacity;
 
+        /// <summary>HARNESS ONLY: set by a Test unit and by no unit the game fields.</summary>
+        public int ReloadSeconds;
+
         public int WeaponRangeMetres;
     }
 
@@ -42,6 +45,15 @@ namespace KZ.Sim
                 Name = "Interceptor Battery", Tier = 3,
                 TraverseDegreesPerSecond = 45, AmmoCapacity = 12,
                 WeaponRangeMetres = 320
+            });
+
+            // A harness fixture, not a unit the game fields. It must not count as
+            // a carrier: that is the whole rule, applied to the catalogue.
+            Add(new UnitDef
+            {
+                Name = "Test Long Mount", Tier = 2,
+                ReloadSeconds = 20,
+                WeaponRangeMetres = 550
             });
         }
     }
