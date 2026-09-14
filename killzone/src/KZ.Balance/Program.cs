@@ -200,16 +200,27 @@ namespace KZ.Balance
         /// <summary>
         /// The same assault, with the gun's reach varied. If saturation cannot beat
         /// it at any number, the reach is the variable that matters.
+        ///
+        /// This is the one experiment whose entire purpose is to change the gun's
+        /// range, so per AUDIT-UNWIRED.md F33 it does not do that by quietly
+        /// overwriting the real Gun Mount - it spawns "Test Long Mount", a
+        /// catalogue entry that exists only for this sweep (see Defs.cs), and
+        /// runs on the flat control world (MakeFlatControlWorld) rather than the
+        /// default mixed one, so terrain and weather cannot confound the one
+        /// variable under study. 85 m - the real, shipped Gun Mount range - is
+        /// included as the last row for reference; everything above it is the
+        /// hypothetical the old, wrong 550 m figure used to be reported as real.
         /// </summary>
         static void GunRangeExperiment()
         {
             Console.WriteLine();
             Console.WriteLine("REACH - eight drones against one gun mount, varying its range");
+            Console.WriteLine("'Test Long Mount' on the flat control world - see comment above");
             Console.WriteLine();
             Console.WriteLine("  gun range   seconds under fire   arrived   gun killed");
             Console.WriteLine("  " + new string('-', 58));
 
-            int[] ranges = { 550, 450, 350, 250, 180, 120 };
+            int[] ranges = { 550, 450, 350, 250, 180, 120, 85 };
             for (int r = 0; r < ranges.Length; r++)
             {
                 Fix range = F(ranges[r]);
@@ -219,7 +230,7 @@ namespace KZ.Balance
                 for (int trial = 0; trial < trials; trial++)
                 {
                     int arrived;
-                    bool killed = RunAssault(8, F(1200), (ulong)(trial + 1), out arrived, range);
+                    bool killed = RunRangeSweep(8, F(1200), (ulong)(trial + 1), out arrived, range);
                     arrivedTotal += arrived;
                     if (killed) gunKilled++;
                 }
@@ -227,16 +238,18 @@ namespace KZ.Balance
                 // A drone crosses the gun's reach at 22 m/s.
                 double exposure = ranges[r] / 22.0;
 
-                Console.WriteLine(string.Format("  {0,9}   {1,18}   {2,7}   {3,10}",
+                Console.WriteLine(string.Format("  {0,9}   {1,18}   {2,7}   {3,10}{4}",
                     ranges[r] + " m",
                     exposure.ToString("0.0") + " s",
                     (arrivedTotal / (double)trials).ToString("0.0"),
-                    (gunKilled * 100 / trials) + "%"));
+                    (gunKilled * 100 / trials) + "%",
+                    ranges[r] == 85 ? "   <- the deployed range" : ""));
             }
             Console.WriteLine();
-            Console.WriteLine("  The gun fires roughly once every 1.25 seconds including acquisition,");
-            Console.WriteLine("  and one hit kills any rotary drone, so 'seconds under fire' divided");
-            Console.WriteLine("  by 1.25 is how many drones it gets to kill before the rest arrive.");
+            Console.WriteLine("  The gun's acquisition-plus-cooldown cycle is roughly 1.25 seconds, so");
+            Console.WriteLine("  'seconds under fire' divided by 1.25 is about how many drones it gets");
+            Console.WriteLine("  to kill before the rest arrive - before its magazine runs out at five");
+            Console.WriteLine("  rounds, which this sweep does not otherwise account for (see FINDINGS 18).");
         }
 
         /// <summary>
@@ -247,7 +260,10 @@ namespace KZ.Balance
         {
             Console.WriteLine();
             Console.WriteLine("APPROACH - eight drones, varying where they launch from");
-            Console.WriteLine("gun at 1,650 m reaching 550 m, so its edge is at 1,100 m");
+            Console.WriteLine("gun at 1,650 m reaching its real 85 m (FINDINGS 2), so its edge is at 1,565 m");
+            Console.WriteLine("(the launch pads below were chosen to bracket the old, wrong 550 m edge at");
+            Console.WriteLine(" 1,100 m; they do not resolve the much closer real edge - see notes below)");
+            PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
             Console.WriteLine("  launch at   arrived   gun killed");
             Console.WriteLine("  " + new string('-', 38));
@@ -273,23 +289,30 @@ namespace KZ.Balance
             }
             Console.WriteLine();
             Console.WriteLine("  Launching from inside the gun's reach means the drones are under");
-            Console.WriteLine("  fire from the moment they exist, but for far less time.");
+            Console.WriteLine("  fire from the moment they exist, but for far less time. Only the last");
+            Console.WriteLine("  row or two above actually land inside the real 85 m envelope - a");
+            Console.WriteLine("  pad set re-tuned around that edge would resolve this transition better.");
         }
 
         /// <summary>
         /// The same assault, in daylight and in darkness.
         ///
         /// A gun mount finds its targets optically. After dark that reach collapses
-        /// to about a third, so it cannot begin shooting until the drones are far
-        /// closer - and the seconds it does not get are the seconds the drones
-        /// needed. This is the counter the subject matter actually uses, and it
-        /// costs the attacker nothing but patience.
+        /// (SimConstants.NightOpticalDetectionScale), so it cannot begin shooting
+        /// until the drones are far closer - and the seconds it does not get are
+        /// the seconds the drones needed. This is the counter the subject matter
+        /// actually uses, and it costs the attacker nothing but patience.
         /// </summary>
         static void NightExperiment()
         {
+            Fix dayReach = GunOpticalReachVsFPV(false);
+            Fix nightReach = GunOpticalReachVsFPV(true);
+
             Console.WriteLine();
             Console.WriteLine("DARKNESS - the same assault by day and by night");
-            Console.WriteLine("gun sees 600 m optically by day, about 210 m after dark");
+            Console.WriteLine(string.Format("gun's own best sensor reaches {0} m by day, {1} m after dark",
+                dayReach.RoundToInt(), nightReach.RoundToInt()));
+            PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
             Console.WriteLine("  drones   by day             at night");
             Console.WriteLine("           arrived  killed    arrived  killed");
@@ -305,10 +328,10 @@ namespace KZ.Balance
                 for (int trial = 0; trial < trials; trial++)
                 {
                     int a;
-                    if (RunAssault(n, F(1200), (ulong)(trial + 1), out a, F(550), 0)) dayKilled++;
+                    if (RunAssault(n, F(1200), (ulong)(trial + 1), out a, 0)) dayKilled++;
                     dayArrived += a;
                     // Well into the night phase of the cycle.
-                    if (RunAssault(n, F(1200), (ulong)(trial + 1), out a, F(550), 8000)) nightKilled++;
+                    if (RunAssault(n, F(1200), (ulong)(trial + 1), out a, 8000)) nightKilled++;
                     nightArrived += a;
                 }
 
@@ -321,6 +344,17 @@ namespace KZ.Balance
             }
             Console.WriteLine();
             Console.WriteLine("  Nothing about the gun changed. Only whether it could see.");
+        }
+
+        /// <summary>The gun's best detection channel against an FPV Team, day or night.</summary>
+        static Fix GunOpticalReachVsFPV(bool night)
+        {
+            World w = MakeRealisticWorld(2400, 1600, 8, 1, 1, 2, night ? 8000 : 0,
+                StandardBorderMetres, 1, 2);
+            EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(1650, 780));
+            EntityHandle target = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(1200, 780));
+            w.Step();
+            return w.BestDetectionRange(gun.Index, target.Index);
         }
 
         /// <summary>
@@ -338,6 +372,7 @@ namespace KZ.Balance
             Console.WriteLine();
             Console.WriteLine("MINES - a field laid across a supply road");
             Console.WriteLine("four mines from one heavy drone, 600 damage each, into the underside");
+            PrintWorldConfig(900, 2, 1); // the convoy's own rear (west) vs. the ambush ground it drives into (east)
             Console.WriteLine();
             Console.WriteLine("  vehicle             per mine   survives a mine   field stops");
             Console.WriteLine("  " + new string('-', 60));
@@ -368,10 +403,7 @@ namespace KZ.Balance
         /// <summary>Drive one vehicle down a road through a four-mine field.</summary>
         static int RunMineField(string vehicleName)
         {
-            Terrain t = new Terrain(2400, 1600);
-            t.Fill(TileClass.Open);
-            t.FillRect(0, 95, 299, 98, TileClass.Road);
-            World w = new World(t, 128, 8, 4242, 2, 8000);
+            World w = MakeRealisticWorld(2400, 1600, 128, 8, 4242, 2, 8000, 900, 2, 1);
 
             // The robot in this list is radio-controlled, so without something to
             // talk to it stops of its own accord and the experiment measures the
@@ -408,7 +440,10 @@ namespace KZ.Balance
         {
             Console.WriteLine();
             Console.WriteLine("SENSORS - what a turret can find, and from how far");
-            Console.WriteLine("gun reaches 550 m; these are the distances it can see that far");
+            Console.WriteLine("the gun's own kill range is 85 m (FINDINGS 2); these are how far its");
+            Console.WriteLine("sensors could find a target if the barrel could reach that far too -");
+            Console.WriteLine("the sensor suites below are hypothetical fits, not the shipped Gun Mount's");
+            PrintWorldConfig(1100, 1, 2);
             Console.WriteLine();
             Console.WriteLine("  fitted with              vs quad (day)  vs quad (night)  vs tank (day)");
             Console.WriteLine("  " + new string('-', 74));
@@ -441,9 +476,7 @@ namespace KZ.Balance
 
         static Fix Reach(Fix[] suite, string targetName, bool night)
         {
-            Terrain t = new Terrain(2048, 2048);
-            t.Fill(TileClass.Open);
-            World w = new World(t, 64, 4, 1, 2, night ? 8000 : 0);
+            World w = MakeRealisticWorld(2048, 2048, 64, 4, 1, 2, night ? 8000 : 0, 1100, 1, 2);
 
             EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
             w.Entities.Sensor[gun.Index] = new SensorSuite
@@ -465,6 +498,7 @@ namespace KZ.Balance
             Console.WriteLine();
             Console.WriteLine("STACKING - more turrets covering the same approach");
             Console.WriteLine("twelve drones launched together, 450 Materiel per turret");
+            PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
             Console.WriteLine("  turrets   defence cost   drones needed to take one   attacker cost");
             Console.WriteLine("  " + new string('-', 68));
@@ -497,9 +531,7 @@ namespace KZ.Balance
 
         static bool RunStacked(int gunCount, int droneCount, ulong seed)
         {
-            Terrain t = new Terrain(2400, 1600);
-            t.Fill(TileClass.Open);
-            World w = new World(t, 512, 32, seed, 2, 0);
+            World w = MakeRealisticWorld(2400, 1600, 512, 32, seed, 2, 0, StandardBorderMetres, 1, 2);
 
             w.Player(1).Materiel = Fix.FromInt(200000);
             w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
@@ -541,6 +573,7 @@ namespace KZ.Balance
         {
             Console.WriteLine();
             Console.WriteLine("VERTICAL - six drones against one turret, split between altitudes");
+            PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
             Console.WriteLine("  attack                  arrived   turret killed");
             Console.WriteLine("  " + new string('-', 48));
@@ -595,9 +628,7 @@ namespace KZ.Balance
 
         static bool RunSplitAssault(int low, int high, ulong seed, bool withRadar, out int arrived)
         {
-            Terrain t = new Terrain(2400, 1600);
-            t.Fill(TileClass.Open);
-            World w = new World(t, 512, 32, seed, 2, 0);
+            World w = MakeRealisticWorld(2400, 1600, 512, 32, seed, 2, 0, StandardBorderMetres, 1, 2);
 
             w.Player(1).Materiel = Fix.FromInt(200000);
             w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
@@ -660,6 +691,7 @@ namespace KZ.Balance
             Console.WriteLine();
             Console.WriteLine("DECOY ESCORT - 2,600 Materiel of strike package against one turret");
             Console.WriteLine("heavy strike drone 800, decoy drone 130");
+            PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
             Console.WriteLine("  The right-hand column is a control. It re-runs the same package with");
             Console.WriteLine("  the decoy's radar cross-section cut to the strike drone's, leaving");
@@ -718,9 +750,7 @@ namespace KZ.Balance
 
         static bool RunDecoyStrike(int real, int decoys, ulong seed, bool reflector, out int through)
         {
-            Terrain t = new Terrain(2400, 1600);
-            t.Fill(TileClass.Open);
-            World w = new World(t, 512, 32, seed, 2, 0);
+            World w = MakeRealisticWorld(2400, 1600, 512, 32, seed, 2, 0, StandardBorderMetres, 1, 2);
             w.Player(1).Materiel = Fix.FromInt(200000);
             w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
 
@@ -781,6 +811,7 @@ namespace KZ.Balance
         {
             Console.WriteLine();
             Console.WriteLine("APERTURE - the same 600 m camera, spread over different arcs");
+            PrintWorldConfig(1100, 1, 2);
             Console.WriteLine();
             Console.WriteLine("  arc      reach vs a quad   covered at once   heads for 360   total cost");
             Console.WriteLine("  " + new string('-', 74));
@@ -829,9 +860,7 @@ namespace KZ.Balance
 
         static Fix ApertureReach(int arcDegrees)
         {
-            Terrain t = new Terrain(2048, 2048);
-            t.Fill(TileClass.Open);
-            World w = new World(t, 64, 4, 1, 2, 0);
+            World w = MakeRealisticWorld(2048, 2048, 64, 4, 1, 2, 0, 1100, 1, 2);
 
             EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
             SensorSuite s = w.Entities.Sensor[gun.Index];
@@ -849,25 +878,43 @@ namespace KZ.Balance
 
         static bool RunAssault(int droneCount, Fix padX, ulong seed, out int arrived)
         {
-            return RunAssault(droneCount, padX, seed, out arrived, F(550));
+            return RunAssault(droneCount, padX, seed, out arrived, 0);
         }
 
         /// <summary>
         /// One attempt: launch the drones together and let it play out until either
-        /// the gun is destroyed or every drone is gone.
+        /// the gun is destroyed or every drone is gone. Runs the real, shipped Gun
+        /// Mount on the realistic default world - see AUDIT-UNWIRED.md F33/F34.
+        /// This used to overwrite the gun's range back to 550 m on every call;
+        /// it no longer touches the gun at all.
         /// </summary>
-        static bool RunAssault(int droneCount, Fix padX, ulong seed, out int arrived, Fix gunRange)
+        static bool RunAssault(int droneCount, Fix padX, ulong seed, out int arrived, int startTick)
         {
-            return RunAssault(droneCount, padX, seed, out arrived, gunRange, 0);
+            World w = MakeRealisticWorld(2400, 1600, 256, 32, seed, 2, startTick,
+                StandardBorderMetres, 1, 2);
+            return RunAssaultScenario(w, "Gun Mount", null, droneCount, padX, out arrived);
         }
 
-        static bool RunAssault(int droneCount, Fix padX, ulong seed, out int arrived,
-                               Fix gunRange, int startTick)
+        /// <summary>
+        /// GunRangeExperiment only. Sweeps a range value across "Test Long Mount"
+        /// (Defs.cs) - a catalogue entry that exists solely for this purpose - on
+        /// the flat control world, so the one thing under study is the number
+        /// being varied, not an unstated mix of terrain and weather as well. See
+        /// AUDIT-UNWIRED.md F33 and the comment on GunRangeExperiment.
+        /// </summary>
+        static bool RunRangeSweep(int droneCount, Fix padX, ulong seed, out int arrived, Fix gunRange)
         {
-            Terrain t = new Terrain(2400, 1600);
-            t.Fill(TileClass.Open);
-            World w = new World(t, 256, 32, seed, 2, startTick);
+            World w = MakeFlatControlWorld(2400, 1600, 256, 32, seed, 2, 0);
+            return RunAssaultScenario(w, "Test Long Mount", gunRange, droneCount, padX, out arrived);
+        }
 
+        /// <summary>
+        /// The shared engagement: build the attacker's rear, spawn one mount of
+        /// the given kind for the defender, launch the drones, and play it out.
+        /// </summary>
+        static bool RunAssaultScenario(World w, string gunDefName, Fix? gunRangeOverride,
+                                       int droneCount, Fix padX, out int arrived)
+        {
             w.Player(1).Materiel = Fix.FromInt(100000);
             w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
             // Enough crews that the experiment measures the gun, not the crew cap.
@@ -877,8 +924,9 @@ namespace KZ.Balance
             // drones, and not the gun against a relay mast.
             w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1450, 1150));
 
-            EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(1650, 780));
-            w.Entities.Weapon[gun.Index].RangeMetres = gunRange;
+            EntityHandle gun = w.Spawn(Catalog.IdOf(gunDefName), 2, P(1650, 780));
+            if (gunRangeOverride.HasValue)
+                w.Entities.Weapon[gun.Index].RangeMetres = gunRangeOverride.Value;
 
             for (int i = 0; i < droneCount; i++)
             {
