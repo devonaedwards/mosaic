@@ -4,6 +4,22 @@ Things the design documents got wrong, left ambiguous, or did not anticipate,
 discovered by implementing them. Recorded here rather than quietly patched, so
 whoever owns the balance can decide what they actually want.
 
+Entries are amended in place and never removed. An entry that has been measured
+again carries its amendment under its own heading, with what was believed, what it
+was measured against, and what the number is now.
+
+**Amendment pass, after WIRING-SPEC Phase 0 and Phase 1.** Every balance
+experiment was re-run on the corrected tree. Four faults had been corrupting them:
+a harness that overwrote the gun mount's range back to the figure item 2 had
+already corrected, a harness world that was flat, clear, ownerless and uncovered,
+a track hold that was documented and dead, and a gun mount with neither a traverse
+rate nor a magazine. Items 2, 12, 13, 15, 16, 17, 18, 20, 21, 22, 25 and 30 carry
+amendments as a result. Items 10, 16 and the headline of 25 came through it
+intact, and are marked as having survived rather than left silent. Items 31, 32
+and 33 are new, and two of the three are about the instrument rather than the
+game. Every number below was taken again after the engagement-channel and
+autocannon work landed mid-pass; the handful that moved are the ones quoted.
+
 ---
 
 ## 1. Four drones did not kill a tank
@@ -120,23 +136,26 @@ in the game says the opposite of the entry above:
 | 8 | 7.8 | every time | 1,600 |
 
 Three drones - six hundred Materiel - take a four-hundred-and-fifty Materiel
-structure four times in five. The exchange rate is not more than ten to one
-against the attacker; it is about four to three **in the attacker's favour**. Every
-word of this entry's problem statement has evaporated: there is no wall, nothing
-needs a suppression weapon to solve it, and the three "possible answers for
-whoever owns balance" are answers to a problem that no longer exists. The open
-question has reversed. A gun mount now has to be made worth its 450 Materiel.
+structure four times in five, for an expected **750 Materiel per kill**. The
+exchange rate went from more than ten to one down to about five to three. It is
+still nominally in the defender's favour and that no longer means anything: a
+structure that dies to three of the cheapest airframe in the game is not a wall,
+whatever it costs. Every word of this entry's problem statement has evaporated.
+There is nothing to solve, nothing needs a suppression weapon to outrange, and the
+three "possible answers for whoever owns balance" answer a problem that no longer
+exists. The open question has reversed: a gun mount now has to be made worth
+building.
 
 The mechanism is finding 31, and it is not the range: **the mount gets one shot.**
 
-Two smaller corrections to the tables above. The 16- and 24-drone rows read 14.8
-arrived because the experiment stops counting when the gun dies, not because
-anything capped the flight; above about twelve drones those rows measure the
-harness, not the game. And **attacking at night is now worth almost nothing** -
-three drones by day take the gun 80% of the time, three at night 100%, and from
-five drones upward day and night are both 100%. Item 12 predicted that collapse
-for the wrong reason (microphones) and it has arrived for a different one: by day
-the gun is already losing.
+Two smaller notes on the rest of the current output. Its 16- and 24-drone rows
+both read 14.8 arrived, because the experiment stops counting the moment the gun
+dies rather than because anything capped the flight; above about twelve drones
+those rows measure the harness and not the game. And **attacking at night is now
+worth almost nothing** - three drones by day take the gun 80% of the time, three
+at night 100%, and from five drones upward day and night are both 100%. Item 12
+predicted that collapse for the wrong reason (microphones) and it has arrived for
+a different one: by day the gun is already losing anyway.
 
 ---
 
@@ -407,9 +426,10 @@ Three gun mounts costing 1,350 Materiel fall to 1,600 Materiel of drones. The
 claim in bold above - that they cannot be destroyed at any budget - is false by
 a factor that no longer has a meaningful denominator.
 
-Two things are worth separating. The first is that this table was measured
-against the 550 m mount with infinite ammunition, and the honest mount is much
-weaker, so the direction of the correction is unsurprising. The second is not:
+Two things are worth separating. The first is that this table dates from when the
+gun's catalogue range really was 550 m and it had no magazine, and the honest
+mount is much weaker, so the direction of the correction is unsurprising. The
+second is not:
 **the stacking experiment printed 8 / 8 / 8 / 8 on every build in this pass, and
 on the build before it.** It reported the same four numbers with the gun at 550 m
 and at 85 m, with and without a magazine, with and without the track hold, with
@@ -541,12 +561,14 @@ it is currently a guess. Research is out on real hit-probability figures.
 | 3 | 8 | 8 |
 | 4 | 12 | **8** |
 
-The fourth turret stopped buying anything too. Of every conclusion in items 13
-through 18, this is the one the corrected measurement agrees with, and the
-explanation the entry gave is now measurable rather than asserted: a mount's
-effective envelope really is far smaller than its nominal one, and the number is
-**about 70 m** - the range at which it first holds a track on a quadcopter, as
-against an 85 m barrel and a 127 m analytic sensor reach (finding 31).
+The fourth turret stopped buying anything too - and it had already stopped on the
+build before this pass, so the recorded 12 was stale in the same way item 15's
+saturation table was. Of every conclusion in items 13 through 18 this is the one
+the corrected measurement agrees with, and the explanation the entry gave is now
+measurable rather than asserted: a mount's effective envelope really is far
+smaller than its nominal one, and the number is **about 70 m** - the range at
+which it first holds a track on a quadcopter, against an 85 m barrel and a 127 m
+analytic sensor reach (finding 31).
 
 One honest caveat, which cuts against the entry rather than for it: the stacking
 experiment cannot currently distinguish anything (finding 32), so "this survived"
@@ -659,8 +681,9 @@ it was absent; and once present it is if anything generous to the attacker.
 
 **The tactic itself is now unmeasured rather than disproved.** Every row of the
 vertical experiment reads 6.0 arrived and 100% turret killed, with a radar and
-without, and has read exactly that on every build in this pass and the one before
-it. The experiment cannot distinguish an attack split across two altitudes from
+without, and has read exactly that on every build in this pass, on the one before
+it, and after the engagement-channel change that landed while this was being
+written. The experiment cannot distinguish an attack split across two altitudes from
 one that is not, so it cannot support this entry's conclusion in either
 direction. See finding 32.
 
@@ -737,13 +760,14 @@ failure as item 18, found by the same one-line check, in the same audit.
 is the one change in this pass that made the defence better rather than worse.
 Isolating it - the commit that wires it touches nothing else in the simulation -
 the number of drones reaching the gun across the whole reach sweep falls from 7.7
-to **7.4** of 8, and the five-drone saturation row goes from the gun always losing
-to losing **88%** of the time. A gun that no longer drops a fringe track kills
-about a third of a drone more per engagement.
+to **7.4** of 8 at that commit pair, and the five-drone saturation row goes from
+the gun always losing to losing **88%** of the time. A gun that no longer drops a
+fringe track kills about a third of a drone more per engagement.
 
-That is a real effect and a small one, and it is swamped by the other three
-changes in this pass, which all run the other way. The title stands - nothing is
-a switch - and it did not stand when it was written.
+That is a real effect and a small one, and it is swamped by the two changes in
+this pass that run the other way - the honest 85 m range and the corrected
+signature table. The title stands - nothing is a switch - and it did not stand
+when it was written.
 
 ---
 
@@ -921,6 +945,20 @@ Item 21 believed a mechanism that was not running. Item 18 tuned a constant that
 was never read. This entry drew a sound conclusion from an instrument that
 happened to be stuck, and was right anyway - which is the most dangerous of the
 three, because nothing about the result looked wrong.
+
+**One prediction against this entry has since been tested and failed.** A mount
+was given an explicit engagement channel - it now commits to a target and holds it
+rather than re-scoring every candidate each time it comes off cooldown - and the
+change was made partly on the reasoning that fire-splitting was a direct cause of
+the reflector measuring as inert, because nothing ever made a mount spend a whole
+engagement on a decoy. It is a good argument and the change is right on its own
+research. It moved the control column by **nothing**: 3.00 against 3.00, 2.00
+against 2.00, 1.00 against 1.00, unchanged to the hundredth.
+
+Which is the fourth time in this document that a mechanism was corrected, verified
+against itself, and changed no outcome in the game. The reason is the one already
+written above and it has not altered: a mount that fires once (finding 31) cannot
+divide its fire, so there was no division to remove.
 
 ## 26. The top rung of the link ladder was unconditional, and untested
 
@@ -1297,8 +1335,9 @@ The single most consequential thing the honest re-run turned up, and none of the
 four fixes predicted it.
 
 A Gun Mount defending against an attack — one drone or twenty-four, on its own
-85 m barrel or on the 550 m test mount, by day or at night — gets **one shot**.
-Not five, not "however many fit into the crossing time". One. Measured by counting
+85 m barrel or on the 550 m test mount, by day or at night — gets **one shot**,
+and in one of the twelve configurations measured, two. Not five, and not "however
+many fit into the crossing time". Measured by counting
 reload events and reading `EngagementsRemaining` every tick across twenty runs at
 each of six drone counts: **zero reloads, ever**, and the counter never fell below
 four of five except once, on the 550 m mount against twenty-four drones, where it
@@ -1328,14 +1367,16 @@ measured hit rate on that one shot is about one in five.
 Everything else about the weapon is downstream of that, and mostly unreachable:
 
 - **The five-round belt cannot bind.** It is a limit on a fifth shot that is never
-  taken. Wiring it changed not one digit in any of the ten experiments — the whole
-  harness output is byte-identical across the commit that added it.
+  taken. Run the same assault with the belt in place and with it removed, sixty
+  trials a cell, and the two agree in every cell at every drone count — 2.8 / 80%
+  at three drones either way, 4.8 / 100% at five, 7.8 / 100% at eight.
 - **The traverse rate binds hard**, because it is spent inside the only engagement
   there is. Turning it off hands 34 points of survival back to the gun (item 18).
-- **Barrel length barely matters.** The reach sweep reads 7.4 of 8 arriving at
-  550 m, at 450 m and at 350 m — identical — and 7.8 at 85 m. Twenty-five seconds
-  of nominal exposure and 3.9 seconds of it produce almost the same result,
-  because above about 70 m the barrel is not what stops the mount shooting.
+- **Barrel length barely matters.** The reach sweep reads 7.6 of 8 arriving at
+  550 m, at 450 m and at 350 m — identical to one another — and 7.8 at 85 m.
+  Twenty-five seconds of nominal exposure and 3.9 seconds of it produce almost the
+  same result, because above about 70 m the barrel is not what stops the mount
+  shooting.
 
 This is item 9 arriving with a number attached. "You cannot shoot what you cannot
 see" was implemented as a rule; what nobody had measured is that for the game's
@@ -1353,16 +1394,25 @@ mount that starts an engagement already pointed the right way, or that has a
 second head, or that is cued by another sensor, gets a second shot and roughly
 doubles its output. That is also the shape of an upgrade a player can be sold.
 
+Two changes landed in the simulation while this was being written — an engagement
+channel, so a mount commits to one target rather than re-scoring every cooldown,
+and an Autocannon Mount tier carrying a radar. Every figure above was re-measured
+after both and none of them moved: same single shot, same zero reloads, same
+trace. The autocannon itself is not measured here at all; no balance experiment
+spawns it yet, and until one does it is a catalogue entry rather than a result.
+
 ## 32. Three of the ten balance experiments cannot detect a change to the simulation
 
-Stacking, Vertical and Decoy Escort produced **byte-identical output on five
+Stacking, Vertical and Decoy Escort produced **byte-identical output on six
 different builds** spanning the whole of this pass: with the gun's range
 overwritten to 550 m and with the real 85 m; with a magazine and without; with the
-track hold and without; with the twenty-number signature table applied and not; on
-a flat, ownerless, uncovered map and on a mixed one with a border and imagery.
-Every row of all three tables sits on a ceiling — 8 drones take any number of
-turrets, 6 drones take any altitude split, every real drone gets through every
-decoy mix — and a measurement pinned to a ceiling is a constant, not a result.
+track hold and without; with the twenty-number signature table applied and not;
+with the mount free to re-score targets every cooldown and with it committed to
+one engagement channel; on a flat, ownerless, uncovered map and on a mixed one
+with a border and imagery. Every row of all three tables sits on a ceiling — 8
+drones take any number of turrets, 6 drones take any altitude split, every real
+drone gets through every decoy mix — and a measurement pinned to a ceiling is a
+constant, not a result.
 
 Those three experiments are the sole evidence for items 13, 16, 17, 18 and the
 control column of item 25.
