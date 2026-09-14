@@ -102,7 +102,8 @@ namespace KZ.Sim
 
         public readonly LinkState[] Link;
         public readonly SortieState[] Sortie;
-        public readonly SensorState[] Sensor;
+        public readonly SensorSuite[] Sensor;
+        public readonly SignatureProfile[] Signature;
         public readonly WeaponState[] Weapon;
         public readonly EmitterState[] Emitter;
         public readonly AutonomyState[] Autonomy;
@@ -112,6 +113,9 @@ namespace KZ.Sim
         public readonly MineState[] Mine;
 
         public readonly int[] TetherId;
+
+        /// <summary>Cheapest masking in the game, and the only kind a vehicle can wear.</summary>
+        public readonly bool[] HasThermalBlanket;
 
         public EntityTable(int capacity)
         {
@@ -137,7 +141,8 @@ namespace KZ.Sim
             Rank = new byte[capacity];
             Link = new LinkState[capacity];
             Sortie = new SortieState[capacity];
-            Sensor = new SensorState[capacity];
+            Sensor = new SensorSuite[capacity];
+            Signature = new SignatureProfile[capacity];
             Weapon = new WeaponState[capacity];
             Emitter = new EmitterState[capacity];
             Autonomy = new AutonomyState[capacity];
@@ -146,6 +151,7 @@ namespace KZ.Sim
             Decoy = new DecoyState[capacity];
             Mine = new MineState[capacity];
             TetherId = new int[capacity];
+            HasThermalBlanket = new bool[capacity];
 
             for (int i = 0; i < capacity; i++) generation[i] = 1;
         }
@@ -173,6 +179,7 @@ namespace KZ.Sim
 
             alive[index] = true;
             Mask[index] = ComponentMask.None;
+            HasThermalBlanket[index] = false;
             TetherId[index] = -1;
             Rank[index] = 1;
             AliveCount++;

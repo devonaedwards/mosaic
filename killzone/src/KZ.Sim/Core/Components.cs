@@ -44,13 +44,92 @@ namespace KZ.Sim
         public bool OneWay;             // the airframe is the munition; it does not come home
     }
 
-    public struct SensorState
+    /// <summary>
+    /// What a thing gives away about itself, on five separate channels.
+    ///
+    /// This is the other half of the detection problem and the half that was
+    /// missing. A sensor has a reach; what it actually reaches depends entirely on
+    /// what the target is emitting, and different things emit on different
+    /// channels. The consequences fall out on their own:
+    ///
+    /// A fiber drone transmits nothing at all - that is the point of the fiber -
+    /// so no amount of passive radio listening will ever find one. But it is a
+    /// quadcopter, and quadcopters are loud, so a microphone hears it exactly as
+    /// well as it hears a radio-controlled one. A jammer, conversely, is the
+    /// loudest thing on the map on the radio channel and is trivially located the
+    /// moment it switches on.
+    ///
+    /// Values are 0-100 and are not interchangeable between channels. A tank is 90
+    /// thermal and 0 radio; a relay mast is 70 radio and 15 thermal.
+    /// </summary>
+    public struct SignatureProfile
     {
-        public Fix FootprintMetres;
+        /// <summary>How loudly it transmits. Zero for fiber and for autonomy.</summary>
+        public byte Radio;
+        /// <summary>Engine and exhaust heat. A blanket cuts this; darkness does not.</summary>
+        public byte Thermal;
+        /// <summary>Rotor and engine noise. Multirotors are extremely loud for their size.</summary>
+        public byte Acoustic;
+        /// <summary>Size and contrast against the ground. This is the one darkness ruins.</summary>
+        public byte Visual;
+        /// <summary>Radar cross-section. Small airframes are genuinely hard to see.</summary>
+        public byte Radar;
+
+        public static SignatureProfile Make(byte radio, byte thermal, byte acoustic, byte visual, byte radar)
+        {
+            SignatureProfile s;
+            s.Radio = radio; s.Thermal = thermal; s.Acoustic = acoustic;
+            s.Visual = visual; s.Radar = radar;
+            return s;
+        }
+    }
+
+    /// <summary>
+    /// What a thing can detect with. Each figure is the reach against a target
+    /// emitting at full strength on that channel; a quieter target is found
+    /// closer. Zero means the sensor is not fitted, which is usually the
+    /// interesting part - a turret with optics and no microphone is a different
+    /// weapon after dark than one with both.
+    /// </summary>
+    public struct SensorSuite
+    {
+        /// <summary>Cameras. Cheap, long-ranged, and nearly useless at night.</summary>
+        public Fix Optical;
+
+        /// <summary>Thermal imaging. Costs money, and does not care what time it is.</summary>
+        public Fix Thermal;
+
+        /// <summary>
+        /// Microphones. Short-ranged, unaffected by darkness, and the only thing
+        /// that reliably finds a small drone - because a drone that has gone quiet
+        /// on every other channel is still a quadcopter.
+        /// </summary>
+        public Fix Acoustic;
+
+        /// <summary>
+        /// Active radar. Long-ranged, sees through weather and darkness and
+        /// terrain, and only finds things in the air. Announces itself while doing
+        /// it, which is why a radar mast is the loudest building a player owns.
+        /// </summary>
+        public Fix Radar;
+
+        /// <summary>
+        /// Passive listening for transmissions. Finds anything that is talking,
+        /// however far away and however dark, and finds nothing that is not. This
+        /// is what locates a jammer and what a fiber drone defeats completely.
+        /// </summary>
+        public Fix Esm;
+
         public byte Quality;
-        public bool Optical;            // optical sensors collapse at night without thermal
-        public bool Thermal;
-        public bool RadioFrequency;     // sees emitters through the shroud
+
+        public bool HasAny
+        {
+            get
+            {
+                return Optical.Raw > 0 || Thermal.Raw > 0 || Acoustic.Raw > 0
+                    || Radar.Raw > 0 || Esm.Raw > 0;
+            }
+        }
     }
 
     public struct WeaponState
@@ -78,6 +157,7 @@ namespace KZ.Sim
         public byte JamStrength;
         public Fix RadiusMetres;
         public bool Active;
+        /// <summary>Radio signature while switched on. Switching off is a real option.</summary>
         public byte SignatureWhileEmitting;
     }
 

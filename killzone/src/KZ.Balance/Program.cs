@@ -25,6 +25,8 @@ namespace KZ.Balance
             if (which == "all" || which == "approach") ApproachExperiment();
             if (which == "all" || which == "night") NightExperiment();
             if (which == "all" || which == "mines") MineExperiment();
+            if (which == "all" || which == "sensors") SensorMixExperiment();
+            if (which == "all" || which == "stacking") StackingExperiment();
 
             return 0;
         }
@@ -275,6 +277,137 @@ namespace KZ.Balance
                 if (w.Entities.Position[vehicle.Index].X > F(1700)) return 0;
             }
             return 0;
+        }
+
+        /// <summary>
+        /// The same turret with different sensors fitted, by day and by night.
+        ///
+        /// A gun's reach is set by its gun. Its *envelope* is set by whichever
+        /// sensor finds the target first, and against a small drone that is a much
+        /// shorter distance than the barrel can throw a round. Which sensors are
+        /// fitted therefore matters more than the gun does.
+        /// </summary>
+        static void SensorMixExperiment()
+        {
+            Console.WriteLine();
+            Console.WriteLine("SENSORS - what a turret can find, and from how far");
+            Console.WriteLine("gun reaches 550 m; these are the distances it can see that far");
+            Console.WriteLine();
+            Console.WriteLine("  fitted with              vs quad (day)  vs quad (night)  vs tank (day)");
+            Console.WriteLine("  " + new string('-', 74));
+
+            string[] names = { "optics only", "acoustic only", "optics + acoustic",
+                               "optics + thermal", "optics + acoustic + thermal" };
+            Fix[][] suites = {
+                new Fix[] { F(600), Fix.Zero, Fix.Zero },
+                new Fix[] { Fix.Zero, Fix.Zero, F(400) },
+                new Fix[] { F(600), Fix.Zero, F(400) },
+                new Fix[] { F(600), F(450), Fix.Zero },
+                new Fix[] { F(600), F(450), F(400) },
+            };
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                Console.WriteLine(string.Format("  {0,-24}  {1,12}  {2,15}  {3,13}",
+                    names[i],
+                    Reach(suites[i], "FPV Team", false).RoundToInt() + " m",
+                    Reach(suites[i], "FPV Team", true).RoundToInt() + " m",
+                    Reach(suites[i], "Main Tank", false).RoundToInt() + " m"));
+            }
+            Console.WriteLine();
+            Console.WriteLine("  Cameras alone leave a turret nearly blind after dark. Microphones");
+            Console.WriteLine("  do not care about the time, and against a quadcopter they are the");
+            Console.WriteLine("  best sensor on the list at any hour. Thermal buys back the night");
+            Console.WriteLine("  against vehicles, and rather little against a small drone, because");
+            Console.WriteLine("  a small drone is not very hot.");
+        }
+
+        static Fix Reach(Fix[] suite, string targetName, bool night)
+        {
+            Terrain t = new Terrain(2048, 2048);
+            t.Fill(TileClass.Open);
+            World w = new World(t, 64, 4, 1, 2, night ? 8000 : 0);
+
+            EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+            w.Entities.Sensor[gun.Index] = new SensorSuite
+            {
+                Optical = suite[0], Thermal = suite[1], Acoustic = suite[2],
+                Radar = Fix.Zero, Esm = Fix.Zero, Quality = 60
+            };
+            EntityHandle target = w.Spawn(Catalog.IdOf(targetName), 2, P(1200, 1000));
+            w.Step();
+            return w.BestDetectionRange(gun.Index, target.Index);
+        }
+
+        /// <summary>
+        /// More turrets covering the same ground. The question is whether defence
+        /// stacks cleanly or whether two guns are worth more than twice one.
+        /// </summary>
+        static void StackingExperiment()
+        {
+            Console.WriteLine();
+            Console.WriteLine("STACKING - more turrets covering the same approach");
+            Console.WriteLine("twelve drones launched together, 450 Materiel per turret");
+            Console.WriteLine();
+            Console.WriteLine("  turrets   defence cost   drones needed to take one   attacker cost");
+            Console.WriteLine("  " + new string('-', 68));
+
+            for (int guns = 1; guns <= 4; guns++)
+            {
+                int needed = -1;
+                int[] tries = { 8, 12, 16, 24, 32, 48, 64 };
+                for (int t = 0; t < tries.Length && needed < 0; t++)
+                {
+                    int wins = 0;
+                    for (int trial = 0; trial < 20; trial++)
+                        if (RunStacked(guns, tries[t], (ulong)(trial + 1))) wins++;
+                    if (wins >= 18) needed = tries[t];
+                }
+
+                int defenceCost = guns * 450;
+                string attackerCost = needed > 0 ? (needed * 200).ToString() : "more than 12,800";
+                Console.WriteLine(string.Format("  {0,7}   {1,12}   {2,25}   {3,13}",
+                    guns, defenceCost,
+                    needed > 0 ? needed.ToString() : "more than 64",
+                    attackerCost));
+            }
+            Console.WriteLine();
+            Console.WriteLine("  Each turret adds its own rate of fire over the same crossing time,");
+            Console.WriteLine("  so the cost of attacking rises roughly in step with the number of");
+            Console.WriteLine("  guns - but the attacker is also paying for drones that die to guns");
+            Console.WriteLine("  they were never sent at.");
+        }
+
+        static bool RunStacked(int gunCount, int droneCount, ulong seed)
+        {
+            Terrain t = new Terrain(2400, 1600);
+            t.Fill(TileClass.Open);
+            World w = new World(t, 512, 32, seed, 2, 0);
+
+            w.Player(1).Materiel = Fix.FromInt(200000);
+            w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
+            for (int q = 0; q < 6; q++) w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(300 + q * 40, 900));
+            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1000, 780));
+            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1450, 1150));
+
+            EntityHandle first = EntityHandle.None;
+            for (int g = 0; g < gunCount; g++)
+            {
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(1650, 780 + (g - gunCount / 2) * 60));
+                if (g == 0) first = gun;
+            }
+
+            for (int i = 0; i < droneCount; i++)
+                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("FPV Team"),
+                    new Fix2(F(1200), F(780 + (i - droneCount / 2) * 12)), first, i));
+
+            for (int tick = 0; tick < 200 * SimConstants.TicksPerSecond; tick++)
+            {
+                w.Step();
+                if (!w.Entities.IsAlive(first)) return true;
+                if (CountFriendlyDronesAirborne(w) == 0 && tick > 8) return false;
+            }
+            return false;
         }
 
         // ------------------------------------------------------------------

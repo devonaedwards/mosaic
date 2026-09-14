@@ -712,26 +712,118 @@ namespace KZ.Tests
                              "flies after dark");
             });
 
-            r.Run("darkness shortens what an optical sensor can see", delegate
+            r.Run("a small drone is found far closer than a tank", delegate
             {
+                // Detection reach scales with what the target is giving off, so the
+                // same camera that picks a tank out at half a kilometre struggles
+                // to find a quadcopter at two hundred metres. This is the fact the
+                // whole subject rests on and the model had no way to express.
+                World w = MakeWorld(65);
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("Scout Quad"), 2, P(1200, 1000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1400, 1000));
+                w.Step();
+
+                Fix vsDrone = w.DetectionRangeFor(gun.Index, drone.Index, SensorChannel.Optical);
+                Fix vsTank = w.DetectionRangeFor(gun.Index, tank.Index, SensorChannel.Optical);
+                Assert.True(vsTank > vsDrone * Fix.FromInt(2),
+                            "a tank is seen more than twice as far as a drone");
+            });
+
+            r.Run("microphones do not care what time it is", delegate
+            {
+                // The reason darkness is not a free pass against a prepared
+                // position: a quadcopter is just as loud at midnight.
                 Terrain t = new Terrain(2048, 2048);
                 t.Fill(TileClass.Open);
 
                 World day = new World(t, 256, 16, 65, 2, 0);
                 EntityHandle gunDay = day.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle droneDay = day.Spawn(Catalog.IdOf("Scout Quad"), 2, P(1400, 1000));
+                EntityHandle droneDay = day.Spawn(Catalog.IdOf("FPV Team"), 2, P(1200, 1000));
                 day.Step();
-                Assert.True(day.IsDetectedBy(1, droneDay), "seen at 400 m in daylight");
 
                 World night = new World(t, 256, 16, 65, 2, 8000);
-                night.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle droneNight = night.Spawn(Catalog.IdOf("Scout Quad"), 2, P(1400, 1000));
+                EntityHandle gunNight = night.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle droneNight = night.Spawn(Catalog.IdOf("FPV Team"), 2, P(1200, 1000));
                 night.Step();
-                Assert.False(night.IsDetectedBy(1, droneNight), "not at the same range after dark");
 
-                EntityHandle close = night.Spawn(Catalog.IdOf("Scout Quad"), 2, P(1100, 1000));
-                night.Step();
-                Assert.True(night.IsDetectedBy(1, close), "but seen at 100 m");
+                Fix opticalDay = day.DetectionRangeFor(gunDay.Index, droneDay.Index, SensorChannel.Optical);
+                Fix opticalNight = night.DetectionRangeFor(gunNight.Index, droneNight.Index, SensorChannel.Optical);
+                Assert.True(opticalNight < opticalDay, "cameras lose most of their reach after dark");
+
+                Fix acousticDay = day.DetectionRangeFor(gunDay.Index, droneDay.Index, SensorChannel.Acoustic);
+                Fix acousticNight = night.DetectionRangeFor(gunNight.Index, droneNight.Index, SensorChannel.Acoustic);
+                Assert.Equal(acousticDay.Raw, acousticNight.Raw, "microphones are unchanged");
+                Assert.True(acousticNight > opticalNight,
+                            "so after dark the microphone is the sensor doing the work");
+            });
+
+            r.Run("a fiber drone defeats radio listening completely", delegate
+            {
+                // The property that makes fiber worth its leash, and one the old
+                // model could not represent: there is no transmission to find.
+                World w = MakeWorld(67);
+                EntityHandle post = w.Spawn(Catalog.IdOf("Command Post"), 1, P(1000, 1000));
+                EntityHandle radio = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1300, 1000));
+                EntityHandle fiber = w.Spawn(Catalog.IdOf("Fiber FPV Team"), 2, P(1300, 1000));
+                w.Step();
+
+                Assert.True(w.DetectionRangeFor(post.Index, radio.Index, SensorChannel.Esm) > Fix.Zero,
+                            "a radio drone is transmitting and can be heard");
+                Assert.Equal(0, w.DetectionRangeFor(post.Index, fiber.Index, SensorChannel.Esm).Raw,
+                             "a fiber drone is not transmitting at all");
+            });
+
+            r.Run("a jammer that is switched on is the easiest thing on the map to find", delegate
+            {
+                World w = MakeWorld(68);
+                EntityHandle post = w.Spawn(Catalog.IdOf("Command Post"), 1, P(1000, 1000));
+                EntityHandle jammer = w.Spawn(Catalog.IdOf("EW Post"), 2, P(1400, 1000));
+                w.Step();
+
+                Fix emitting = w.DetectionRangeFor(post.Index, jammer.Index, SensorChannel.Esm);
+                Assert.True(w.IsDetectedBy(1, jammer), "found while it is jamming");
+
+                // Switching it off stops it being a beacon, and stops it jamming.
+                w.Entities.Emitter[jammer.Index].Active = false;
+                w.Step();
+                Fix silent = w.DetectionRangeFor(post.Index, jammer.Index, SensorChannel.Esm);
+                Assert.True(silent < emitting, "much harder to find once it goes quiet");
+            });
+
+            r.Run("altitude beats microphones and helps radar", delegate
+            {
+                // Flying high is not a free escape. It puts a drone outside what a
+                // microphone can localise and squarely inside what a radar is for.
+                World w = MakeWorld(69);
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle radar = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(1000, 1000));
+                EntityHandle low = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(1200, 1000));
+                EntityHandle high = w.Spawn(Catalog.IdOf("Recon Wing"), 2, P(1200, 1000));
+                w.Step();
+
+                Fix acousticLow = w.DetectionRangeFor(gun.Index, low.Index, SensorChannel.Acoustic);
+                Fix acousticHigh = w.DetectionRangeFor(gun.Index, high.Index, SensorChannel.Acoustic);
+                Assert.True(acousticHigh < acousticLow / Fix.FromInt(2),
+                            "sound from altitude arrives faint and from nowhere in particular");
+
+                Fix radarHigh = w.DetectionRangeFor(radar.Index, high.Index, SensorChannel.Radar);
+                Assert.True(radarHigh > acousticHigh * Fix.FromInt(3),
+                            "which is what the radar is there for");
+            });
+
+            r.Run("a thermal blanket is real masking, not just a trick on machines", delegate
+            {
+                World w = MakeWorld(70);
+                EntityHandle bomber = w.Spawn(Catalog.IdOf("Night Bomber"), 1, P(1000, 1000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1300, 1000));
+                w.Step();
+
+                Fix bare = w.DetectionRangeFor(bomber.Index, tank.Index, SensorChannel.Thermal);
+                w.Entities.HasThermalBlanket[tank.Index] = true;
+                Fix covered = w.DetectionRangeFor(bomber.Index, tank.Index, SensorChannel.Thermal);
+                Assert.True(covered < bare, "a covered tank is found closer");
+                Assert.True(covered > Fix.Zero, "but not invisible");
             });
 
             r.Run("a weapon cannot shoot what its side cannot see", delegate

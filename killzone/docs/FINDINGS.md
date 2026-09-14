@@ -234,3 +234,107 @@ do with what they were testing.
 
 Worth remembering when building missions: a drone told to hold position near an
 enemy building will not hold position.
+
+---
+
+## 11. There was no signature model at all
+
+Every target was equally detectable by every sensor. A sensor had one reach and
+three booleans, and a tank and a quadcopter were found from the same distance.
+The design's own rule that a jammer gives itself away by transmitting was
+declared in the data as `SignatureWhileEmitting` and never read by anything.
+
+**Rebuilt as five channels on each side.** A unit emits on radio, thermal,
+acoustic, visual and radar cross-section. A sensor is fitted with some
+combination of optics, thermal imaging, microphones, active radar and passive
+radio listening. Detection succeeds if any one pairing reaches, and reach scales
+with the square root of the target's strength on that channel.
+
+The consequences were not designed, they fell out:
+
+- A fiber drone emits nothing on radio, so passive listening will never find one
+  however close it gets. It is still a quadcopter, so a microphone hears it
+  exactly as well as it hears a radio-controlled one. Fiber buys silence on one
+  channel and nothing on the others, which is the correct shape.
+- A jammer is the loudest object on the map while it is switched on, and much
+  harder to find once it is not. Switching it off is now a real choice between
+  denying the enemy their radios and not being located.
+- A small drone is genuinely hard to see. A gun mount's camera picks a tank out
+  at 569 m and a quadcopter at 232 m, from the same mount, in the same light.
+
+## 12. Turret sensors, and why darkness stopped being a free pass
+
+The question that prompted this: does a turret use optics, or electronic
+support, or both? The answer the model now gives, in metres of reach against a
+550 m gun:
+
+| fitted with | vs a quad, day | vs a quad, night | vs a tank, day |
+|---|---|---|---|
+| optics only | 232 | 81 | 569 |
+| acoustic only | 335 | 335 | 369 |
+| optics + acoustic | 335 | 335 | 569 |
+| optics + thermal | 232 | 156 | 569 |
+| all three | 335 | 335 | 569 |
+
+Three things worth noticing. **The gun's envelope is set by its sensors, not its
+barrel** - it reaches 550 m and can only find a drone at 335. **Microphones are
+the best anti-drone sensor at any hour**, which is why real counter-drone mounts
+have them and why the acoustic channel had to exist. And **thermal buys back the
+night against vehicles and very little against drones**, because a small drone is
+not very hot - so the expensive sensor is not the answer to the cheap threat.
+
+This also corrects item 2. Attacking at night was halving the drone requirement
+only because the turret had no sensor that worked in the dark. Against a turret
+with microphones, darkness is worth very little, which is the more honest answer.
+
+## 13. Stacked turrets are a structural dead end, not a balance number
+
+| turrets | defence cost | drones needed | attacker cost |
+|---|---|---|---|
+| 1 | 450 | 16 | 3,200 |
+| 2 | 900 | 32 | 6,400 |
+| 3 | 1,350 | more than 64 | more than 12,800 |
+| 4 | 1,800 | more than 64 | more than 12,800 |
+
+**Three gun mounts, costing 1,350 Materiel, cannot be destroyed by drones at any
+budget.** Not because the numbers are badly tuned, but because the attacker's
+maximum possible simultaneous force is capped by a different system than the
+defender's maximum density: crews cap a flight at thirty, and three turrets need
+more than sixty-four.
+
+No amount of retuning gun range fixes that. It needs one of:
+
+1. **A standoff weapon** that outranges the turret's sensors. The design cut
+   artillery, and every anti-structure weapon in the roster is a one-way airframe
+   that has to fly into the envelope to work. This is the gap.
+2. **A density cap** - turrets interfering with each other, or costing more to
+   place near one another.
+3. **Accepting it**, and making prepared positions something you go around rather
+   than through. That is a legitimate answer and arguably the realistic one, but
+   it needs the map design to always offer a way around, and it needs saying out
+   loud rather than discovering it in a playtest.
+
+## 14. The model is now more truthful than the interface can draw
+
+Worth stating plainly, because it is a problem I introduced.
+
+The gameplay spec commits to four display rules and nothing else, and says that
+any mechanic needing a submenu gets cut. There are now five sensor channels and
+five signature channels: twenty-five interactions, none of which the current
+visual language can express. There is no way to show a player that one turret has
+microphones and another does not, and that difference now decides whether a night
+attack works.
+
+The simulation should keep the five channels, because they produce behaviour that
+is correct and that players will feel even if they cannot name it. The interface
+should never show five numbers. Two suggestions:
+
+- Draw one detection ring per turret **against the currently selected unit**, so
+  it answers the only question a player actually has: how close can I get with
+  *this*.
+- On a unit card, at most two icons for what finds it.
+
+If that still reads as a spreadsheet in a playtest, the fallback is to merge
+thermal into optics as one "sight" channel and radar into passive listening as
+one "electronic" channel, leaving three. Three legible channels beat five
+accurate ones.

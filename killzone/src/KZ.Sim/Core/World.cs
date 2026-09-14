@@ -163,16 +163,21 @@ namespace KZ.Sim
                 };
             }
 
-            if (def.SensorFootprintMetres.Raw > 0)
+            Entities.Signature[i] = SignatureProfile.Make(
+                def.SigRadio, def.SigThermal, def.SigAcoustic, def.SigVisual, def.SigRadar);
+
+            if (def.SensorOptical.Raw > 0 || def.SensorThermal.Raw > 0 || def.SensorAcoustic.Raw > 0
+                || def.SensorRadar.Raw > 0 || def.SensorEsm.Raw > 0)
             {
                 Entities.AddComponent(i, ComponentMask.Sensor);
-                Entities.Sensor[i] = new SensorState
+                Entities.Sensor[i] = new SensorSuite
                 {
-                    FootprintMetres = def.SensorFootprintMetres,
-                    Quality = 60,
                     Optical = def.SensorOptical,
                     Thermal = def.SensorThermal,
-                    RadioFrequency = def.SensorRadioFrequency
+                    Acoustic = def.SensorAcoustic,
+                    Radar = def.SensorRadar,
+                    Esm = def.SensorEsm,
+                    Quality = 60
                 };
             }
 
@@ -316,6 +321,7 @@ namespace KZ.Sim
             if (Tick % SimConstants.SignalRebuildInterval == 0) RebuildSignalField();
             if (Tick % SimConstants.MeshRebuildInterval == 0) RebuildMeshGraphs();
 
+            RebuildDetection();
             LinkResolver.ResolveAll(this);
             UpdateTethers();
             MovementSystem.Step(this);
@@ -661,8 +667,8 @@ namespace KZ.Sim
 
                 if (Entities.Has(i, ComponentMask.Sensor))
                 {
-                    Fix footprint = EffectiveSensorRange(i);
-                    if (Fix2.SqrDistance(Entities.Position[i], vp) <= footprint * footprint) return true;
+                    Fix reach = BestDetectionRange(i, victim.Index);
+                    if (Fix2.SqrDistance(Entities.Position[i], vp) <= reach * reach) return true;
                 }
                 else if (Fix2.SqrDistance(Entities.Position[i], vp) <= witnessRange * witnessRange)
                 {
@@ -675,11 +681,21 @@ namespace KZ.Sim
         /// <summary>
         /// Whether a team can currently see an entity.
         ///
-        /// Radar sees through darkness and terrain but only detects things in the
-        /// air. Everything else is an optical or thermal footprint, and an optical
-        /// one collapses to about a third of its reach at night unless the player
-        /// has bought thermal imaging. That single fact is why night is when
-        /// armour moves and when assaults go in.
+        /// Five channels, each matching one kind of sensor against one kind of
+        /// signature. Detection succeeds if any single pairing reaches. The
+        /// interesting consequences all come from the fact that nothing detects on
+        /// every channel and nothing is silent on every channel:
+        ///
+        /// A fiber drone has defeated passive radio listening completely and has
+        /// done nothing at all about the microphone. A jammer is the easiest thing
+        /// on the map to find while it is switched on. A turret with cameras and no
+        /// thermal imager is most of the way to blind after dark - unless it also
+        /// has microphones, in which case darkness barely troubles it.
+        ///
+        /// Reach scales with the square root of the target's signature rather than
+        /// linearly, because that is roughly how detection actually falls off with
+        /// emitted strength, and because linear scaling made small drones
+        /// effectively invisible to everything.
         /// </summary>
         public bool IsDetectedBy(byte team, EntityHandle target)
         {
@@ -687,8 +703,53 @@ namespace KZ.Sim
             int ti = target.Index;
             if (Entities.Team[ti] == team) return true;
 
+            if (detectionCacheTick == Tick && team < detectionCache.Length)
+                return detectionCache[team][ti];
+
+            return ComputeDetection(team, ti);
+        }
+
+        bool[][] detectionCache;
+        int detectionCacheTick = -1;
+
+        /// <summary>
+        /// Work out what each side can see, once per tick.
+        ///
+        /// Detection is asked about constantly - every weapon, against every
+        /// candidate, every tick - so computing it on demand made the cost grow
+        /// with the cube of the unit count. Once per tick per pair is quadratic,
+        /// which at these unit counts is affordable and, more to the point, is a
+        /// single place to put a spatial index when it stops being.
+        /// </summary>
+        void RebuildDetection()
+        {
+            if (detectionCache == null)
+            {
+                detectionCache = new bool[Players.Length][];
+                for (int t = 0; t < Players.Length; t++)
+                    detectionCache[t] = new bool[Entities.Capacity];
+            }
+
+            for (byte team = 1; team < Players.Length; team++)
+            {
+                bool[] seen = detectionCache[team];
+                for (int i = 1; i < Entities.HighWater; i++) seen[i] = false;
+
+                for (int i = 1; i < Entities.HighWater; i++)
+                {
+                    if (!Entities.IsSlotAlive(i)) continue;
+                    if (Entities.Team[i] == team) { seen[i] = true; continue; }
+                    seen[i] = ComputeDetection(team, i);
+                }
+            }
+            detectionCacheTick = Tick;
+        }
+
+        bool ComputeDetection(byte team, int ti)
+        {
             Fix2 tp = Entities.Position[ti];
-            bool airborne = Entities.EntityLayer[ti] != Layer.Ground;
+            Layer layer = Entities.EntityLayer[ti];
+            SignatureProfile sig = EffectiveSignature(ti);
 
             for (int i = 1; i < Entities.HighWater; i++)
             {
@@ -696,36 +757,145 @@ namespace KZ.Sim
                 if (Entities.Team[i] != team) continue;
                 if (!Entities.Has(i, ComponentMask.Sensor)) continue;
 
-                SensorState s = Entities.Sensor[i];
+                SensorSuite s = Entities.Sensor[i];
+                if (!s.HasAny) continue;
 
-                if (s.RadioFrequency && airborne)
+                Fix distSq = Fix2.SqrDistance(Entities.Position[i], tp);
+
+                // Passive listening. Unaffected by darkness or altitude - if it is
+                // transmitting, it is transmitting.
+                if (Reaches(s.Esm, sig.Radio, Fix.One, distSq)) return true;
+
+                // Active radar. Air only, and better against altitude, where there
+                // is no ground clutter to pick a small return out of.
+                if (layer != Layer.Ground)
                 {
-                    Fix r = s.FootprintMetres;
-                    if (Fix2.SqrDistance(Entities.Position[i], tp) <= r * r) return true;
-                    continue;
+                    Fix radarMod = layer == Layer.High
+                        ? Fix.FromDoubleContentOnly(1.20)
+                        : Fix.FromDoubleContentOnly(0.80);
+                    if (Reaches(s.Radar, sig.Radar, radarMod, distSq)) return true;
                 }
 
-                Fix range = EffectiveSensorRange(i);
-                if (Fix2.SqrDistance(Entities.Position[i], tp) <= range * range) return true;
+                // Thermal. Darkness is irrelevant; distance and altitude are not.
+                Fix thermalMod = layer == Layer.High ? Fix.FromDoubleContentOnly(0.80) : Fix.One;
+                if (Reaches(s.Thermal, sig.Thermal, thermalMod, distSq)) return true;
+
+                // Microphones. The thing that finds small drones, and the thing
+                // that altitude genuinely defeats - sound from a kilometre up
+                // arrives faint and from no particular direction.
+                Fix acousticMod = layer == Layer.High
+                    ? Fix.FromDoubleContentOnly(0.35)
+                    : Fix.One;
+                if (Reaches(s.Acoustic, sig.Acoustic, acousticMod, distSq)) return true;
+
+                // Cameras. Long reach in daylight, and after dark this is the line
+                // that stops being true.
+                Fix opticalMod = layer == Layer.High ? Fix.FromDoubleContentOnly(0.70) : Fix.One;
+                if (IsNight && !TeamHasThermalOptics(team))
+                    opticalMod = opticalMod * SimConstants.NightOpticalDetectionScale;
+                if (Reaches(s.Optical, sig.Visual, opticalMod, distSq)) return true;
             }
             return false;
         }
 
         /// <summary>
-        /// How far a sensor actually sees right now. Optical sensors collapse after
-        /// dark unless the player has paid for thermal imaging, which is what makes
-        /// night the time to move.
+        /// Whether one channel reaches. Effective distance is the sensor's nominal
+        /// reach, scaled by a modifier and by the square root of how loud the
+        /// target is on that channel.
         /// </summary>
-        public Fix EffectiveSensorRange(int entityIndex)
+        static bool Reaches(Fix sensorRange, byte signature, Fix modifier, Fix distSq)
         {
-            SensorState s = Entities.Sensor[entityIndex];
-            Fix range = s.FootprintMetres;
-            if (!IsNight) return range;
+            if (sensorRange.Raw <= 0 || signature == 0) return false;
+            Fix strength = Fix.Sqrt(Fix.FromInt(signature) / Fix.FromInt(100));
+            Fix effective = sensorRange * modifier * strength;
+            return distSq <= effective * effective;
+        }
 
-            byte team = Entities.Team[entityIndex];
-            bool thermal = s.Thermal || (team < Players.Length && Players[team].HasThermalOptics);
-            if (thermal || !s.Optical) return range;
-            return range * SimConstants.NightOpticalDetectionScale;
+        bool TeamHasThermalOptics(byte team)
+        {
+            return team < Players.Length && Players[team].HasThermalOptics;
+        }
+
+        /// <summary>
+        /// What a unit is giving away right now, as opposed to on paper.
+        ///
+        /// Two things change it. A jammer or radar that is switched on becomes the
+        /// loudest object on the map; switching it off is a real tactical choice
+        /// between denying the enemy their radios and not being found. And a
+        /// thermal blanket cuts what a heat sensor has to work with, which is the
+        /// cheapest masking in the game and the only one available to a vehicle.
+        /// </summary>
+        public SignatureProfile EffectiveSignature(int i)
+        {
+            SignatureProfile sig = Entities.Signature[i];
+
+            if (Entities.Has(i, ComponentMask.Emitter) && Entities.Emitter[i].Active)
+            {
+                byte emitting = Entities.Emitter[i].SignatureWhileEmitting;
+                if (emitting > sig.Radio) sig.Radio = emitting;
+            }
+
+            if (Entities.HasThermalBlanket[i])
+            {
+                int reduced = (sig.Thermal * 40) / 100;
+                sig.Thermal = (byte)reduced;
+            }
+
+            return sig;
+        }
+
+        /// <summary>
+        /// The reach of one channel against one target, for the interface to draw
+        /// and for tests to assert against.
+        /// </summary>
+        public Fix DetectionRangeFor(int sensorIndex, int targetIndex, SensorChannel channel)
+        {
+            SensorSuite s = Entities.Sensor[sensorIndex];
+            SignatureProfile sig = EffectiveSignature(targetIndex);
+            Layer layer = Entities.EntityLayer[targetIndex];
+
+            Fix nominal, mod = Fix.One;
+            byte strength;
+
+            switch (channel)
+            {
+                case SensorChannel.Esm: nominal = s.Esm; strength = sig.Radio; break;
+                case SensorChannel.Radar:
+                    if (layer == Layer.Ground) return Fix.Zero;
+                    nominal = s.Radar; strength = sig.Radar;
+                    mod = layer == Layer.High ? Fix.FromDoubleContentOnly(1.20)
+                                              : Fix.FromDoubleContentOnly(0.80);
+                    break;
+                case SensorChannel.Thermal:
+                    nominal = s.Thermal; strength = sig.Thermal;
+                    if (layer == Layer.High) mod = Fix.FromDoubleContentOnly(0.80);
+                    break;
+                case SensorChannel.Acoustic:
+                    nominal = s.Acoustic; strength = sig.Acoustic;
+                    if (layer == Layer.High) mod = Fix.FromDoubleContentOnly(0.35);
+                    break;
+                default:
+                    nominal = s.Optical; strength = sig.Visual;
+                    if (layer == Layer.High) mod = Fix.FromDoubleContentOnly(0.70);
+                    if (IsNight && !TeamHasThermalOptics(Entities.Team[sensorIndex]))
+                        mod = mod * SimConstants.NightOpticalDetectionScale;
+                    break;
+            }
+
+            if (nominal.Raw <= 0 || strength == 0) return Fix.Zero;
+            return nominal * mod * Fix.Sqrt(Fix.FromInt(strength) / Fix.FromInt(100));
+        }
+
+        /// <summary>The best reach any channel of one sensor has against one target.</summary>
+        public Fix BestDetectionRange(int sensorIndex, int targetIndex)
+        {
+            Fix best = Fix.Zero;
+            for (int ch = 0; ch < 5; ch++)
+            {
+                Fix r = DetectionRangeFor(sensorIndex, targetIndex, (SensorChannel)ch);
+                if (r > best) best = r;
+            }
+            return best;
         }
 
         void FlushDeaths()

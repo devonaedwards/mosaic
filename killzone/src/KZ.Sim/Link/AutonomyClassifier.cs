@@ -115,7 +115,7 @@ namespace KZ.Sim
             if (w.IsNight)
             {
                 bool thermal = w.Entities.Has(munitionIndex, ComponentMask.Sensor)
-                               && w.Entities.Sensor[munitionIndex].Thermal;
+                               && w.Entities.Sensor[munitionIndex].Thermal.Raw > 0;
                 byte team = w.Entities.Team[munitionIndex];
                 if (!thermal && !(team < w.Players.Length && w.Players[team].HasThermalOptics))
                     q -= SimConstants.AutonomyNightNoThermalPenalty;
@@ -137,10 +137,14 @@ namespace KZ.Sim
             int defId = w.Entities.DefId[i];
             if (defId < 0) return TargetKind.Neutral;
 
+            // What a machine considers worth its warhead: armour, anything that
+            // jams or radiates, anything that shoots back at aircraft, and any
+            // structure that cost real money.
             UnitDef def = Catalog.Get(defId);
             bool highValue = def.Armour == ArmourClass.Heavy
                              || def.JamStrength > 0
-                             || def.SensorFootprintMetres > Fix.FromInt(500)
+                             || def.SensorRadar.Raw > 0
+                             || def.SensorEsm.Raw > 0
                              || def.IsInterceptor
                              || (def.IsStructure && def.CostMateriel >= 700);
             return highValue ? TargetKind.HighValue : TargetKind.LowValue;
@@ -154,8 +158,9 @@ namespace KZ.Sim
 
             // A thermal blanket does not hide a vehicle from a person. It makes it
             // a less convincing answer to a machine, which is a different and
-            // cheaper kind of protection.
-            if (w.Entities.Has(i, ComponentMask.Sensor) && w.Entities.Sensor[i].Thermal)
+            // cheaper kind of protection - and the same blanket is already cutting
+            // what any heat sensor on the map has to work with.
+            if (w.Entities.HasThermalBlanket[i])
             {
                 Fix reduction = w.IsNight
                     ? Fix.FromDoubleContentOnly(0.40)

@@ -31,7 +31,7 @@ namespace KZ.Sim
 
             Fix2 myPos = w.Entities.Position[i];
             Fix2 targetPos = w.Entities.Position[target.Index];
-            Fix range = weapon.RangeMetres;
+            Fix range = EffectiveReach(w, i, target, weapon);
             if (Fix2.SqrDistance(myPos, targetPos) > range * range) return;
 
             // Acquisition takes time, and a degraded link doubles it. That delay is
@@ -55,6 +55,19 @@ namespace KZ.Sim
             weapon.NextFireTick = w.Tick + weapon.CooldownTicks;
             weapon.Acquiring = EntityHandle.None;
             w.Entities.Weapon[i] = weapon;
+        }
+
+        /// <summary>
+        /// How far a weapon actually reaches against this target. Shooting upward
+        /// costs range for anything that is not a purpose-built interceptor: a
+        /// ground mount firing at something a kilometre up is at the edge of what
+        /// its rounds will do.
+        /// </summary>
+        static Fix EffectiveReach(World w, int attackerIndex, EntityHandle target, WeaponState weapon)
+        {
+            if (w.Entities.EntityLayer[target.Index] != Layer.High) return weapon.RangeMetres;
+            if (weapon.IsInterceptor) return weapon.RangeMetres;
+            return weapon.RangeMetres * Fix.FromDoubleContentOnly(0.60);
         }
 
         /// <summary>
@@ -239,10 +252,10 @@ namespace KZ.Sim
                 if (!w.Entities.IsSlotAlive(j)) continue;
                 if (w.Entities.Team[j] != team) continue;
                 if (!w.Entities.Has(j, ComponentMask.Sensor)) continue;
-                if (!w.Entities.Sensor[j].RadioFrequency) continue;
+                if (w.Entities.Sensor[j].Radar.Raw <= 0) continue;
 
-                Fix r = w.Entities.Sensor[j].FootprintMetres;
-                if (Fix2.SqrDistance(w.Entities.Position[j], targetPos) <= r * r)
+                Fix r = w.DetectionRangeFor(j, target.Index, SensorChannel.Radar);
+                if (r.Raw > 0 && Fix2.SqrDistance(w.Entities.Position[j], targetPos) <= r * r)
                     return Fix.One;  // radar-cued
             }
 
@@ -252,8 +265,8 @@ namespace KZ.Sim
                 if (w.Entities.Team[j] != team) continue;
                 if (!w.Entities.Has(j, ComponentMask.Sensor)) continue;
 
-                Fix r = w.EffectiveSensorRange(j);
-                if (Fix2.SqrDistance(w.Entities.Position[j], targetPos) <= r * r)
+                Fix r = w.BestDetectionRange(j, target.Index);
+                if (r.Raw > 0 && Fix2.SqrDistance(w.Entities.Position[j], targetPos) <= r * r)
                     return Fix.FromDoubleContentOnly(0.60);  // somebody has eyes on it
             }
 

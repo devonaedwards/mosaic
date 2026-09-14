@@ -59,10 +59,20 @@ namespace KZ.Sim
         /// </summary>
         public bool CanEngageAir;
 
-        public Fix SensorFootprintMetres;
-        public bool SensorOptical = true;
-        public bool SensorThermal;
-        public bool SensorRadioFrequency;
+        // What it can find things with. Zero means the sensor is not fitted, and
+        // which ones are missing is usually more interesting than which are there.
+        public Fix SensorOptical;
+        public Fix SensorThermal;
+        public Fix SensorAcoustic;
+        public Fix SensorRadar;
+        public Fix SensorEsm;
+
+        // What it gives away, on each channel, 0-100.
+        public byte SigRadio;
+        public byte SigThermal;
+        public byte SigAcoustic;
+        public byte SigVisual;
+        public byte SigRadar;
 
         public byte JamStrength;
         public Fix JamRadiusMetres;
@@ -137,21 +147,24 @@ namespace KZ.Sim
                 Name = "Command Post", IsStructure = true, Tier = 1,
                 CostMateriel = 2000, BuildTicks = SimConstants.Seconds(60),
                 Hp = M(5000), Armour = ArmourClass.Structure, FootprintTiles = 8,
-                SensorFootprintMetres = M(300)
+                SensorOptical = M(400), SensorEsm = M(500),
+                SigRadio = 80, SigThermal = 60, SigAcoustic = 25, SigVisual = 95
             });
 
             Add(new UnitDef
             {
                 Name = "Crew Quarters", IsStructure = true, Tier = 1,
                 CostMateriel = 700, BuildTicks = SimConstants.Seconds(22),
-                Hp = M(1400), Armour = ArmourClass.Structure, FootprintTiles = 4
+                Hp = M(1400), Armour = ArmourClass.Structure, FootprintTiles = 4,
+                SigRadio = 55, SigThermal = 40, SigAcoustic = 20, SigVisual = 75
             });
 
             Add(new UnitDef
             {
                 Name = "Drone Workshop", IsStructure = true, Tier = 1,
                 CostMateriel = 900, BuildTicks = SimConstants.Seconds(28),
-                Hp = M(1600), Armour = ArmourClass.Structure, FootprintTiles = 5
+                Hp = M(1600), Armour = ArmourClass.Structure, FootprintTiles = 5,
+                SigRadio = 40, SigThermal = 45, SigAcoustic = 35, SigVisual = 80
             });
 
             Add(new UnitDef
@@ -159,14 +172,16 @@ namespace KZ.Sim
                 Name = "Radar Mast", IsStructure = true, Tier = 2,
                 CostMateriel = 1000, BuildTicks = SimConstants.Seconds(30),
                 Hp = M(900), Armour = ArmourClass.Structure, FootprintTiles = 3,
-                SensorFootprintMetres = M(1400), SensorRadioFrequency = true
+                SensorRadar = M(1400), SensorEsm = M(900),
+                SigRadio = 25, SigThermal = 25, SigAcoustic = 15, SigVisual = 70
             });
 
             Add(new UnitDef
             {
                 Name = "Spool Plant", IsStructure = true, Tier = 2,
                 CostMateriel = 800, BuildTicks = SimConstants.Seconds(26),
-                Hp = M(1200), Armour = ArmourClass.Structure, FootprintTiles = 4
+                Hp = M(1200), Armour = ArmourClass.Structure, FootprintTiles = 4,
+                SigRadio = 20, SigThermal = 35, SigAcoustic = 25, SigVisual = 75
             });
 
             // A jammer is loud. Switching it on paints a permanent mark on the
@@ -176,14 +191,16 @@ namespace KZ.Sim
                 Name = "EW Post", IsStructure = true, Tier = 2,
                 CostMateriel = 750, BuildTicks = SimConstants.Seconds(24),
                 Hp = M(1100), Armour = ArmourClass.Structure, FootprintTiles = 3,
-                JamStrength = 70, JamRadiusMetres = M(450)
+                JamStrength = 70, JamRadiusMetres = M(450),
+                SigRadio = 25, SigThermal = 40, SigAcoustic = 20, SigVisual = 70
             });
 
             Add(new UnitDef
             {
                 Name = "Relay Mast", IsStructure = true, Tier = 2,
                 CostMateriel = 500, BuildTicks = SimConstants.Seconds(18),
-                Hp = M(600), Armour = ArmourClass.Structure, FootprintTiles = 2
+                Hp = M(600), Armour = ArmourClass.Structure, FootprintTiles = 2,
+                SigRadio = 70, SigThermal = 15, SigAcoustic = 10, SigVisual = 55
             });
 
             Add(new UnitDef
@@ -194,21 +211,24 @@ namespace KZ.Sim
                 Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
                 WeaponRangeMetres = M(550), WeaponCooldownTicks = 24,
-                SensorFootprintMetres = M(600)
+                SensorOptical = M(600), SensorAcoustic = M(400),
+                SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55
             });
 
             Add(new UnitDef
             {
                 Name = "Uplink Terminal", IsStructure = true, Faction = FactionId.KestrelPact, Tier = 3,
                 CostMateriel = 2200, BuildTicks = SimConstants.Seconds(50),
-                Hp = M(1800), Armour = ArmourClass.Structure, FootprintTiles = 5
+                Hp = M(1800), Armour = ArmourClass.Structure, FootprintTiles = 5,
+                SigRadio = 85, SigThermal = 40, SigAcoustic = 20, SigVisual = 80
             });
 
             Add(new UnitDef
             {
                 Name = "Autonomy Lab", IsStructure = true, Faction = FactionId.ObsidianDirectorate, Tier = 3,
                 CostMateriel = 2000, BuildTicks = SimConstants.Seconds(48),
-                Hp = M(1700), Armour = ArmourClass.Structure, FootprintTiles = 5
+                Hp = M(1700), Armour = ArmourClass.Structure, FootprintTiles = 5,
+                SigRadio = 30, SigThermal = 45, SigAcoustic = 30, SigVisual = 80
             });
         }
 
@@ -219,7 +239,8 @@ namespace KZ.Sim
                 Name = "Recovery UGV", Tier = 1,
                 CostMateriel = 500, BuildTicks = SimConstants.Seconds(18),
                 Hp = M(420), Armour = ArmourClass.Light, SpeedMetresPerSecond = M(5.5),
-                SensorFootprintMetres = M(180)
+                SensorOptical = M(180),
+                SigRadio = 0, SigThermal = 40, SigAcoustic = 45, SigVisual = 55
             });
 
             Add(new UnitDef
@@ -227,7 +248,8 @@ namespace KZ.Sim
                 Name = "Net Engineer", Tier = 1,
                 CostMateriel = 250, BuildTicks = SimConstants.Seconds(12),
                 Hp = M(220), Armour = ArmourClass.Soft, SpeedMetresPerSecond = M(4.5),
-                SensorFootprintMetres = M(200)
+                SensorOptical = M(200),
+                SigRadio = 0, SigThermal = 22, SigAcoustic = 15, SigVisual = 20
             });
 
             Add(new UnitDef
@@ -236,7 +258,9 @@ namespace KZ.Sim
                 CostMateriel = 300, BuildTicks = SimConstants.Seconds(12),
                 Hp = M(260), Armour = ArmourClass.Soft, SpeedMetresPerSecond = M(17.0),
                 WeaponDamage = M(45), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(160), SensorFootprintMetres = M(220)
+                WeaponRangeMetres = M(160),
+                SensorOptical = M(220),
+                SigRadio = 0, SigThermal = 35, SigAcoustic = 60, SigVisual = 30
             });
 
             Add(new UnitDef
@@ -244,7 +268,8 @@ namespace KZ.Sim
                 Name = "Supply Truck", Tier = 1,
                 CostMateriel = 350, BuildTicks = SimConstants.Seconds(14),
                 Hp = M(520), Armour = ArmourClass.Light, SpeedMetresPerSecond = M(14.0),
-                SensorFootprintMetres = M(160)
+                SensorOptical = M(160),
+                SigRadio = 0, SigThermal = 55, SigAcoustic = 60, SigVisual = 70
             });
 
             // A ground robot keeps flying its link, so an electronic-warfare bubble
@@ -256,7 +281,8 @@ namespace KZ.Sim
                 CostMateriel = 400, BuildTicks = SimConstants.Seconds(16),
                 Hp = M(500), Armour = ArmourClass.Light, SpeedMetresPerSecond = M(5.0),
                 Link = LinkKind.Radio, LinkRobustness = 40,
-                SensorFootprintMetres = M(160)
+                SensorOptical = M(160),
+                SigRadio = 45, SigThermal = 35, SigAcoustic = 40, SigVisual = 50
             });
 
             Add(new UnitDef
@@ -265,7 +291,8 @@ namespace KZ.Sim
                 CostMateriel = 700, BuildTicks = SimConstants.Seconds(24),
                 Hp = M(380), Armour = ArmourClass.Light, SpeedMetresPerSecond = M(8.0),
                 JamStrength = 55, JamRadiusMetres = M(350),
-                SensorFootprintMetres = M(200)
+                SensorOptical = M(200), SensorEsm = M(400),
+                SigRadio = 30, SigThermal = 45, SigAcoustic = 45, SigVisual = 55
             });
 
             Add(new UnitDef
@@ -274,7 +301,9 @@ namespace KZ.Sim
                 CostMateriel = 900, BuildTicks = SimConstants.Seconds(26),
                 Hp = M(1250), Armour = ArmourClass.Heavy, SpeedMetresPerSecond = M(9.0),
                 WeaponDamage = M(130), WeaponType = DamageType.Kinetic,
-                WeaponRangeMetres = M(420), SensorFootprintMetres = M(320)
+                WeaponRangeMetres = M(420),
+                SensorOptical = M(320), SensorThermal = M(250),
+                SigRadio = 0, SigThermal = 75, SigAcoustic = 75, SigVisual = 80
             });
 
             // Expensive, powerful, and only survivable with jamming cover, cages,
@@ -291,7 +320,9 @@ namespace KZ.Sim
                 // worth preserving; the arithmetic slip is not.
                 Hp = M(2250), Armour = ArmourClass.Heavy, SpeedMetresPerSecond = M(7.5),
                 WeaponDamage = M(340), WeaponType = DamageType.Kinetic,
-                WeaponRangeMetres = M(620), SensorFootprintMetres = M(360)
+                WeaponRangeMetres = M(620),
+                SensorOptical = M(360), SensorThermal = M(300),
+                SigRadio = 0, SigThermal = 90, SigAcoustic = 85, SigVisual = 90
             });
 
             Add(new UnitDef
@@ -300,7 +331,8 @@ namespace KZ.Sim
                 CostMateriel = 280, BuildTicks = SimConstants.Seconds(12),
                 Hp = M(180), Armour = ArmourClass.Soft, SpeedMetresPerSecond = M(4.0),
                 Link = LinkKind.Satellite, LinkRobustness = 95,
-                SensorFootprintMetres = M(600)
+                SensorOptical = M(600), SensorThermal = M(300),
+                SigRadio = 40, SigThermal = 22, SigAcoustic = 15, SigVisual = 20
             });
 
             // Crew-free air defence. It costs no sortie capacity, which is the
@@ -315,7 +347,8 @@ namespace KZ.Sim
                 WeaponDamage = M(220), WeaponType = DamageType.Fragmentation,
                 WeaponRangeMetres = M(2000), WeaponCooldownTicks = 96,
                 IsInterceptor = true, InterceptBaseChance = M(0.75),
-                SensorFootprintMetres = M(400)
+                SensorThermal = M(500), SensorRadar = M(800), SensorEsm = M(600),
+                SigRadio = 70, SigThermal = 50, SigAcoustic = 40, SigVisual = 60
             });
         }
 
@@ -327,8 +360,9 @@ namespace KZ.Sim
                 CostMateriel = 120, BuildTicks = SimConstants.Seconds(6),
                 Hp = M(40), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
                 SpeedMetresPerSecond = M(16.0),
-                Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true,
-                SensorFootprintMetres = M(250), IsMeshRepeater = true
+                Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true, IsMeshRepeater = true,
+                SensorOptical = M(250),
+                SigRadio = 60, SigThermal = 10, SigAcoustic = 60, SigVisual = 12, SigRadar = 20
             });
 
             // The workhorse: ammunition with a pilot. It does not come home.
@@ -340,8 +374,9 @@ namespace KZ.Sim
                 SpeedMetresPerSecond = M(22.0),
                 Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true, OneWay = true,
                 WeaponDamage = M(260), WeaponType = DamageType.Shaped,
-                WeaponRangeMetres = M(8), WeaponAcquisitionTicks = 12,
-                SensorFootprintMetres = M(140), IsMeshRepeater = true
+                WeaponRangeMetres = M(8), WeaponAcquisitionTicks = 12, IsMeshRepeater = true,
+                SensorOptical = M(140),
+                SigRadio = 70, SigThermal = 12, SigAcoustic = 70, SigVisual = 15, SigRadar = 22
             });
 
             // Unjammable, and leashed for it. Slower, less agile, and trailing a
@@ -356,7 +391,8 @@ namespace KZ.Sim
                 SpoolLengthMetres = M(1400), ConsumesCrew = true, OneWay = true,
                 WeaponDamage = M(340), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(8), WeaponAcquisitionTicks = 12,
-                SensorFootprintMetres = M(220)
+                SensorOptical = M(220),
+                SigRadio = 0, SigThermal = 12, SigAcoustic = 70, SigVisual = 15, SigRadar = 22
             });
 
             Add(new UnitDef
@@ -368,8 +404,10 @@ namespace KZ.Sim
                 Link = LinkKind.Radio, AltLink = LinkKind.Mesh, LinkRobustness = 45,
                 ConsumesCrew = true,
                 WeaponDamage = M(180), WeaponType = DamageType.Shaped,
-                WeaponRangeMetres = M(40), SensorFootprintMetres = M(260),
-                IsMeshRepeater = true
+                WeaponRangeMetres = M(40),
+                IsMeshRepeater = true,
+                SensorOptical = M(260),
+                SigRadio = 65, SigThermal = 18, SigAcoustic = 72, SigVisual = 20, SigRadar = 25
             });
 
             // Fast and cheap, but nearly useless without a radar telling it where
@@ -382,8 +420,9 @@ namespace KZ.Sim
                 SpeedMetresPerSecond = M(34.0),
                 Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true, OneWay = true,
                 WeaponDamage = M(0), WeaponType = DamageType.Ram,
-                WeaponRangeMetres = M(12), IsInterceptor = true, InterceptBaseChance = M(0.55),
-                SensorFootprintMetres = M(180), IsMeshRepeater = true
+                WeaponRangeMetres = M(12), IsInterceptor = true, InterceptBaseChance = M(0.55), IsMeshRepeater = true,
+                SensorOptical = M(180),
+                SigRadio = 70, SigThermal = 14, SigAcoustic = 78, SigVisual = 15, SigRadar = 22
             });
 
             // The eyes. Nothing on the map is worth shooting at until one of these
@@ -396,8 +435,9 @@ namespace KZ.Sim
                 Hp = M(200), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(12.0), TurnRateDegreesPerSecond = 60,
                 Link = LinkKind.Radio, AltLink = LinkKind.Mesh, LinkRobustness = 45,
-                ConsumesCrew = true,
-                SensorFootprintMetres = M(900), IsMeshRepeater = true
+                ConsumesCrew = true, IsMeshRepeater = true,
+                SensorOptical = M(900),
+                SigRadio = 55, SigThermal = 28, SigAcoustic = 25, SigVisual = 30, SigRadar = 40
             });
 
             Add(new UnitDef
@@ -410,7 +450,8 @@ namespace KZ.Sim
                 Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true,
                 WeaponDamage = M(300), WeaponType = DamageType.Fragmentation,
                 WeaponRangeMetres = M(30), WeaponCooldownTicks = 96,
-                SensorFootprintMetres = M(300), SensorThermal = true
+                SensorOptical = M(300), SensorThermal = M(400),
+                SigRadio = 60, SigThermal = 45, SigAcoustic = 95, SigVisual = 55, SigRadar = 55
             });
 
             Add(new UnitDef
@@ -421,7 +462,9 @@ namespace KZ.Sim
                 SpeedMetresPerSecond = M(24.0), TurnRateDegreesPerSecond = 70,
                 Link = LinkKind.Mesh, LinkRobustness = 65, ConsumesCrew = true, OneWay = true,
                 WeaponDamage = M(300), WeaponType = DamageType.Shaped,
-                WeaponRangeMetres = M(10), SensorFootprintMetres = M(240)
+                WeaponRangeMetres = M(10),
+                SensorOptical = M(240),
+                SigRadio = 50, SigThermal = 30, SigAcoustic = 35, SigVisual = 25, SigRadar = 35
             });
 
             // Navigates by looking at the ground rather than by listening to a
@@ -436,7 +479,9 @@ namespace KZ.Sim
                 Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
                 ConsumesCrew = false, OneWay = true, AutonomyQuality = 72,
                 WeaponDamage = M(420), WeaponType = DamageType.Shaped,
-                WeaponRangeMetres = M(10), SensorFootprintMetres = M(200)
+                WeaponRangeMetres = M(10),
+                SensorOptical = M(200),
+                SigRadio = 0, SigThermal = 30, SigAcoustic = 30, SigVisual = 25, SigRadar = 35
             });
 
             // A relay in the sky. Extends reach, not capacity - every drone it
@@ -448,8 +493,9 @@ namespace KZ.Sim
                 CostMateriel = 1400, BuildTicks = SimConstants.Seconds(38),
                 Hp = M(520), Armour = ArmourClass.AirFixed, Layer = Layer.High,
                 SpeedMetresPerSecond = M(13.0), TurnRateDegreesPerSecond = 50,
-                Link = LinkKind.Mesh, LinkRobustness = 65, ConsumesCrew = true,
-                SensorFootprintMetres = M(400), IsMeshRepeater = true
+                Link = LinkKind.Mesh, LinkRobustness = 65, ConsumesCrew = true, IsMeshRepeater = true,
+                SensorOptical = M(400), SensorEsm = M(300),
+                SigRadio = 75, SigThermal = 40, SigAcoustic = 40, SigVisual = 45, SigRadar = 65
             });
 
             Add(new UnitDef
@@ -461,7 +507,9 @@ namespace KZ.Sim
                 Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
                 ConsumesCrew = false, OneWay = true, AutonomyQuality = 55,
                 WeaponDamage = M(320), WeaponType = DamageType.Shaped,
-                WeaponRangeMetres = M(10), SensorFootprintMetres = M(220)
+                WeaponRangeMetres = M(10),
+                SensorOptical = M(220),
+                SigRadio = 0, SigThermal = 30, SigAcoustic = 35, SigVisual = 25, SigRadar = 35
             });
         }
 

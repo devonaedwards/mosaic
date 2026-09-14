@@ -102,6 +102,16 @@ namespace KZ.Sim
         Impassable = 6
     }
 
+    /// <summary>The five ways one thing finds another.</summary>
+    public enum SensorChannel : byte
+    {
+        Optical = 0,
+        Thermal = 1,
+        Acoustic = 2,
+        Radar = 3,
+        Esm = 4
+    }
+
     public enum DayPhase : byte
     {
         Day = 0,
