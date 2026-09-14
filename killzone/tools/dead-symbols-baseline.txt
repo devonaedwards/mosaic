@@ -35,9 +35,7 @@ sim-constant    SimConstants.MaxTethersStandard
 sim-constant    SimConstants.MeshAcquisitionPenaltyTicksPerHop
 sim-constant    SimConstants.TetherSegmentsPerTick
 sim-constant    SimConstants.VisionCellMetres
-unitdef-single  UnitDef.Ammo
 unitdef-single  UnitDef.AutonomyQuality
-unitdef-single  UnitDef.CanReachHigh
 unitdef-single  UnitDef.HasCelestialHeading
 unitdef-single  UnitDef.MineDamage
 unitdef-single  UnitDef.MinesCarried

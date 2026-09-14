@@ -313,6 +313,84 @@ namespace KZ.Sim
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
 
+            // The real step up from the Gun Mount, and the research is explicit
+            // that the step is not "a bigger magazine" - it is the sensor.
+            // point-defence.md §"3. Autocannon with programmable airburst":
+            // "an organic AESA search-and-track radar plus EO/IR. This is the
+            // first family in the list where the system *measures* target
+            // velocity rather than inferring it" - against the Gun Mount's
+            // §"Sensor fit": "Passive EO/IR only... it means no direct velocity
+            // measurement. Range and closing rate have to be inferred from
+            // image scale, which is exactly the measurement that a firing
+            // solution is most sensitive to" (§Q1's whole arithmetic argument).
+            // That is why this unit carries SensorRadar and the Gun Mount does
+            // not: a player choosing between them is choosing a sensor, not a
+            // bigger number.
+            //
+            // CostMateriel, BuildTicks, Hp, FootprintTiles, SensorOptical,
+            // SensorRadar and the Sig* signature values have no figure in
+            // point-defence.md or thermal-optical.md (the closest it comes is
+            // "expensive to build" and "organic radar" as bare qualitative
+            // notes) - these seven are designer estimates, set above the Gun
+            // Mount and in line with the Interceptor Battery's existing
+            // AESA-class radar figure (SensorRadar 800), not a cited fact.
+            Add(new UnitDef
+            {
+                Name = "Autocannon Mount", IsStructure = true, Tier = 3,
+                CanEngageAir = true,
+                CostMateriel = 1600, BuildTicks = SimConstants.Seconds(36),
+                Hp = M(950), Armour = ArmourClass.Structure, FootprintTiles = 3,
+                WeaponDamage = M(130), WeaponType = DamageType.Fragmentation,
+                // 280 map metres, not converted here but taken directly from
+                // point-defence.md §"Suggested replacement units", row
+                // "Airburst Autocannon (Skyranger class)" - the same table the
+                // Gun Mount's own 85 m and 5-shot/20 s magazine come from. It
+                // is close to a bare 12:1 conversion of the comparison table's
+                // "3,000 m (30 mm)" (250 map metres) but the replacement-units
+                // table is the one already treated as the game-ready spec, so
+                // it wins over recomputing from the raw metres.
+                WeaponRangeMetres = M(280),
+                // ~2 s per target, revolver cannon - point-defence.md §Q3
+                // comparison table and §"Suggested replacement units" "Cycle: 2 s".
+                WeaponCooldownTicks = SimConstants.Seconds(2),
+                // The Gun Mount cannot touch the High band at all (Q2: "Above
+                // ~1,000-1,200 m: machine-gun-class point defence is
+                // finished"). This mount reaches into it - §"Suggested
+                // replacement units" gives its ceiling as "mid band", and Q2
+                // separately gives 30 mm's own limit as "Above ~3,000 m: 30 mm
+                // is finished", which is the WeaponRangeMetres above, not a
+                // second ceiling. Explicit rather than relying on the
+                // CanReachHigh default so the Gun Mount's false and this
+                // true read as the same decision made twice, not as one unit
+                // configured and one left alone.
+                CanReachHigh = true,
+                // AHEAD-class airburst: point-defence.md §"3. Autocannon with
+                // programmable airburst" - "releases ~152 tungsten
+                // sub-projectiles near the target, producing a cloud rather
+                // than requiring a direct hit". AmmoType.Airburst already had
+                // the flattest range falloff and the most forgiving speed
+                // term of the four ammo curves in AirHitChance; nothing had
+                // ever loaded it before this unit.
+                Ammo = AmmoType.Airburst,
+                // 20 engagements before a 40 s reload - point-defence.md
+                // §"Suggested replacement units", same row: "20 / 40 s". The
+                // Gun Mount's own 5/20 s comes from the row above it in the
+                // same table.
+                EngagementsPerBelt = 20, ReloadSeconds = 40,
+                // ~90°/s - point-defence.md §"Where the existing numbers
+                // break" item 5: "~150°/s for a light AI EO turret, ~90°/s
+                // for an autocannon turret, ~45°/s for a crewed gun truck",
+                // corroborated by §"Azimuth and elevation rates by class":
+                // "Self-propelled AAA turret (Gepard, Skyranger): ~90-120°/s"
+                // `[GEN]`. Slower than the Gun Mount's 150°/s: mass sets the
+                // rate, and a revolver cannon with an ammunition feed and a
+                // radar is heavier than a machine gun on a light robotic mount.
+                TraverseDegreesPerSecond = 90,
+                SensorOptical = M(600),
+                SensorRadar = M(800),
+                SigRadio = 20, SigThermal = 35, SigAcoustic = 25, SigVisual = 60,
+                SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
+
             // TEST-ONLY. Not a shipping unit and never presented to a player -
             // it exists so KZ.Balance's GunRangeExperiment can sweep the mount's
             // reach as its one independent variable without silently overwriting

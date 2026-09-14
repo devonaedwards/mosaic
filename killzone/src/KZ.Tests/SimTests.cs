@@ -1566,6 +1566,41 @@ namespace KZ.Tests
                 Assert.True(!w.Entities.IsAlive(weak),
                             "a guaranteed kill is the one thing allowed to pull the mount off its current target");
             });
+
+            r.Run("the autocannon reaches the high band the gun mount cannot", delegate
+            {
+                // point-defence.md §Q2: "Above ~1,000-1,200 m: machine-gun-
+                // class point defence is finished" (Gun Mount: CanReachHigh =
+                // false) against the Autocannon Mount's own §"Suggested
+                // replacement units" ceiling of "mid band" (CanReachHigh =
+                // true). Both mounts can see this target fine - it is 60 map
+                // metres out and the Gun Mount's own optical reach is 600 -
+                // the difference the sensor buys is whether the mount is ever
+                // mechanically allowed to fire, which EngagementsRemaining
+                // reports without needing a hit to land (that part still
+                // rolls dice - see AirHitChance - so it is not what this test
+                // is about).
+                World w = MakeWorld(902);
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle auto = w.Spawn(Catalog.IdOf("Autocannon Mount"), 1, P(2000, 1000));
+
+                EntityHandle gunTarget = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(1060, 1000));
+                EntityHandle autoTarget = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(2060, 1000));
+                w.Entities.EntityLayer[gunTarget.Index] = Layer.High;
+                w.Entities.EntityLayer[autoTarget.Index] = Layer.High;
+
+                int gunBelt = Catalog.Get(Catalog.IdOf("Gun Mount")).EngagementsPerBelt;
+                int autoBelt = Catalog.Get(Catalog.IdOf("Autocannon Mount")).EngagementsPerBelt;
+
+                for (int t = 0; t < 150; t++) w.Step();
+
+                Assert.Equal(gunBelt, w.Entities.Weapon[gun.Index].EngagementsRemaining,
+                             "CanReachHigh = false means the gun mount never gets a shot at a High target");
+
+                bool autoFired = w.Entities.Weapon[auto.Index].EngagementsRemaining < autoBelt
+                                  || w.Entities.Weapon[auto.Index].ReloadingUntilTick > 0;
+                Assert.True(autoFired, "CanReachHigh = true means the autocannon actually takes the shot");
+            });
         }
     }
 }
