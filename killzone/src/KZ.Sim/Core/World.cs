@@ -236,8 +236,8 @@ namespace KZ.Sim
                     TrackingLayer = Layer.Ground,
                     Ammo = def.Ammo,
                     CanReachHigh = def.CanReachHigh,
-                    AmmoCapacity = def.AmmoCapacity,
-                    AmmoRemaining = def.AmmoCapacity,
+                    EngagementsPerBelt = def.EngagementsPerBelt,
+                    EngagementsRemaining = def.EngagementsPerBelt,
                     ReloadTicks = SimConstants.Seconds(def.ReloadSeconds),
                     ReloadingUntilTick = 0
                 };

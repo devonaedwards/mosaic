@@ -90,7 +90,7 @@ namespace KZ.Sim
         public bool CanReachHigh = true;
 
         /// <summary>Engagements before reloading. Zero means it never runs dry.</summary>
-        public int AmmoCapacity;
+        public int EngagementsPerBelt;
         public int ReloadSeconds = 8;
 
         /// <summary>
@@ -308,7 +308,7 @@ namespace KZ.Sim
                 // belt. Saturation is meant to be the barrel running dry, not the
                 // sensors failing.
                 TraverseDegreesPerSecond = 150,       // point-defence.md §"Where the existing numbers break" 5 (was 0: instant)
-                AmmoCapacity = 5, ReloadSeconds = 20, // point-defence.md §"Suggested replacement units" (was 0: never ran dry)
+                EngagementsPerBelt = 5, ReloadSeconds = 20, // point-defence.md §"Suggested replacement units" (was 0: never ran dry)
                 SensorOptical = M(600), SensorAcoustic = M(200),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
@@ -333,7 +333,7 @@ namespace KZ.Sim
                 WeaponRangeMetres = M(550), WeaponCooldownTicks = 24,
                 CanReachHigh = false,
                 TraverseDegreesPerSecond = 150,
-                AmmoCapacity = 5, ReloadSeconds = 20,
+                EngagementsPerBelt = 5, ReloadSeconds = 20,
                 SensorOptical = M(600), SensorAcoustic = M(200),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
@@ -471,7 +471,7 @@ namespace KZ.Sim
             {
                 Name = "Interceptor Battery", Faction = FactionId.KestrelPact, Tier = 3,
                 CanEngageAir = true, TraverseDegreesPerSecond = 45,
-                Ammo = AmmoType.Proximity, AmmoCapacity = 12, ReloadSeconds = 20,
+                Ammo = AmmoType.Proximity, EngagementsPerBelt = 12, ReloadSeconds = 20,
                 CostMateriel = 1200, BuildTicks = SimConstants.Seconds(32),
                 Hp = M(600), Armour = ArmourClass.Light, SpeedMetresPerSecond = M(6.0),
                 WeaponDamage = M(220), WeaponType = DamageType.Fragmentation,

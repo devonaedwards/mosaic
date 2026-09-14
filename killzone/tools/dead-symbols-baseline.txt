@@ -23,7 +23,6 @@ unitdef-field   UnitDef.FootprintTiles
 unitdef-field   UnitDef.Id
 unitdef-field   UnitDef.IsFlyingDecoy
 unitdef-field   UnitDef.Tier
-unitdef-default UnitDef.BlackPolicy
 unitdef-default UnitDef.SignatureWhileEmitting
 sim-constant    SimConstants.AutonomySmokePenalty
 sim-constant    SimConstants.CrewRecoveryPriorityTicks
@@ -37,7 +36,6 @@ sim-constant    SimConstants.MeshAcquisitionPenaltyTicksPerHop
 sim-constant    SimConstants.TetherSegmentsPerTick
 sim-constant    SimConstants.VisionCellMetres
 unitdef-single  UnitDef.Ammo
-unitdef-single  UnitDef.AmmoCapacity
 unitdef-single  UnitDef.AutonomyQuality
 unitdef-single  UnitDef.CanReachHigh
 unitdef-single  UnitDef.HasCelestialHeading
@@ -46,7 +44,6 @@ unitdef-single  UnitDef.MinesCarried
 unitdef-single  UnitDef.NightOnly
 unitdef-single  UnitDef.SensorAcoustic
 unitdef-single  UnitDef.SpoolLengthMetres
-unitdef-single  UnitDef.TraverseDegreesPerSecond
 test-only       AutonomyClassifier.IsPilotedWithClearFeed
 test-only       CrewPool.SetHomeQuarters
 test-only       DetRandom.ChancePercent

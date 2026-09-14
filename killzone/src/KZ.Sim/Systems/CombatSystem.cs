@@ -32,7 +32,7 @@ namespace KZ.Sim
             {
                 if (w.Tick < weapon.ReloadingUntilTick) return;
                 weapon.ReloadingUntilTick = 0;
-                weapon.AmmoRemaining = weapon.AmmoCapacity;
+                weapon.EngagementsRemaining = weapon.EngagementsPerBelt;
                 w.Entities.Weapon[i] = weapon;
             }
 
@@ -72,10 +72,10 @@ namespace KZ.Sim
 
             // A miss costs a round exactly as a hit does, which is most of why a
             // defence can be made to run itself dry.
-            if (weapon.AmmoCapacity > 0)
+            if (weapon.EngagementsPerBelt > 0)
             {
-                weapon.AmmoRemaining--;
-                if (weapon.AmmoRemaining <= 0)
+                weapon.EngagementsRemaining--;
+                if (weapon.EngagementsRemaining <= 0)
                 {
                     weapon.ReloadingUntilTick = w.Tick + weapon.ReloadTicks;
                     w.Events.Push(SimEventKind.WeaponReloading, w.Tick, w.Entities.HandleAt(i));

@@ -306,8 +306,23 @@ namespace KZ.Sim
         /// of the clever ammunition - the rounds that are forgiving of a bad aiming
         /// solution are bulky and expensive, so you carry far fewer of them.
         /// </summary>
-        public int AmmoRemaining;
-        public int AmmoCapacity;
+        /// <summary>
+        /// How many more targets this mount can prosecute before it has to reload,
+        /// and how many it gets from a full belt.
+        ///
+        /// The unit is <b>engagements, not rounds</b>, and the distinction is the
+        /// whole reason these are not called ammunition. A burst against a drone is
+        /// twenty to fifty rounds fired in under a second at eight hundred and
+        /// fifty rounds a minute; what takes the time is re-laying and re-acquiring
+        /// afterwards, three to eight seconds of it. A hundred-round belt is
+        /// therefore three to six *targets*, not a hundred of anything.
+        ///
+        /// Counting rounds would model the wrong scarce thing. The mount does not
+        /// run out mid-burst; it runs out of targets it can take before somebody
+        /// has to stand up in the open and feed it.
+        /// </summary>
+        public int EngagementsRemaining;
+        public int EngagementsPerBelt;
         public int ReloadTicks;
         public int ReloadingUntilTick;
     }

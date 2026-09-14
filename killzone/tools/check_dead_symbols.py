@@ -549,7 +549,7 @@ def unitdef_receivers(sf):
     return names
 
 
-def check_unitdef_fields(files, index, decls, raw_defs_text):
+def check_unitdef_fields(files, index, decls, raw_defs_text, clean_defs_text):
     findings = []
     defs_file = None
     for sf in files:
@@ -594,7 +594,24 @@ def check_unitdef_fields(files, index, decls, raw_defs_text):
         nm = re.search(r'\bName\s*=\s*"([^"]*)"', block)
         unit = nm.group(1) if nm else "(unnamed def)"
         bucket = harness if unit.startswith("Test ") else carriers
-        for field in sorted(set(re.findall(r"(?:^|[,{])\s*(\w+)\s*=[^=]", block))):
+
+        # Field names come from the *cleaned* slice, unit names from the raw one.
+        #
+        # Both halves are necessary and the reason is a bug this checker had on
+        # its first day. The field pattern anchors on the comma or brace that
+        # precedes an assignment, and this codebase requires every content number
+        # to carry a trailing comment citing its research. So a field whose
+        # preceding sibling ended in such a comment had a comment sitting between
+        # it and its comma, the anchor never matched, and the field was invisible
+        # - which made a stat two units carried look like a stat one unit carried,
+        # and fired unitdef-single on a unit that was correctly configured.
+        #
+        # A checker that miscounts is worse than no checker, because the first
+        # false positive is what gets the build step deleted. Cleaning offsets are
+        # preserved exactly (comments are blanked, not removed), so the same
+        # indices slice both texts.
+        clean_block = clean_defs_text[m.end():i - 1]
+        for field in sorted(set(re.findall(r"(?:^|[,{])\s*(\w+)\s*=[^=]", clean_block))):
             bucket.setdefault(field, []).append(unit)
     for m in re.finditer(r"\b\w+\s*\.\s*(\w+)\s*=[^=]", "\n".join(defs_file.lines)):
         stamped.add(m.group(1))
@@ -867,16 +884,18 @@ def analyse(root, allowlist_path, baseline_path):
         decls.extend(parse_declarations(sf))
 
     raw_defs = ""
+    clean_defs = ""
     for sf in files:
         if sf.base == "Defs.cs":
             with open(sf.path, "r") as fh:
                 raw_defs = fh.read()
+            clean_defs = strip_noise(raw_defs)
 
     findings = []
     findings += check_sim_events(files, index, decls)
     findings += check_component_flags(files, index, decls)
     findings += check_sim_constants(files, index, decls)
-    findings += check_unitdef_fields(files, index, decls, raw_defs)
+    findings += check_unitdef_fields(files, index, decls, raw_defs, clean_defs)
     findings += check_enum_values(files, index, decls)
     owned = set(f.key for f in findings)
     findings += check_write_only(files, index, decls, owned)
