@@ -289,6 +289,36 @@ namespace KZ.Sim
         public int TraverseBamPerTick;
         public Layer TrackingLayer;
 
+        /// <summary>
+        /// The one target this mount is currently prosecuting, held across
+        /// ticks rather than re-chosen every time it comes off cooldown.
+        ///
+        /// point-defence.md §"Q3. How many simultaneous targets, and what does
+        /// saturation look like?": every serial effector in the table - MG
+        /// turret, autocannon, laser, guided rocket - shows "Simultaneous
+        /// engagements: 1", and the design consequence is explicit: "a
+        /// point-defence unit in the game should have an explicit engagement
+        /// channel count (almost always 1)". Before this field existed the
+        /// channel count actually was one, tick to tick, because only one
+        /// StepOne call happens per mount per tick - but nothing stopped the
+        /// mount re-running BestTargetInRange every time it came off cooldown
+        /// and hopping onto whichever target scored highest that instant.
+        /// That is not one engagement channel with a cooldown, it is free
+        /// re-targeting with a cooldown attached, and it is a direct cause of
+        /// FINDINGS #25: the reflector decoy measured as having zero effect
+        /// because nothing ever made the mount spend a whole engagement on it
+        /// instead of splitting attention with whatever arrived alongside it.
+        ///
+        /// Held until the target dies, leaves the envelope (out of range, or
+        /// no longer engageable), or the magazine runs dry - see
+        /// CombatSystem.CommittedOrBestTarget. Breaking it early for a target
+        /// worth more is allowed in exactly one case there, and it costs
+        /// exactly the SlewTicks/AcquisitionTicks that re-laying onto any new
+        /// target already costs - commitment does not add a second charge on
+        /// top of the traverse cost that already prices switching targets.
+        /// </summary>
+        public EntityHandle CommittedTarget;
+
         /// <summary>What the mount is loaded with, which changes the shape of its
         /// hit curve far more than its damage.</summary>
         public AmmoType Ammo;

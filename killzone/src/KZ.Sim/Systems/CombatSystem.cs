@@ -36,13 +36,21 @@ namespace KZ.Sim
                 w.Entities.Weapon[i] = weapon;
             }
 
-            EntityHandle target = FindTarget(w, i, weapon);
-            if (!w.Entities.IsAlive(target)) return;
+            EntityHandle target = FindTarget(w, i, ref weapon);
+            if (!w.Entities.IsAlive(target))
+            {
+                w.Entities.Weapon[i] = weapon;
+                return;
+            }
 
             Fix2 myPos = w.Entities.Position[i];
             Fix2 targetPos = w.Entities.Position[target.Index];
             Fix range = EffectiveReach(w, i, target, weapon);
-            if (Fix2.SqrDistance(myPos, targetPos) > range * range) return;
+            if (Fix2.SqrDistance(myPos, targetPos) > range * range)
+            {
+                w.Entities.Weapon[i] = weapon;
+                return;
+            }
 
             // Acquisition takes time, and a degraded link doubles it. That delay is
             // most of what an amber pip actually costs you in a fight.
@@ -78,6 +86,12 @@ namespace KZ.Sim
                 if (weapon.EngagementsRemaining <= 0)
                 {
                     weapon.ReloadingUntilTick = w.Tick + weapon.ReloadTicks;
+                    // Running dry is one of the three ways a commitment ends
+                    // (Components.cs WeaponState.CommittedTarget) - a mount
+                    // that has to stand a crew up to feed it was going to
+                    // re-lay anyway, so it comes off reload free to pick again
+                    // rather than glued to whatever it was shooting before.
+                    weapon.CommittedTarget = EntityHandle.None;
                     w.Events.Push(SimEventKind.WeaponReloading, w.Tick, w.Entities.HandleAt(i));
                 }
             }
@@ -270,7 +284,7 @@ namespace KZ.Sim
             return Catalog.Get(defId).CanEngageAir;
         }
 
-        static EntityHandle FindTarget(World w, int i, WeaponState weapon)
+        static EntityHandle FindTarget(World w, int i, ref WeaponState weapon)
         {
             // An explicit order wins. An autonomous munition with no order asks its
             // classifier instead, and that is where decoys get their chance.
@@ -288,7 +302,65 @@ namespace KZ.Sim
                 return AutonomyClassifier.SelectTarget(w, i, out misidentified);
             }
 
-            return BestTargetInRange(w, i, weapon);
+            EntityHandle target = CommittedOrBestTarget(w, i, weapon);
+            weapon.CommittedTarget = target;
+            return target;
+        }
+
+        /// <summary>
+        /// One engagement channel: stay on whatever this mount is already
+        /// shooting at rather than re-running the scorer every time it comes
+        /// off cooldown.
+        ///
+        /// point-defence.md §"Q3...": "Guns: no. Strictly one at a time. One
+        /// barrel, one line of sight, one firing solution" - and the same
+        /// table gives MG turret, autocannon, laser and guided rocket all
+        /// "Simultaneous engagements: 1". Re-scoring every cycle did not
+        /// violate that at any single instant, but it meant a mount would
+        /// happily alternate bursts between two targets across several
+        /// cycles as their relative scores seesawed - which is not a serial
+        /// weapon, it is a fast-switching one with a cooldown attached, and
+        /// it is why the reflector decoy measured as having zero effect
+        /// (FINDINGS #25): nothing made the mount spend a whole engagement on
+        /// the decoy instead of splitting its attention with the real target
+        /// arriving alongside it.
+        ///
+        /// A live commitment ends exactly three ways, matching the field's
+        /// doc comment: the target dies (caught below by IsAlive), it leaves
+        /// the envelope (out of range/altitude or no longer engageable,
+        /// caught by EffectiveReach/CanEngage below), or the magazine runs
+        /// dry (cleared in StepOne when the reload starts). The one thing
+        /// allowed to break a *live* commitment is a target this shot would
+        /// remove all remaining health from outright when the one already
+        /// being engaged would not die to it this shot - finishing a nearly-
+        /// spent burst on a decoy while a warhead you could actually stop
+        /// flies through is a worse trade than the half-spent burst. That
+        /// override still has to re-lay onto the new target through the
+        /// normal Acquiring/SlewTicks path in StepOne - this function adds no
+        /// second penalty on top of the traverse cost that already prices
+        /// switching targets.
+        /// </summary>
+        static EntityHandle CommittedOrBestTarget(World w, int i, WeaponState weapon)
+        {
+            EntityHandle committed = weapon.CommittedTarget;
+            bool haveCommitted = w.Entities.IsAlive(committed) && CanEngage(w, i, committed);
+            if (haveCommitted)
+            {
+                Fix2 pos = w.Entities.Position[i];
+                Fix reach = EffectiveReach(w, i, committed, weapon);
+                Fix dSq = Fix2.SqrDistance(pos, w.Entities.Position[committed.Index]);
+                haveCommitted = reach.Raw > 0 && dSq <= reach * reach;
+            }
+
+            EntityHandle candidate = BestTargetInRange(w, i, weapon);
+            if (!haveCommitted) return candidate;
+            if (!w.Entities.IsAlive(candidate) || candidate == committed) return committed;
+
+            Fix committedScore = ShotValue(w, i, committed.Index, weapon);
+            Fix candidateScore = ShotValue(w, i, candidate.Index, weapon);
+            if (candidateScore >= Fix.One && committedScore < Fix.One) return candidate;
+
+            return committed;
         }
 
         /// <summary>

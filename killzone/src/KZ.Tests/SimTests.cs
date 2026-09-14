@@ -31,6 +31,7 @@ namespace KZ.Tests
             RegisterCrews(r);
             RegisterDamage(r);
             RegisterMinesAndNight(r);
+            RegisterPointDefence(r);
         }
 
         // ------------------------------------------------------------------
@@ -1478,6 +1479,93 @@ namespace KZ.Tests
             for (int i = 0; i < droneHits; i++)
                 w.ApplyDamage(tank, damage, DamageType.Shaped, true, EntityHandle.None);
             return w.Entities.Hp[tank.Index].Raw > 0;
+        }
+
+        static void RegisterPointDefence(TestRunner r)
+        {
+            r.Group("point defence");
+
+            r.Run("a mount facing two targets at once only ever damages one of them", delegate
+            {
+                // point-defence.md §Q3: "Guns: no. Strictly one at a time. One
+                // barrel, one line of sight, one firing solution" - and the
+                // "Suggested replacement units" table gives the Gun Mount
+                // exactly one engagement channel. Before WeaponState.
+                // CommittedTarget existed, the mount re-ran BestTargetInRange
+                // every time it came off cooldown, so a much-better-scoring
+                // arrival could pull its very next shot away from whatever it
+                // was already shooting at - which is not a serial weapon, and
+                // it is why the reflector decoy measured as having zero
+                // effect (FINDINGS #25).
+                //
+                // Both targets sit on the ground, which makes the test fully
+                // deterministic: ResolveDirectFire only rolls dice against an
+                // airborne target, so a ground target's damage is exact.
+                World w = MakeWorld(900);
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+
+                // Heavy armour: fragmentation does 0.20x, so this is a poor
+                // shot (a low fraction of its health) and stays that way for
+                // a long time - the mount has every incentive, on a fresh
+                // rescore, to abandon it for something better.
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1030, 1000));
+                Fix tankStart = w.Entities.Hp[tank.Index];
+
+                int firstHitTick = -1;
+                for (int t = 0; t < 200 && firstHitTick < 0; t++)
+                {
+                    w.Step();
+                    if (w.Entities.Hp[tank.Index] < tankStart) firstHitTick = t;
+                }
+                Assert.True(firstHitTick >= 0, "the mount should have committed to the tank and hit it");
+
+                // Soft armour: fragmentation does 1.60x. Arriving now, this is
+                // by far the better shot - a much higher-value target by
+                // exactly the measure BestTargetInRange uses - but it is not
+                // a one-shot kill, so it is not the one case that is allowed
+                // to break a live commitment.
+                EntityHandle soft = w.Spawn(Catalog.IdOf("Motorcycle Squad"), 2, P(1030, 1000));
+                Fix softStart = w.Entities.Hp[soft.Index];
+                Fix tankAfterFirstHit = w.Entities.Hp[tank.Index];
+
+                for (int t = 0; t < 250; t++) w.Step();
+
+                Assert.Equal(softStart.Raw, w.Entities.Hp[soft.Index].Raw,
+                             "a higher-scoring arrival that is not a kill shot should not pull the mount off its target");
+                Assert.True(w.Entities.Hp[tank.Index] < tankAfterFirstHit,
+                            "the mount keeps spending its magazine on the tank it already committed to");
+            });
+
+            r.Run("a target the mount would kill outright is worth breaking commitment for", delegate
+            {
+                // The one exception CombatSystem.CommittedOrBestTarget allows,
+                // and the cost it pays for it: re-laying through the normal
+                // Acquiring/SlewTicks path, not a second penalty on top.
+                World w = MakeWorld(901);
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1030, 1000));
+                Fix tankStart = w.Entities.Hp[tank.Index];
+
+                int firstHitTick = -1;
+                for (int t = 0; t < 200 && firstHitTick < 0; t++)
+                {
+                    w.Step();
+                    if (w.Entities.Hp[tank.Index] < tankStart) firstHitTick = t;
+                }
+                Assert.True(firstHitTick >= 0, "the mount should have committed to the tank and hit it");
+
+                // 90 hit points of soft armour: this mount's 70-damage,
+                // fragmentation round at 1.60x is 112, so one connecting shot
+                // removes all of it. ShotValue reports that as a fraction
+                // capped at one - a shot the tank, at 0.20x, can never match.
+                EntityHandle weak = w.Spawn(Catalog.IdOf("Net Engineer"), 2, P(1030, 1000));
+                w.Entities.Hp[weak.Index] = Fix.FromInt(90);
+
+                for (int t = 0; t < 100; t++) w.Step();
+
+                Assert.True(!w.Entities.IsAlive(weak),
+                            "a guaranteed kill is the one thing allowed to pull the mount off its current target");
+            });
         }
     }
 }

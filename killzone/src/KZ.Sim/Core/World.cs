@@ -234,6 +234,7 @@ namespace KZ.Sim
                         ? Trig.DegreesPerSecondToBamPerTick(def.TraverseDegreesPerSecond)
                         : 0,
                     TrackingLayer = Layer.Ground,
+                    CommittedTarget = EntityHandle.None,
                     Ammo = def.Ammo,
                     CanReachHigh = def.CanReachHigh,
                     EngagementsPerBelt = def.EngagementsPerBelt,
@@ -1282,6 +1283,14 @@ namespace KZ.Sim
                     h = (h ^ (ulong)Entities.Link[i].AmberTicks) * Prime;
                     h = (h ^ (ulong)Entities.Link[i].Hops) * Prime;
                 }
+
+                // Which target a mount has committed to (CombatSystem task
+                // 1/point-defence.md §Q3) is persistent state that changes
+                // future ticks - a mount holds it rather than re-picking - so
+                // a divergence here has to be caught here, not inferred later
+                // from whichever target ends up dead.
+                if (Entities.Has(i, ComponentMask.Weapon))
+                    h = (h ^ (ulong)Entities.Weapon[i].CommittedTarget.Value) * Prime;
             }
 
             for (int t = 1; t < Players.Length; t++)
