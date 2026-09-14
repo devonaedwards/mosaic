@@ -177,7 +177,10 @@ namespace KZ.Sim
                     Acoustic = def.SensorAcoustic,
                     Radar = def.SensorRadar,
                     Esm = def.SensorEsm,
-                    Quality = 60
+                    Quality = 60,
+                    DirectionalArcDegrees = def.SensorArcDegrees > 0 ? def.SensorArcDegrees : 360,
+                    Facing = 0,
+                    ScanDegreesPerSecond = def.SensorScanDegreesPerSecond
                 };
             }
 
@@ -326,6 +329,7 @@ namespace KZ.Sim
             if (Tick % SimConstants.SignalRebuildInterval == 0) RebuildSignalField();
             if (Tick % SimConstants.MeshRebuildInterval == 0) RebuildMeshGraphs();
 
+            SweepSensors();
             RebuildDetection();
             LinkResolver.ResolveAll(this);
             UpdateTethers();
@@ -726,6 +730,40 @@ namespace KZ.Sim
         /// which at these unit counts is affordable and, more to the point, is a
         /// single place to put a spatial index when it stops being.
         /// </summary>
+        /// <summary>
+        /// Turn every sweeping sensor head a little further round. A staring head
+        /// keeps whatever bearing it was given.
+        /// </summary>
+        void SweepSensors()
+        {
+            for (int i = 1; i < Entities.HighWater; i++)
+            {
+                if (!Entities.IsSlotAlive(i)) continue;
+                if (!Entities.Has(i, ComponentMask.Sensor)) continue;
+                int rate = Entities.Sensor[i].ScanDegreesPerSecond;
+                if (rate <= 0) continue;
+                Entities.Sensor[i].Facing = (ushort)(
+                    (Entities.Sensor[i].Facing + Trig.DegreesPerSecondToBamPerTick(rate)) & 0xFFFF);
+            }
+        }
+
+        /// <summary>
+        /// Whether a pointed sensor is looking at something right now. Microphones
+        /// and radio antennas always are; cameras and imagers only if the head
+        /// happens to be round the right way.
+        /// </summary>
+        static bool WithinArc(SensorSuite s, Fix2 from, Fix2 to)
+        {
+            if (s.DirectionalArcDegrees >= 360) return true;
+            Fix2 delta = to - from;
+            if (delta.SqrMagnitude().Raw == 0) return true;
+            ushort bearing = Trig.Atan2(delta.Y, delta.X);
+            int off = Trig.Delta(s.Facing, bearing);
+            if (off < 0) off = -off;
+            int halfArc = (s.DirectionalArcDegrees * 65536) / (360 * 2);
+            return off <= halfArc;
+        }
+
         void RebuildDetection()
         {
             if (detectionCache == null)
@@ -784,9 +822,13 @@ namespace KZ.Sim
                 // Thermal, which is a night sensor and a poor day one. Sunlight
                 // heats the background until there is little contrast left to work
                 // with, so the imager that owns the small hours is mediocre at noon.
-                Fix thermalMod = ThermalTimeScale();
+                bool pointedAtIt = WithinArc(s, Entities.Position[i], tp);
+
+                Fix thermalMod = ThermalTimeScale() * s.ApertureRangeScale;
                 if (layer == Layer.High) thermalMod = thermalMod * Fix.FromDoubleContentOnly(0.80);
-                if (Reaches(s.Thermal, sig.Thermal, thermalMod, distSq, SensorChannel.Thermal, ti)) return true;
+                if (pointedAtIt
+                    && Reaches(s.Thermal, sig.Thermal, thermalMod, distSq, SensorChannel.Thermal, ti))
+                    return true;
 
                 // Microphones. The thing that finds small drones, and the thing
                 // that altitude genuinely defeats - sound from a kilometre up
@@ -798,10 +840,13 @@ namespace KZ.Sim
 
                 // Cameras. Long reach in daylight, and after dark this is the line
                 // that stops being true.
-                Fix opticalMod = layer == Layer.High ? Fix.FromDoubleContentOnly(0.70) : Fix.One;
+                Fix opticalMod = s.ApertureRangeScale;
+                if (layer == Layer.High) opticalMod = opticalMod * Fix.FromDoubleContentOnly(0.70);
                 if (IsNight && !TeamHasThermalOptics(team))
                     opticalMod = opticalMod * SimConstants.NightOpticalDetectionScale;
-                if (Reaches(s.Optical, sig.Visual, opticalMod, distSq, SensorChannel.Optical, ti)) return true;
+                if (pointedAtIt
+                    && Reaches(s.Optical, sig.Visual, opticalMod, distSq, SensorChannel.Optical, ti))
+                    return true;
             }
             return false;
         }
@@ -938,7 +983,7 @@ namespace KZ.Sim
                     break;
                 case SensorChannel.Thermal:
                     nominal = s.Thermal; strength = sig.Thermal;
-                    mod = ThermalTimeScale();
+                    mod = ThermalTimeScale() * s.ApertureRangeScale;
                     if (layer == Layer.High) mod = mod * Fix.FromDoubleContentOnly(0.80);
                     break;
                 case SensorChannel.Acoustic:
@@ -947,7 +992,8 @@ namespace KZ.Sim
                     break;
                 default:
                     nominal = s.Optical; strength = sig.Visual;
-                    if (layer == Layer.High) mod = Fix.FromDoubleContentOnly(0.70);
+                    mod = s.ApertureRangeScale;
+                    if (layer == Layer.High) mod = mod * Fix.FromDoubleContentOnly(0.70);
                     if (IsNight && !TeamHasThermalOptics(Entities.Team[sensorIndex]))
                         mod = mod * SimConstants.NightOpticalDetectionScale;
                     break;

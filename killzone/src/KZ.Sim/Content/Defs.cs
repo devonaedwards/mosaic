@@ -77,6 +77,15 @@ namespace KZ.Sim
         public byte SigVisual;
         public byte SigRadar;
 
+        /// <summary>
+        /// Arc the pointed sensors cover, in degrees, and how fast the head sweeps.
+        /// A narrow staring head is the long-range choice with blind sides; a wide
+        /// one covers everything badly; a sweeping one covers everything
+        /// intermittently. Zero arc means omnidirectional.
+        /// </summary>
+        public int SensorArcDegrees;
+        public int SensorScanDegreesPerSecond;
+
         public byte JamStrength;
         public Fix JamRadiusMetres;
 
@@ -169,8 +178,8 @@ namespace KZ.Sim
                 CostMateriel = 2000, BuildTicks = SimConstants.Seconds(60),
                 Hp = M(5000), Armour = ArmourClass.Structure, FootprintTiles = 8,
                 SensorOptical = M(400), SensorEsm = M(500),
-                SigRadio = 80, SigThermal = 60, SigAcoustic = 25, SigVisual = 95
-            });
+                SigRadio = 80, SigThermal = 60, SigAcoustic = 25, SigVisual = 95,
+                SensorArcDegrees = 360});
 
             Add(new UnitDef
             {
@@ -233,8 +242,8 @@ namespace KZ.Sim
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
                 WeaponRangeMetres = M(550), WeaponCooldownTicks = 24,
                 SensorOptical = M(600), SensorAcoustic = M(130),
-                SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55
-            });
+                SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
+                SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
 
             Add(new UnitDef
             {
@@ -324,8 +333,8 @@ namespace KZ.Sim
                 WeaponDamage = M(130), WeaponType = DamageType.Kinetic,
                 WeaponRangeMetres = M(420),
                 SensorOptical = M(320), SensorThermal = M(250),
-                SigRadio = 0, SigThermal = 75, SigAcoustic = 75, SigVisual = 80
-            });
+                SigRadio = 0, SigThermal = 75, SigAcoustic = 75, SigVisual = 80,
+                SensorArcDegrees = 90, SensorScanDegreesPerSecond = 30});
 
             // Expensive, powerful, and only survivable with jamming cover, cages,
             // and the dark. A tank on open ground in daylight is a salvage pile.
@@ -343,8 +352,8 @@ namespace KZ.Sim
                 WeaponDamage = M(340), WeaponType = DamageType.Kinetic,
                 WeaponRangeMetres = M(620),
                 SensorOptical = M(360), SensorThermal = M(300),
-                SigRadio = 0, SigThermal = 90, SigAcoustic = 85, SigVisual = 90
-            });
+                SigRadio = 0, SigThermal = 90, SigAcoustic = 85, SigVisual = 90,
+                SensorArcDegrees = 90, SensorScanDegreesPerSecond = 25});
 
             Add(new UnitDef
             {
@@ -353,8 +362,8 @@ namespace KZ.Sim
                 Hp = M(180), Armour = ArmourClass.Soft, SpeedMetresPerSecond = M(4.0),
                 Link = LinkKind.Satellite, LinkRobustness = 95,
                 SensorOptical = M(600), SensorThermal = M(300),
-                SigRadio = 40, SigThermal = 22, SigAcoustic = 15, SigVisual = 20
-            });
+                SigRadio = 40, SigThermal = 22, SigAcoustic = 15, SigVisual = 20,
+                SensorArcDegrees = 30});
 
             // Crew-free air defence. It costs no sortie capacity, which is the
             // whole reason its faction can hold a rear area without grounding its
@@ -369,8 +378,8 @@ namespace KZ.Sim
                 WeaponRangeMetres = M(2000), WeaponCooldownTicks = 96,
                 IsInterceptor = true, InterceptBaseChance = M(0.75),
                 SensorThermal = M(500), SensorRadar = M(800), SensorEsm = M(600),
-                SigRadio = 70, SigThermal = 50, SigAcoustic = 40, SigVisual = 60
-            });
+                SigRadio = 70, SigThermal = 50, SigAcoustic = 40, SigVisual = 60,
+                SensorArcDegrees = 360});
         }
 
         static void BuildAirUnits()
@@ -383,8 +392,8 @@ namespace KZ.Sim
                 SpeedMetresPerSecond = M(16.0),
                 Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true, IsMeshRepeater = true,
                 SensorOptical = M(250),
-                SigRadio = 60, SigThermal = 8, SigAcoustic = 60, SigVisual = 12, SigRadar = 20
-            });
+                SigRadio = 60, SigThermal = 8, SigAcoustic = 60, SigVisual = 12, SigRadar = 20,
+                SensorArcDegrees = 180});
 
             // The workhorse: ammunition with a pilot. It does not come home.
             Add(new UnitDef
@@ -428,8 +437,8 @@ namespace KZ.Sim
                 WeaponRangeMetres = M(40),
                 IsMeshRepeater = true,
                 SensorOptical = M(260),
-                SigRadio = 65, SigThermal = 10, SigAcoustic = 72, SigVisual = 20, SigRadar = 25
-            });
+                SigRadio = 65, SigThermal = 10, SigAcoustic = 72, SigVisual = 20, SigRadar = 25,
+                SensorArcDegrees = 120});
 
             // Fast and cheap, but nearly useless without a radar telling it where
             // to look. Killing the radar is how you open the sky.
@@ -458,8 +467,8 @@ namespace KZ.Sim
                 Link = LinkKind.Radio, AltLink = LinkKind.Mesh, LinkRobustness = 45,
                 ConsumesCrew = true, IsMeshRepeater = true,
                 SensorOptical = M(900),
-                SigRadio = 55, SigThermal = 25, SigAcoustic = 25, SigVisual = 30, SigRadar = 40
-            });
+                SigRadio = 55, SigThermal = 25, SigAcoustic = 25, SigVisual = 30, SigRadar = 40,
+                SensorArcDegrees = 45});
 
             Add(new UnitDef
             {
@@ -472,8 +481,8 @@ namespace KZ.Sim
                 WeaponDamage = M(300), WeaponType = DamageType.Fragmentation,
                 WeaponRangeMetres = M(30), WeaponCooldownTicks = 96,
                 SensorOptical = M(300), SensorThermal = M(400),
-                SigRadio = 60, SigThermal = 22, SigAcoustic = 95, SigVisual = 55, SigRadar = 55
-            });
+                SigRadio = 60, SigThermal = 22, SigAcoustic = 95, SigVisual = 55, SigRadar = 55,
+                SensorArcDegrees = 60});
 
             Add(new UnitDef
             {

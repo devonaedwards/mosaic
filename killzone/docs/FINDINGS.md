@@ -474,3 +474,83 @@ acoustic 52 - and a two-second track hold so a marginal contact does not strobe.
 Radar was also rescaled to the fourth root of cross-section rather than the
 square root, which is how the radar equation actually behaves and is why a drone
 the size of a dinner plate is so much harder than an aircraft.
+
+---
+
+## 22. Aperture: seeing far and seeing wide are the same budget
+
+A camera or a thermal imager has a fixed number of pixels, and it spends them on
+either a narrow slice of the world seen a long way off, or a wide slice seen
+close in. It cannot have both. The model had no concept of this: every sensor saw
+its full reach in every direction at once, which is not how any of them work.
+
+Pointed sensors now have an arc, a facing, and optionally a sweep rate, and reach
+scales as the square root of how narrow the arc is. The same 600 m camera:
+
+| arc | reach against a quadcopter | covered at once | heads for 360° | cost |
+|---|---|---|---|---|
+| 30° | 402 m | 8% | 12 | 5,400 |
+| 45° | 329 m | 12% | 8 | 3,600 |
+| 90° | 232 m | 25% | 4 | 1,800 |
+| 120° | 201 m | 33% | 3 | 1,350 |
+| 180° | 164 m | 50% | 2 | 900 |
+| 360° | 116 m | 100% | 1 | 450 |
+
+So a mount has four options and all of them cost something. A narrow staring head
+sees furthest and is blind over eleven twelfths of the sky. A sweeping head covers
+everything and is looking somewhere else two thirds of the time. A panoramic head
+has no blind side and less than a third of the reach. Several heads have neither
+problem and cost several times as much.
+
+**Microphones and passive radio listening are exempt**, because they are
+omnidirectional by nature. That is not a special case, it is the reason those two
+channels exist: they are the cheap way to know that something is out there and
+the useless way to know where it is. Which in turn is the argument for a line of
+cheap short-range acoustic posts rather than one expensive mount - the coverage
+comes from the count, not the quality, and detection is already the union of
+everything a side owns, so a sensor line works without any code for it.
+
+This is the most legible thing added so far. It is one slider, it is drawable as
+a wedge on the map, and every position on it is a defensible purchase.
+
+## 23. Autonomy is modelled as one thing and is two
+
+From the autonomy research, and not yet implemented.
+
+What is actually fielded in 2026 is **last-mile terminal guidance**: a human picks
+the target, and the machine flies the final few hundred metres. That removes the
+radio link, not the operator, and it makes the drone markedly *more* accurate -
+reported improvements from around twenty percent to around eighty - because it
+beats a dead link rather than out-recognising a human.
+
+**Full autonomous target selection** - a machine choosing what to attack from a
+class filter and an area - has never been independently verified anywhere, six
+years after the first contested report. The 2026 claims rest on official
+statements about a test plus thinly sourced operational reporting, and contradict
+the stated policy of the side making them.
+
+The game treats these as one thing: autonomy costs no crew and pays an error
+rate. That is wrong for the thing that exists and speculative for the thing that
+does not. It should be two tiers:
+
+| | crew | link | accuracy | decoys |
+|---|---|---|---|---|
+| Last-mile guidance | still needed | immune once committed | **better**, not worse | no effect |
+| Autonomous selection | none | immune | error rate | large effect |
+
+No error rates are published by anyone, because nobody has ground truth. Any
+number here is an estimate and should be labelled as one in the data.
+
+## 24. Economics: there are two valves, not one
+
+From the economics research.
+
+"Airframes are cheap, crews are the cap" is most of the picture and misses the
+first valve. The best-evidenced fact in 2026 reporting is that drone factories
+sit partly idle for want of orders - installed capacity of eight to ten million
+small airframes a year against about four and a half million planned purchases.
+
+So the honest model has two constraints in series: **money gates production,
+crews gate employment.** The game currently only has the second, which is why a
+player with a large bank and no crews feels correct and a player with crews and
+no bank does not exist. Worth adding before the economy is tuned.

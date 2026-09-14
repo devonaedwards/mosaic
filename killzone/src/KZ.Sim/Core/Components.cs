@@ -122,6 +122,52 @@ namespace KZ.Sim
 
         public byte Quality;
 
+        /// <summary>
+        /// How wide an arc the pointed sensors cover, in degrees. 360 means the
+        /// head sees all round.
+        ///
+        /// This is the trade nobody escapes. A camera or an imager has a fixed
+        /// number of pixels to spend, and it can spend them on a narrow slice of
+        /// the world seen in detail a long way off, or a wide slice seen poorly
+        /// close in. It cannot have both. So a mount either buys a narrow head and
+        /// accepts blind sides, buys several heads and pays several times, or
+        /// sweeps one head and accepts that it is looking somewhere else most of
+        /// the time.
+        ///
+        /// Microphones and radio antennas are exempt - they are omnidirectional by
+        /// nature, which is exactly why they are the cheap way to know something is
+        /// out there and the useless way to know precisely where.
+        /// </summary>
+        public int DirectionalArcDegrees;
+
+        /// <summary>Where the pointed sensors are looking.</summary>
+        public ushort Facing;
+
+        /// <summary>
+        /// How fast the head sweeps, in degrees per second. Zero means it stares.
+        /// A sweeping head eventually covers everything and is looking at any
+        /// particular thing only a fraction of the time, so a fast target can cross
+        /// a covered sector between one pass and the next.
+        /// </summary>
+        public int ScanDegreesPerSecond;
+
+        /// <summary>
+        /// What spreading the pixels over a wider arc costs in reach. Ninety
+        /// degrees is taken as the reference, so a narrow head sees further and a
+        /// panoramic one sees a good deal less.
+        /// </summary>
+        public Fix ApertureRangeScale
+        {
+            get
+            {
+                int arc = DirectionalArcDegrees <= 0 ? 360 : DirectionalArcDegrees;
+                Fix ratio = Fix.FromInt(90) / Fix.FromInt(arc);
+                Fix scale = Fix.Sqrt(ratio);
+                return Fix.Clamp(scale, Fix.FromDoubleContentOnly(0.40),
+                                        Fix.FromDoubleContentOnly(2.20));
+            }
+        }
+
         public bool HasAny
         {
             get

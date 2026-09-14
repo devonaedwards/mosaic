@@ -29,6 +29,7 @@ namespace KZ.Balance
             if (which == "all" || which == "stacking") StackingExperiment();
             if (which == "all" || which == "vertical") VerticalExperiment();
             if (which == "all" || which == "decoys") DecoyEscortExperiment();
+            if (which == "all" || which == "aperture") ApertureExperiment();
 
             return 0;
         }
@@ -615,6 +616,83 @@ namespace KZ.Balance
             }
             through = reached;
             return false;
+        }
+
+        /// <summary>
+        /// The aperture trade, and what it costs to see all the way round.
+        ///
+        /// A camera has a fixed number of pixels. Spend them on a narrow slice and
+        /// you see a long way into very little; spread them over everything and you
+        /// see a short way into all of it. A mount therefore chooses between a
+        /// blind side, a short reach, a sweep that is looking elsewhere most of the
+        /// time, or paying several times over for several heads.
+        /// </summary>
+        static void ApertureExperiment()
+        {
+            Console.WriteLine();
+            Console.WriteLine("APERTURE - the same 600 m camera, spread over different arcs");
+            Console.WriteLine();
+            Console.WriteLine("  arc      reach vs a quad   covered at once   heads for 360   total cost");
+            Console.WriteLine("  " + new string('-', 74));
+
+            int[] arcs = { 30, 45, 90, 120, 180, 360 };
+            foreach (int arc in arcs)
+            {
+                Fix reach = ApertureReach(arc);
+                int heads = (360 + arc - 1) / arc;
+                Console.WriteLine(string.Format("  {0,4} deg  {1,15}   {2,15}   {3,13}   {4,10}",
+                    arc,
+                    reach.RoundToInt() + " m",
+                    (arc * 100 / 360) + "%",
+                    heads,
+                    (heads * 450) + " MAT"));
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("  Buying 360 degrees at long reach costs twelve heads. Buying it with");
+            Console.WriteLine("  one head costs more than half the reach. Both are worse deals than");
+            Console.WriteLine("  a cheap short-range sensor line, which is the next table.");
+            Console.WriteLine();
+            Console.WriteLine("  COVERAGE - one good head against several poor ones, same money");
+            Console.WriteLine();
+            Console.WriteLine("  arrangement                          drone seen at   gaps");
+            Console.WriteLine("  " + new string('-', 62));
+
+            Console.WriteLine(string.Format("  {0,-36}  {1,13}   {2}",
+                "one 30-deg staring head", ApertureReach(30).RoundToInt() + " m",
+                "blind over 11/12 of the sky"));
+            Console.WriteLine(string.Format("  {0,-36}  {1,13}   {2}",
+                "one 120-deg head sweeping at 70 deg/s", ApertureReach(120).RoundToInt() + " m",
+                "covered, but looking away 2/3 of the time"));
+            Console.WriteLine(string.Format("  {0,-36}  {1,13}   {2}",
+                "one 360-deg head", ApertureReach(360).RoundToInt() + " m",
+                "none, and half the reach"));
+            Console.WriteLine(string.Format("  {0,-36}  {1,13}   {2}",
+                "three 120-deg heads, no sweep", ApertureReach(120).RoundToInt() + " m",
+                "none, at three times the price"));
+            Console.WriteLine();
+            Console.WriteLine("  Microphones and radio listening are exempt from all of this, because");
+            Console.WriteLine("  they are omnidirectional by nature - which is exactly why they are");
+            Console.WriteLine("  the cheap way to know something is out there and the useless way to");
+            Console.WriteLine("  know where it is.");
+        }
+
+        static Fix ApertureReach(int arcDegrees)
+        {
+            Terrain t = new Terrain(2048, 2048);
+            t.Fill(TileClass.Open);
+            World w = new World(t, 64, 4, 1, 2, 0);
+
+            EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+            SensorSuite s = w.Entities.Sensor[gun.Index];
+            s.DirectionalArcDegrees = arcDegrees;
+            s.ScanDegreesPerSecond = 0;
+            s.Facing = 0;
+            w.Entities.Sensor[gun.Index] = s;
+
+            EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1200, 1000));
+            w.Step();
+            return w.DetectionRangeFor(gun.Index, drone.Index, SensorChannel.Optical);
         }
 
         // ------------------------------------------------------------------
