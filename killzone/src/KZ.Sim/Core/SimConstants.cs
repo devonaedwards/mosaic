@@ -160,7 +160,45 @@ namespace KZ.Sim
         /// </summary>
         public static readonly Fix ThermalDayScale = Fix.FromDoubleContentOnly(0.55);
         public static readonly Fix ThermalNightScale = Fix.FromDoubleContentOnly(1.25);
-        public static readonly Fix ThermalTwilightScale = Fix.FromDoubleContentOnly(0.90);
+        /// <summary>
+        /// Dawn and dusk are the worst hour for thermal, not a midpoint between the
+        /// other two. Everything the sun warmed all day passes back down through
+        /// the temperature of the things hiding in it, and for a while a vehicle and
+        /// the field it is parked in read the same. The old 0.90 treated twilight as
+        /// nearly-night; it is closer to worse-than-noon.
+        /// </summary>
+        public static readonly Fix ThermalTwilightScale = Fix.FromDoubleContentOnly(0.65);
+
+        /// <summary>
+        /// Microphones get better after dark, and by more than anything else in the
+        /// model moves. The ambient floor drops ten to fifteen decibels between
+        /// midday and a quiet night, and the dawn inversion bends sound back down to
+        /// the ground on top of that.
+        ///
+        /// This is the point of modelling it: night is no longer a straight
+        /// attacker advantage. It buys a great deal against cameras and costs
+        /// something real against microphones, which is a decision rather than a
+        /// default.
+        ///
+        /// Refraction only helps against things flying low - a high target sits on
+        /// a steep ray path that bending barely touches - so high targets get the
+        /// quieter air and not the bent path.
+        /// </summary>
+        public static readonly Fix AcousticDayScale = Fix.One;
+        public static readonly Fix AcousticNightScale = Fix.FromDoubleContentOnly(2.00);
+        public static readonly Fix AcousticDawnScale = Fix.FromDoubleContentOnly(2.50);
+        public static readonly Fix AcousticDuskScale = Fix.FromDoubleContentOnly(1.60);
+        /// <summary>What a high target gets instead, on any of the above.</summary>
+        public static readonly Fix AcousticHighNightScale = Fix.FromDoubleContentOnly(1.50);
+
+        /// <summary>
+        /// What altitude costs a microphone. The old 0.35 was doing two jobs at
+        /// once - standing in for both the distance and the fact that small
+        /// electric aircraft are inaudible up there - and with honest per-airframe
+        /// signatures the second job is done by the signature. A quad at altitude
+        /// now works out to a handful of metres of reach on its own.
+        /// </summary>
+        public static readonly Fix AcousticHighScale = Fix.FromDoubleContentOnly(0.50);
 
         // ---- how reliable any of this is ------------------------------------
 

@@ -836,13 +836,13 @@ namespace KZ.Sim
                     && Reaches(s.Thermal, sig.Thermal, thermalMod, distSq, SensorChannel.Thermal, ti))
                     return true;
 
-                // Microphones. The thing that finds small drones, and the thing
-                // that altitude genuinely defeats - sound from a kilometre up
-                // arrives faint and from no particular direction.
-                Fix acousticMod = layer == Layer.High
-                    ? Fix.FromDoubleContentOnly(0.35)
-                    : Fix.One;
-                if (Reaches(s.Acoustic, sig.Acoustic, acousticMod, distSq, SensorChannel.Acoustic, ti)) return true;
+                // Microphones. Not the universal answer the model used to make
+                // them - against a small electric quad a camera still beats them,
+                // even after dark. What they are is the one sensor that gets a
+                // piston-engined thing at range, and the one that gets better at
+                // night rather than worse.
+                if (Reaches(s.Acoustic, sig.Acoustic, AcousticTimeScale(layer), distSq,
+                            SensorChannel.Acoustic, ti)) return true;
 
                 // Cameras. Long reach in daylight, and after dark this is the line
                 // that stops being true.
@@ -892,18 +892,75 @@ namespace KZ.Sim
         }
 
         /// <summary>
-        /// How target strength converts to reach. Radar takes the fourth root
-        /// because that is how the radar equation works - halving the range needs a
-        /// sixteenth of the cross-section, which is why a drone the size of a
-        /// dinner plate is so much harder than an aircraft. The rest take the
-        /// square root.
+        /// How target strength converts to reach, which is a different law per
+        /// channel because the underlying physics is different per channel.
+        ///
+        /// <para><b>Radar</b> reads its 0-100 signature as decibels of cross-section
+        /// rather than as a linear index, and that is the important correction. The
+        /// fourth-root rule was right; feeding it a linear index was not. Real
+        /// decoys beat the drones they escort on cross-section by a factor of
+        /// hundreds, and a linear 80-against-60 is a factor of 1.33, which the
+        /// fourth root flattens to a seven percent range advantage. A decoy that
+        /// draws fire seven percent further out is not a decoy. On the decibel
+        /// reading the same pair is 92 against 52, which is 3.2x, and the unit does
+        /// what the unit is for.</para>
+        ///
+        /// <para><b>Acoustic</b> is linear, and the signature is read as "fraction
+        /// of maximum detection range" rather than as loudness. The square root
+        /// could not express the real spread: across airframes, acoustic detection
+        /// range varies by something like twelve to one, and a square root over a
+        /// 0-100 scale cannot reach that without signature values down near one.</para>
+        ///
+        /// <para>Everything else keeps the square root.</para>
         /// </summary>
         static Fix SignatureScale(byte signature, SensorChannel channel)
         {
+            if (channel == SensorChannel.Radar)
+            {
+                int s = signature > 100 ? 100 : signature;
+                return new Fix(RadarReachTable[s]);
+            }
+
             Fix fraction = Fix.FromInt(signature) / Fix.FromInt(100);
-            if (channel == SensorChannel.Radar) return Fix.Sqrt(Fix.Sqrt(fraction));
+            if (channel == SensorChannel.Acoustic) return fraction;
             return Fix.Sqrt(fraction);
         }
+
+        /// <summary>
+        /// Reach multiplier per radar signature point: 10^((S-80)/80), which is the
+        /// fourth root of cross-section once the signature is read as decibels.
+        /// Signature 80 is one square metre and is the figure every radar's nominal
+        /// reach is quoted against.
+        ///
+        /// Baked rather than computed because the simulation has to produce the same
+        /// bits on an iPad and on a PC for tens of thousands of ticks, and powers of
+        /// ten in fixed point need a table regardless - so the table may as well be
+        /// built once, offline, where it can be read. Regenerate with
+        /// tools/propagation/radar_scale.py.
+        /// </summary>
+        static readonly long[] RadarReachTable = {
+            429496730, 442038261, 454946011, 468230674, 481903257,
+            495975086, 510457820, 525363457, 540704347, 556493199,
+            572743094, 589467494, 606680256, 624395639, 642628321,
+            661393407, 680706443, 700583430, 721040835, 742095608,
+            763765191, 786067537, 809021124, 832644967, 856958639,
+            881982283, 907736631, 934243019, 961523408, 989600398,
+            1018497251, 1048237908, 1078847007, 1110349909, 1142772712,
+            1176142277, 1210486252, 1245833088, 1282212071, 1319653340,
+            1358187913, 1397847716, 1438665606, 1480675401, 1523911903,
+            1568410934, 1614209360, 1661345124, 1709857278, 1759786012,
+            1811172691, 1864059888, 1918491420, 1974512381, 2032169183,
+            2091509595, 2152582778, 2215439330, 2280131326, 2346712363,
+            2415237601, 2485763812, 2558349426, 2633054578, 2709941160,
+            2789072870, 2870515268, 2954335828, 3040603991, 3129391231,
+            3220771105, 3314819319, 3411613790, 3511234712, 3613764616,
+            3719288448, 3827893632, 3939670144, 4054710589, 4173110276,
+            4294967296, 4420382605, 4549460108, 4682306741, 4819032567,
+            4959750858, 5104578198, 5253634573, 5407043472, 5564931992,
+            5727430940, 5894674943, 6066802559, 6243956392, 6426283210,
+            6613934068, 6807064429, 7005834299, 7210408354, 7420956079,
+            7637651909
+        };
 
         /// <summary>
         /// How often a channel produces a usable track at the edge of its envelope.
@@ -918,6 +975,30 @@ namespace KZ.Sim
                 case SensorChannel.Thermal: return 84;
                 case SensorChannel.Radar: return 78;    // birds, clutter, small returns
                 default: return 52;                     // microphones, in any wind at all
+            }
+        }
+
+        /// <summary>
+        /// How well a microphone is working at this hour, against a target in this
+        /// band. Quieter air after dark, and below about the height of the trees
+        /// the dawn inversion bends sound back down as well.
+        /// </summary>
+        public Fix AcousticTimeScale(Layer layer)
+        {
+            if (layer == Layer.High)
+            {
+                Fix quiet = Phase == DayPhase.Day
+                    ? SimConstants.AcousticDayScale
+                    : SimConstants.AcousticHighNightScale;
+                return SimConstants.AcousticHighScale * quiet;
+            }
+
+            switch (Phase)
+            {
+                case DayPhase.Night: return SimConstants.AcousticNightScale;
+                case DayPhase.Dawn: return SimConstants.AcousticDawnScale;
+                case DayPhase.Dusk: return SimConstants.AcousticDuskScale;
+                default: return SimConstants.AcousticDayScale;
             }
         }
 
@@ -994,7 +1075,7 @@ namespace KZ.Sim
                     break;
                 case SensorChannel.Acoustic:
                     nominal = s.Acoustic; strength = sig.Acoustic;
-                    if (layer == Layer.High) mod = Fix.FromDoubleContentOnly(0.35);
+                    mod = AcousticTimeScale(layer);
                     break;
                 default:
                     nominal = s.Optical; strength = sig.Visual;

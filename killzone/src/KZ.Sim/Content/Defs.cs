@@ -262,7 +262,7 @@ namespace KZ.Sim
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
                 WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
                 CanReachHigh = false,
-                SensorOptical = M(600), SensorAcoustic = M(130),
+                SensorOptical = M(600), SensorAcoustic = M(200),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
 
@@ -373,7 +373,7 @@ namespace KZ.Sim
                 WeaponDamage = M(340), WeaponType = DamageType.Kinetic,
                 WeaponRangeMetres = M(620),
                 SensorOptical = M(360), SensorThermal = M(300),
-                SigRadio = 0, SigThermal = 90, SigAcoustic = 85, SigVisual = 90,
+                SigRadio = 0, SigThermal = 90, SigAcoustic = 80, SigVisual = 90,
                 SensorArcDegrees = 90, SensorScanDegreesPerSecond = 25});
 
             Add(new UnitDef
@@ -414,7 +414,7 @@ namespace KZ.Sim
                 SpeedMetresPerSecond = M(16.0),
                 Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true, IsMeshRepeater = true,
                 SensorOptical = M(250),
-                SigRadio = 60, SigThermal = 8, SigAcoustic = 60, SigVisual = 12, SigRadar = 20,
+                SigRadio = 60, SigThermal = 8, SigAcoustic = 12, SigVisual = 12, SigRadar = 22,
                 SensorArcDegrees = 180});
 
             // The workhorse: ammunition with a pilot. It does not come home.
@@ -428,7 +428,7 @@ namespace KZ.Sim
                 WeaponDamage = M(260), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(8), WeaponAcquisitionTicks = 12, IsMeshRepeater = true,
                 SensorOptical = M(140),
-                SigRadio = 70, SigThermal = 8, SigAcoustic = 70, SigVisual = 15, SigRadar = 22
+                SigRadio = 70, SigThermal = 8, SigAcoustic = 12, SigVisual = 15, SigRadar = 22
             });
 
             // Unjammable, and leashed for it. Slower, less agile, and trailing a
@@ -444,7 +444,7 @@ namespace KZ.Sim
                 WeaponDamage = M(340), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(8), WeaponAcquisitionTicks = 12,
                 SensorOptical = M(220),
-                SigRadio = 0, SigThermal = 8, SigAcoustic = 70, SigVisual = 15, SigRadar = 22
+                SigRadio = 0, SigThermal = 8, SigAcoustic = 12, SigVisual = 15, SigRadar = 22
             });
 
             Add(new UnitDef
@@ -459,7 +459,7 @@ namespace KZ.Sim
                 WeaponRangeMetres = M(40),
                 IsMeshRepeater = true,
                 SensorOptical = M(260),
-                SigRadio = 65, SigThermal = 10, SigAcoustic = 72, SigVisual = 20, SigRadar = 25,
+                SigRadio = 65, SigThermal = 10, SigAcoustic = 14, SigVisual = 20, SigRadar = 26,
                 SensorArcDegrees = 120});
 
             // Fast and cheap, but nearly useless without a radar telling it where
@@ -474,7 +474,7 @@ namespace KZ.Sim
                 WeaponDamage = M(0), WeaponType = DamageType.Ram,
                 WeaponRangeMetres = M(12), IsInterceptor = true, InterceptBaseChance = M(0.55), IsMeshRepeater = true,
                 SensorOptical = M(180),
-                SigRadio = 70, SigThermal = 9, SigAcoustic = 78, SigVisual = 15, SigRadar = 22
+                SigRadio = 70, SigThermal = 9, SigAcoustic = 15, SigVisual = 15, SigRadar = 22
             });
 
             // The eyes. Nothing on the map is worth shooting at until one of these
@@ -489,7 +489,7 @@ namespace KZ.Sim
                 Link = LinkKind.Radio, AltLink = LinkKind.Mesh, LinkRobustness = 45,
                 ConsumesCrew = true, IsMeshRepeater = true,
                 SensorOptical = M(900),
-                SigRadio = 55, SigThermal = 25, SigAcoustic = 25, SigVisual = 30, SigRadar = 40,
+                SigRadio = 55, SigThermal = 25, SigAcoustic = 18, SigVisual = 30, SigRadar = 40,
                 SensorArcDegrees = 45});
 
             Add(new UnitDef
@@ -503,7 +503,7 @@ namespace KZ.Sim
                 WeaponDamage = M(300), WeaponType = DamageType.Fragmentation,
                 WeaponRangeMetres = M(30), WeaponCooldownTicks = 96,
                 SensorOptical = M(300), SensorThermal = M(400),
-                SigRadio = 60, SigThermal = 22, SigAcoustic = 95, SigVisual = 55, SigRadar = 55,
+                SigRadio = 60, SigThermal = 22, SigAcoustic = 35, SigVisual = 55, SigRadar = 58,
                 SensorArcDegrees = 60});
 
             Add(new UnitDef
@@ -516,7 +516,7 @@ namespace KZ.Sim
                 WeaponDamage = M(300), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(10),
                 SensorOptical = M(240),
-                SigRadio = 50, SigThermal = 45, SigAcoustic = 35, SigVisual = 25, SigRadar = 35
+                SigRadio = 50, SigThermal = 45, SigAcoustic = 55, SigVisual = 25, SigRadar = 38
             });
 
             // Navigates by looking at the ground rather than by listening to a
@@ -533,7 +533,7 @@ namespace KZ.Sim
                 WeaponDamage = M(420), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(10),
                 SensorOptical = M(200),
-                SigRadio = 0, SigThermal = 40, SigAcoustic = 30, SigVisual = 25, SigRadar = 35
+                SigRadio = 0, SigThermal = 40, SigAcoustic = 50, SigVisual = 25, SigRadar = 44
             });
 
             // A relay in the sky. Extends reach, not capacity - every drone it
@@ -555,7 +555,7 @@ namespace KZ.Sim
                 WeaponDamage = M(520), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(10),
                 SensorOptical = M(200),
-                SigRadio = 0, SigThermal = 60, SigAcoustic = 55, SigVisual = 45, SigRadar = 60
+                SigRadio = 0, SigThermal = 60, SigAcoustic = 90, SigVisual = 45, SigRadar = 52
             });
 
             // The fast one. Same job, three times the speed, and the reason a gun
@@ -573,7 +573,7 @@ namespace KZ.Sim
                 WeaponDamage = M(380), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(10),
                 SensorOptical = M(180),
-                SigRadio = 0, SigThermal = 85, SigAcoustic = 70, SigVisual = 40, SigRadar = 55
+                SigRadio = 0, SigThermal = 85, SigAcoustic = 95, SigVisual = 40, SigRadar = 50
             });
 
             // Plywood, foam and a corner reflector. It carries nothing and hurts
@@ -589,10 +589,10 @@ namespace KZ.Sim
                 Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
                 ConsumesCrew = false, OneWay = true,
                 IsFlyingDecoy = true, CanChangeAltitude = true,
-                SigRadio = 0, SigThermal = 25, SigAcoustic = 35, SigVisual = 30,
+                SigRadio = 0, SigThermal = 25, SigAcoustic = 65, SigVisual = 30,
                 // Deliberately louder on radar than the thing it is imitating. That
                 // is the whole product.
-                SigRadar = 80
+                SigRadar = 92
             });
 
             Add(new UnitDef
@@ -603,7 +603,7 @@ namespace KZ.Sim
                 SpeedMetresPerSecond = M(13.0), TurnRateDegreesPerSecond = 50,
                 Link = LinkKind.Mesh, LinkRobustness = 65, ConsumesCrew = true, IsMeshRepeater = true,
                 SensorOptical = M(400), SensorEsm = M(300),
-                SigRadio = 75, SigThermal = 45, SigAcoustic = 40, SigVisual = 45, SigRadar = 65
+                SigRadio = 75, SigThermal = 45, SigAcoustic = 40, SigVisual = 45, SigRadar = 66
             });
 
             Add(new UnitDef
@@ -617,7 +617,7 @@ namespace KZ.Sim
                 WeaponDamage = M(320), WeaponType = DamageType.Shaped,
                 WeaponRangeMetres = M(10),
                 SensorOptical = M(220),
-                SigRadio = 0, SigThermal = 42, SigAcoustic = 35, SigVisual = 25, SigRadar = 35
+                SigRadio = 0, SigThermal = 42, SigAcoustic = 52, SigVisual = 25, SigRadar = 44
             });
         }
 

@@ -68,11 +68,30 @@ namespace KZ.Sim
         public byte Radio;
         /// <summary>Engine and exhaust heat. A blanket cuts this; darkness does not.</summary>
         public byte Thermal;
-        /// <summary>Rotor and engine noise. Multirotors are extremely loud for their size.</summary>
+        /// <summary>
+        /// How far a microphone gets this, as a fraction of that microphone's
+        /// maximum reach - not loudness. The distinction matters: a quadcopter is
+        /// piercing at ten metres and gone at three hundred, because what it
+        /// radiates is high-frequency and the air eats it. A two-stroke engine is
+        /// no louder up close and is heard for kilometres. Acoustic detection range
+        /// across airframes spans something like twelve to one, and putting
+        /// loudness in this field flattened that to about two to one.
+        /// </summary>
         public byte Acoustic;
         /// <summary>Size and contrast against the ground. This is the one darkness ruins.</summary>
         public byte Visual;
-        /// <summary>Radar cross-section. Small airframes are genuinely hard to see.</summary>
+        /// <summary>
+        /// Radar cross-section, in decibels rather than as a linear index:
+        /// <c>S = 2 x RCS_dBsm + 80</c>, so 80 is one square metre and two points
+        /// is one decibel. Reach goes as the fourth root of cross-section, which
+        /// works out to <c>10^((S-80)/80)</c>.
+        ///
+        /// A decibel scale rather than a linear one because the real spread is
+        /// enormous - a plastic quadcopter and a corner reflector are three orders
+        /// of magnitude apart - and a linear 0-100 index cannot hold that. Read
+        /// linearly, a decoy at 80 escorting a drone at 60 pulled fire seven
+        /// percent further out, which is not a decoy.
+        /// </summary>
         public byte Radar;
 
         public static SignatureProfile Make(byte radio, byte thermal, byte acoustic, byte visual, byte radar)

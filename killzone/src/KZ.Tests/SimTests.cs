@@ -730,10 +730,23 @@ namespace KZ.Tests
                             "a tank is seen more than twice as far as a drone");
             });
 
-            r.Run("microphones do not care what time it is", delegate
+            r.Run("darkness helps the attacker, but not for free", delegate
             {
-                // The reason darkness is not a free pass against a prepared
-                // position: a quadcopter is just as loud at midnight.
+                // This reverses an earlier conclusion, and the reversal is the
+                // point. The model used to hold that a microphone was the best
+                // anti-drone sensor at any hour, which made darkness nearly
+                // worthless to an attacker. That came out of a single wrong number:
+                // a quadcopter was rated as loud as a turbojet. It is not. What it
+                // radiates is high-frequency and the air absorbs it, so a quad is
+                // heard for a few hundred metres and a two-stroke engine for
+                // kilometres.
+                //
+                // With honest figures the night is a trade. Cameras lose most of
+                // their reach; microphones gain, because the ambient floor falls ten
+                // decibels or so once everything stops moving. Against a small quad
+                // the camera still wins even after dark - so darkness is a real
+                // advantage - and against anything with an engine the microphone
+                // wins outright.
                 Terrain t = new Terrain(2048, 2048);
                 t.Fill(TileClass.Open);
 
@@ -747,15 +760,40 @@ namespace KZ.Tests
                 EntityHandle droneNight = night.Spawn(Catalog.IdOf("FPV Team"), 2, P(1200, 1000));
                 night.Step();
 
+                Assert.True(night.IsNight, "the second world is actually after dark");
+
                 Fix opticalDay = day.DetectionRangeFor(gunDay.Index, droneDay.Index, SensorChannel.Optical);
                 Fix opticalNight = night.DetectionRangeFor(gunNight.Index, droneNight.Index, SensorChannel.Optical);
                 Assert.True(opticalNight < opticalDay, "cameras lose most of their reach after dark");
 
                 Fix acousticDay = day.DetectionRangeFor(gunDay.Index, droneDay.Index, SensorChannel.Acoustic);
                 Fix acousticNight = night.DetectionRangeFor(gunNight.Index, droneNight.Index, SensorChannel.Acoustic);
-                Assert.Equal(acousticDay.Raw, acousticNight.Raw, "microphones are unchanged");
-                Assert.True(acousticNight > opticalNight,
-                            "so after dark the microphone is the sensor doing the work");
+                Assert.True(acousticNight > acousticDay,
+                            "quiet air after dark buys the microphone real reach");
+
+                Assert.True(opticalNight > acousticNight,
+                            "but against a small quad the camera still wins at night, "
+                            + "which is why darkness is worth flying in");
+            });
+
+            r.Run("an engine is heard far further than a quadcopter", delegate
+            {
+                // The other half of the same correction. Loudness at the source is
+                // not what sets detection range - frequency is. A quad is piercing
+                // at ten metres and gone at three hundred; a two-stroke is no louder
+                // up close and is heard across kilometres, which is why acoustic
+                // nets are built against engines and not against quads.
+                World w = MakeWorld(165);
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle quad = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1200, 1000));
+                EntityHandle engine = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 2, P(1200, 1000));
+                w.Step();
+
+                Fix vsQuad = w.DetectionRangeFor(gun.Index, quad.Index, SensorChannel.Acoustic);
+                Fix vsEngine = w.DetectionRangeFor(gun.Index, engine.Index, SensorChannel.Acoustic);
+                Assert.True(vsEngine > vsQuad * Fix.FromInt(3),
+                            "the spread across airframes is large, not the two-to-one "
+                            + "the old table allowed");
             });
 
             r.Run("a fiber drone defeats radio listening completely", delegate
@@ -795,21 +833,56 @@ namespace KZ.Tests
             {
                 // Flying high is not a free escape. It puts a drone outside what a
                 // microphone can localise and squarely inside what a radar is for.
+                //
+                // Same airframe in both bands, deliberately. The previous version of
+                // this test compared a quad down low against a fixed-wing up high
+                // and so measured two things at once; it passed for a reason that
+                // had nothing to do with altitude.
                 World w = MakeWorld(69);
                 EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
                 EntityHandle radar = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(1000, 1000));
                 EntityHandle low = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(1200, 1000));
-                EntityHandle high = w.Spawn(Catalog.IdOf("Recon Wing"), 2, P(1200, 1000));
+                EntityHandle high = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(1200, 1000));
+                w.Entities.EntityLayer[high.Index] = Layer.High;
                 w.Step();
 
                 Fix acousticLow = w.DetectionRangeFor(gun.Index, low.Index, SensorChannel.Acoustic);
                 Fix acousticHigh = w.DetectionRangeFor(gun.Index, high.Index, SensorChannel.Acoustic);
-                Assert.True(acousticHigh < acousticLow / Fix.FromInt(2),
+                Assert.True(acousticHigh < acousticLow,
                             "sound from altitude arrives faint and from nowhere in particular");
 
                 Fix radarHigh = w.DetectionRangeFor(radar.Index, high.Index, SensorChannel.Radar);
                 Assert.True(radarHigh > acousticHigh * Fix.FromInt(3),
                             "which is what the radar is there for");
+            });
+
+            r.Run("a decoy drone is what the radar sees first", delegate
+            {
+                // The reason the radar signature had to become a decibel scale. Read
+                // as a linear index, a decoy at 80 escorting a strike drone at 60
+                // drew fire seven percent further out - which is to say the decoy
+                // unit cost money and did nothing. Read as decibels of cross-section
+                // the same pair is roughly three to one, which is the figure the
+                // reporting supports for a reflector-equipped airframe.
+                World w = MakeWorld(166);
+                EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(1000, 1000));
+                EntityHandle decoy = w.Spawn(Catalog.IdOf("Decoy Drone"), 2, P(1400, 1000));
+                EntityHandle strike = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 2, P(1400, 1000));
+                w.Step();
+
+                Fix vsDecoy = w.DetectionRangeFor(mast.Index, decoy.Index, SensorChannel.Radar);
+                Fix vsStrike = w.DetectionRangeFor(mast.Index, strike.Index, SensorChannel.Radar);
+                Assert.True(vsDecoy > vsStrike * Fix.FromInt(2),
+                            "a decoy has to be seen far enough ahead of what it escorts "
+                            + "to draw the engagement");
+
+                // And the other end of the scale still works: a plastic quadcopter
+                // is most of an order of magnitude below the decoy.
+                EntityHandle quad = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1400, 1000));
+                w.Step();
+                Fix vsQuad = w.DetectionRangeFor(mast.Index, quad.Index, SensorChannel.Radar);
+                Assert.True(vsDecoy > vsQuad * Fix.FromInt(5),
+                            "and a small quad is a genuinely hard radar target");
             });
 
             r.Run("a thermal blanket is real masking, not just a trick on machines", delegate
