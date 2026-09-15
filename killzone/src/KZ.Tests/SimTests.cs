@@ -1296,6 +1296,49 @@ namespace KZ.Tests
                             "target selection does choose, and can be fooled");
             });
 
+            r.Run("a drone it cannot reach does not stop it shooting the ones it can", delegate
+            {
+                // A gun mount cannot engage the High band at all - that is the
+                // design, and it is how one-way attack drones walked away from gun
+                // defence. But the target scorer did not know it. It gated on
+                // weapon range and on CanEngage, neither of which consults the
+                // altitude ceiling, so it would happily select a high drone and the
+                // firing code would then compute a reach of zero and return having
+                // fired at nothing.
+                //
+                // A ceiling meant as immunity for one attacker was therefore also a
+                // jammer protecting every other attacker in the sky.
+                Terrain t = new Terrain(2048, 2048);
+                t.Fill(TileClass.Open);
+                World w = new World(t, 256, 16, 901, 2);
+                w.Territory.SetVerticalBorder(1024, 1, 2, 0);
+
+                // The high one must be the *better* shot, or the scorer picks the
+                // reachable target anyway and the bug hides. A 55-point FPV is a
+                // larger fraction of a kill per shot than a 110-point quad, so put
+                // the FPV out of reach and the quad within it - which is also the
+                // tactically sensible way to fly the pair.
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle low = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(1050, 1000));
+                EntityHandle high = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1048, 1000));
+                w.Entities.EntityLayer[high.Index] = Layer.High;
+
+                Fix startHp = w.Entities.Hp[low.Index];
+                for (int k = 0; k < 400; k++)
+                {
+                    MovementSystem.OrderMoveTo(w, low, P(1000, 1000));
+                    MovementSystem.OrderMoveTo(w, high, P(1000, 1000));
+                    w.Step();
+                    if (!w.Entities.IsAlive(low)) break;
+                }
+
+                Assert.True(!w.Entities.IsAlive(low) || w.Entities.Hp[low.Index] < startHp,
+                            "the mount engages the drone it can reach, "
+                            + "regardless of what else is overhead");
+                Assert.True(w.Entities.IsAlive(high),
+                            "and still cannot touch the one above its ceiling");
+            });
+
             r.Run("a fiber drone is beaten by everything except a jammer", delegate
             {
                 // Guarding a claim I got wrong once. A fiber drone's radio

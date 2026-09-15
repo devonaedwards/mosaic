@@ -437,6 +437,23 @@ namespace KZ.Sim
                 Fix dSq = Fix2.SqrDistance(pos, w.Entities.Position[j]);
                 if (dSq > rangeSq) continue;
 
+                // And it must be able to reach the band the target is flying in.
+                //
+                // Without this the scorer could pick a target the mount is
+                // definitionally incapable of shooting - a gun mount has
+                // CanReachHigh = false, so EffectiveReach against anything High is
+                // zero - and then StepOne would compute that zero, clear the lay
+                // and return having fired at nothing. The effect was not a missed
+                // shot but a mute mount: one high drone overhead suppressed all
+                // fire against the low drones the mount could perfectly well hit,
+                // taking it from eighty-two rounds and nine kills to twenty rounds
+                // and none across the same twenty trials.
+                //
+                // So a ceiling the design intended as immunity for the attacker
+                // was silently also a jammer. Anything that cannot be reached is
+                // now simply not a candidate.
+                if (EffectiveReach(w, i, w.Entities.HandleAt(j), weapon).Raw <= 0) continue;
+
                 Fix score = ShotValue(w, i, j, weapon);
                 if (score.Raw <= 0) continue;
 
