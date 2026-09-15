@@ -2421,6 +2421,171 @@ namespace KZ.Tests
                 Assert.True(sawSecondBurst,
                             "the mount should spend more than one engagement on a drone it has already laid on");
             });
+
+            r.Run("an interceptor is vectored ahead of a crossing target, not at it", delegate
+            {
+                // The whole of the interception path existed - IsInterceptor,
+                // InterceptBaseChance, ResolveInterception, CueMultiplier,
+                // SpeedRatio - and every bit of it describes the moment the
+                // interceptor is already there. Nothing ever got it there: an
+                // interceptor flew the same order every other airframe flies, at
+                // the target's position, this tick, every tick.
+                //
+                // Everything here goes through the production path. The launch is a
+                // queued LaunchSortie, the target is a queued LaunchSortie, and the
+                // only thing asserted on is where the interceptor's nose ends up
+                // pointing after the world has stepped.
+                World w = MakeWorld(7710);
+                w.Player(1).Materiel = Fix.FromInt(100000);
+                w.Player(2).Materiel = Fix.FromInt(100000);
+                w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(12000, 12000));
+
+                // A fast target crossing left to right well clear of the pad, so
+                // that pointing at it and meeting it are different directions.
+                EntityHandle waypoint = w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(4000, 8000));
+                w.Enqueue(Command.LaunchSortie(2, Catalog.IdOf("Jet Strike Drone"),
+                                               P(16000, 8000), waypoint, 0));
+                for (int n = 0; n < 40; n++) w.Step();
+
+                EntityHandle threat = FirstOfTeam(w, 2, "Jet Strike Drone");
+                Assert.True(w.Entities.IsAlive(threat), "sanity: the target is airborne");
+
+                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Interceptor FPV"),
+                                               P(12000, 12000), threat, 0));
+                for (int n = 0; n < 40; n++) w.Step();
+
+                EntityHandle chaser = FirstOfTeam(w, 1, "Interceptor FPV");
+                Assert.True(w.Entities.IsAlive(chaser), "sanity: the interceptor is airborne");
+                Assert.True(w.Entities.IsAlive(threat), "sanity: it has not caught it yet");
+
+                // Where it is flying against where the target currently is. A pure
+                // pursuer has these two identical to within its turn rate; a vector
+                // onto a meeting point is measurably ahead of the target.
+                Fix2 toNow = w.Entities.Position[threat.Index] - w.Entities.Position[chaser.Index];
+                ushort bearingToTarget = Trig.Atan2(toNow.Y, toNow.X);
+                int lead = Trig.Delta(bearingToTarget, w.Entities.Yaw[chaser.Index]);
+                if (lead < 0) lead = -lead;
+                int leadDegrees = (int)((long)lead * 360 / 65536);
+
+                Assert.True(leadDegrees > 5,
+                            "the interceptor's nose is off the target's current bearing: it is leading");
+
+                // And leading the right way - toward where the target is going,
+                // rather than merely mis-pointed.
+                Fix2 ahead = (w.Entities.Position[threat.Index] + w.Entities.Velocity[threat.Index])
+                           - w.Entities.Position[chaser.Index];
+                int toAhead = Trig.Delta(Trig.Atan2(ahead.Y, ahead.X), w.Entities.Yaw[chaser.Index]);
+                if (toAhead < 0) toAhead = -toAhead;
+                Assert.True(toAhead < lead, "and the lead is on the side the target is travelling toward");
+            });
+
+            r.Run("a radar track buys more lead than an eyeball does", delegate
+            {
+                // The half of this that the research is sharpest about.
+                // point-defence.md's effector table splits its sensors on exactly
+                // this line - the machine-gun turret is "passive EO/IR only... no
+                // velocity measurement" and reads closing rate off image scale, the
+                // autocannon has "organic AESA search/track + EO/IR; measured
+                // velocity" - and the same document says a firing solution is most
+                // sensitive to that measurement. So the radar does not buy a bigger
+                // number on the roll. It buys a solution.
+                //
+                // Two identical worlds, identical orders, one difference: what is
+                // holding the target. Everything goes through Spawn, Enqueue and
+                // Step, and what is read back is where the interceptor's nose ends
+                // up pointing.
+                int radarLead = LeadHeldBy(true);
+                int opticalLead = LeadHeldBy(false);
+
+                Assert.True(opticalLead > 0, "an eyeball track still produces some lead");
+                Assert.True(radarLead > opticalLead,
+                            "and a radar track produces more of it: the solution is measured, not inferred");
+            });
+
+            r.Run("a one-way munition that arrives at an empty aimpoint is expended", delegate
+            {
+                // An attack order whose target dies used to be unfinishable. The
+                // destination fell back to where the target had been, the airframe
+                // flew there, and the arrival test refused to clear an order that
+                // still named a target - so it hung over the spot for the rest of
+                // the match holding one of the crews the whole game is rationed by.
+                //
+                // Production path throughout: a queued launch, a queued attack, and
+                // World.Step. Nothing here touches a component by hand.
+                World w = MakeWorld(7712);
+                w.Player(1).Materiel = Fix.FromInt(100000);
+                int readyBefore = w.Player(1).Crews.ReadyCount;
+
+                EntityHandle prey = w.Spawn(Catalog.IdOf("Relay Mast"), 2, P(9000, 12000));
+                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("FPV Team"), P(12000, 12000), prey, 0));
+                for (int n = 0; n < 40; n++) w.Step();
+
+                EntityHandle munition = FirstOfTeam(w, 1, "FPV Team");
+                Assert.True(w.Entities.IsAlive(munition), "sanity: the munition is airborne");
+                Assert.True(w.Player(1).Crews.ReadyCount < readyBefore, "sanity: it took a crew with it");
+
+                // The target is removed from under it - exactly what happens when
+                // somebody else's drone gets there first.
+                w.Kill(prey, EntityHandle.None);
+                for (int n = 0; n < 32 * 40; n++)
+                {
+                    w.Step();
+                    if (!w.Entities.IsAlive(munition)) break;
+                }
+
+                Assert.False(w.Entities.IsAlive(munition),
+                             "it goes into the ground at the aimpoint rather than hovering over it forever");
+                Assert.Equal(readyBefore, w.Player(1).Crews.ReadyCount,
+                             "and the crew comes back");
+            });
+        }
+
+        /// <summary>
+        /// How far ahead of a crossing target an interceptor is aiming, in degrees
+        /// off the bearing to where the target actually is, with the target held on
+        /// radar or only optically. One world, one order set, one difference.
+        /// </summary>
+        static int LeadHeldBy(bool radar)
+        {
+            World w = MakeWorld(7713);
+            w.Player(1).Materiel = Fix.FromInt(100000);
+            w.Player(2).Materiel = Fix.FromInt(100000);
+            // A Radar Mast measures velocity; a Designator Team's optics reach the
+            // same target and cannot, so the contact exists either way and the only
+            // difference between the two worlds is the kind of track behind it.
+            w.Spawn(Catalog.IdOf(radar ? "Radar Mast" : "Designator Team"), 1, P(11000, 11000));
+
+            EntityHandle waypoint = w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(4000, 8000));
+            w.Enqueue(Command.LaunchSortie(2, Catalog.IdOf("Jet Strike Drone"),
+                                           P(16000, 8000), waypoint, 0));
+            for (int n = 0; n < 40; n++) w.Step();
+
+            EntityHandle threat = FirstOfTeam(w, 2, "Jet Strike Drone");
+            w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Interceptor FPV"),
+                                           P(11000, 11000), threat, 0));
+            for (int n = 0; n < 40; n++) w.Step();
+
+            EntityHandle chaser = FirstOfTeam(w, 1, "Interceptor FPV");
+            if (!w.Entities.IsAlive(chaser) || !w.Entities.IsAlive(threat)) return 0;
+
+            Fix2 toNow = w.Entities.Position[threat.Index] - w.Entities.Position[chaser.Index];
+            int lead = Trig.Delta(Trig.Atan2(toNow.Y, toNow.X), w.Entities.Yaw[chaser.Index]);
+            if (lead < 0) lead = -lead;
+            return (int)((long)lead * 360 / 65536);
+        }
+
+        /// <summary>The first live entity of one team and one catalogue name.</summary>
+        static EntityHandle FirstOfTeam(World w, byte team, string defName)
+        {
+            int defId = Catalog.IdOf(defName);
+            for (int i = 1; i < w.Entities.HighWater; i++)
+            {
+                if (!w.Entities.IsSlotAlive(i)) continue;
+                if (w.Entities.Team[i] != team) continue;
+                if (w.Entities.DefId[i] != defId) continue;
+                return w.Entities.HandleAt(i);
+            }
+            return EntityHandle.None;
         }
 
         // ------------------------------------------------------------------

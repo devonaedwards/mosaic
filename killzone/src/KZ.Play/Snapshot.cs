@@ -373,6 +373,14 @@ namespace KZ.Play
             j.Field("decoy", e.Has(ti, ComponentMask.Decoy));
             j.Field("salvage", e.Has(ti, ComponentMask.Salvage));
             j.Field("channel", bestSensor >= 0 ? bestChannel.ToString() : "held");
+            // What kind of track is behind the contact, which is a different
+            // question from whether there is one and is the one that decides
+            // whether an interceptor sent at this thing can be vectored onto a
+            // meeting point or only pointed at it. The player has no other way to
+            // find that out, and it is the difference between spending 300 on a
+            // defence that works and 300 on a stern chase - so it goes on the
+            // contact, beside the channel that found it.
+            j.Field("track", w.TrackQualityOf(team, e.HandleAt(ti)).ToString());
             if (bestSensor >= 0)
             {
                 j.Field("sx", e.Position[bestSensor].X.RoundToInt());

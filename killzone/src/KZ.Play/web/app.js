@@ -37,6 +37,18 @@ var TILE_COLOUR = ['#131a14', '#2b2823', '#16301c', '#2d2134', '#2a2a2a', '#0e1c
 var PIP_COLOUR = { Green: '#46d17a', Amber: '#ffb02e', Black: '#8a8f94' };
 var CHANNEL_LETTER = { Optical: 'O', Thermal: 'T', Acoustic: 'A', Radar: 'R', Esm: 'E', held: '·' };
 
+// What kind of track is behind a contact, which is the one thing the player has
+// to know before deciding whether an interceptor is worth launching at it. A
+// radar track measures the target's velocity and buys a computed meeting point;
+// an optical one is inferred from image scale and sends the interceptor short.
+var TRACK_MARK = { Radar: '◎', Optical: '○', None: '·' };
+var TRACK_COLOUR = { Radar: '#46d17a', Optical: '#ffb02e', None: '#8a8f94' };
+
+// Anything of theirs that is off the ground and not a structure. This is the
+// only category of contact that needs answering inside the next ninety seconds,
+// so it gets sorted to the top of the list and drawn with a ring round it.
+function isInbound(c) { return c.layer > 0 && !c.structure && !c.salvage; }
+
 // ---------------------------------------------------------------------------
 // The view transform. These four functions are the whole of it.
 
@@ -366,6 +378,16 @@ function drawContacts() {
       ctx.stroke();
       if (c.layer > 0) ctx.fill();
     }
+    // A threat ring. A one-pixel diamond among thirty other one-pixel diamonds
+    // is not an alert, and an interception you did not notice in time is an
+    // interception you could not have made.
+    if (isInbound(c)) {
+      ctx.strokeStyle = TRACK_COLOUR[c.track] || '#8a8f94';
+      ctx.globalAlpha = 0.55;
+      ctx.beginPath(); ctx.arc(px, py, 13, 0, 6.2832); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
     ctx.fillStyle = 'rgba(255,140,130,0.9)';
     ctx.fillText(CHANNEL_LETTER[c.channel] || '?', px - 3, py - 8);
 
@@ -427,6 +449,18 @@ function updatePanels() {
   document.getElementById('cond').textContent =
     V.phase + ' · ' + V.weather + ' · ' + V.ground;
 
+  // The one number that says whether there is anything to do right now.
+  var inbound = V.contacts.filter(isInbound);
+  var alert = document.getElementById('alert');
+  if (inbound.length) {
+    var cued = inbound.filter(function (c) { return c.track === 'Radar'; }).length;
+    alert.textContent = '▲ ' + inbound.length + ' airborne' + (cued ? ' · ' + cued + ' on radar' : '');
+    alert.className = 'cell alert on';
+  } else {
+    alert.textContent = '';
+    alert.className = 'cell alert';
+  }
+
   var obj = [];
   for (var i = 0; i < V.objectives.length; i++) {
     obj.push((V.objectives[i].alive ? '□ ' : '■ ') + V.objectives[i].name);
@@ -459,13 +493,23 @@ function setHtml(id, h) {
   document.getElementById(id).innerHTML = h;
 }
 
+// Airborne first and nearest first inside that, because the list is a queue of
+// decisions and the ones with a clock on them go at the top. A ground contact
+// four kilometres away will still be there in a minute; an FPV will not.
 function contactsHtml() {
   var h = '';
-  for (var i = 0; i < V.contacts.length; i++) {
-    var c = V.contacts[i];
+  var sorted = V.contacts.slice().sort(function (a, b) {
+    if (isInbound(a) !== isInbound(b)) return isInbound(a) ? -1 : 1;
+    return range(a) - range(b);
+  });
+  for (var i = 0; i < sorted.length; i++) {
+    var c = sorted[i];
     var d = Math.round(range(c) / 100) / 10;
-    h += '<div class="row foe" data-h="' + c.h + '" data-k="foe">' +
-         '<span>◆ ' + c.name + '</span><span class="r">' +
+    var air = isInbound(c);
+    h += '<div class="row foe' + (air ? ' inbound' : '') + '" data-h="' + c.h + '" data-k="foe">' +
+         '<span>' + (air ? '▲' : '◆') + ' ' + c.name + '</span><span class="r">' +
+         '<span style="color:' + (TRACK_COLOUR[c.track] || '#8a8f94') + '">' +
+         (TRACK_MARK[c.track] || '·') + '</span> ' +
          (CHANNEL_LETTER[c.channel] || '?') + ' ' + d + ' km</span></div>';
   }
   if (!V.contacts.length) h = '<div class="row" style="cursor:default"><span>nothing in contact</span></div>';
@@ -659,6 +703,18 @@ document.getElementById('hangar').addEventListener('click', function (ev) {
 document.getElementById('side').addEventListener('click', function (ev) {
   var row = ev.target.closest('.row');
   if (!row || !row.getAttribute('data-h')) return;
+
+  // With a card armed, a contact row is a launch. Two taps and no aiming: an
+  // inbound FPV is a six-pixel diamond crossing the screen, and requiring the
+  // player to hit it with a pointer made a mechanic out of a dexterity test.
+  if (armed !== null && row.getAttribute('data-k') === 'foe') {
+    command({ kind: 'launch', defId: armed, x: pad.x, y: pad.y,
+              target: parseInt(row.getAttribute('data-h'), 10), n: V ? V.tick % 7 : 0 });
+    armed = null;
+    drawHangar();
+    return;
+  }
+
   sel = { kind: row.getAttribute('data-k'), h: parseInt(row.getAttribute('data-h'), 10) };
   var e = selected();
   if (e) { cam.cx = e.x; cam.cy = e.y; clampCam(); }

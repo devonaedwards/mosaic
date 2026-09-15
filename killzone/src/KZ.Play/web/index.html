@@ -72,6 +72,10 @@
   .row:hover { background: #1b2229; }
   .row .r { color: var(--dim); }
   .foe { color: var(--foe); }
+  /* The sky is the only part of the contact list with a clock on it. */
+  .row.inbound { background: #2a1a18; }
+  .cell.alert { color: var(--dim); }
+  .cell.alert.on { color: #ffd0cc; font-weight: 600; }
   .own { color: var(--own); }
   #log { font-size: 11px; }
   #log div { padding: 1px 0; color: var(--dim); border-bottom: 1px solid #161b20; }
@@ -129,6 +133,7 @@
     <span class="cell"><span class="k">◇</span><b id="tp">0</b></span>
     <span class="cell"><span class="k">crews</span> <b id="crews">0/0</b></span>
     <span class="cell" id="cond">—</span>
+    <span class="cell alert" id="alert"></span>
     <span class="cell" id="obj">—</span>
     <button id="playbtn">▶ play</button>
     <button id="stepbtn">▸| tick</button>
