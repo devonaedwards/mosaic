@@ -7,6 +7,17 @@
 // drones still kill a tank. And it prints the state hash, which is the number
 // two machines in a real match compare to prove they are still playing the same
 // game.
+//
+// AUDIT-UNWIRED.md F6: this was the gap KZ.Balance's own harness fix (FINDINGS
+// 33/34) did not close. That fix gave the balance experiments a populated
+// world; it never touched the one place that builds the world a match is
+// actually played on. Before this pass BuildMap below drew terrain and spawned
+// units and left Territory at its constructed default - every cell owned by
+// nobody - so every satellite link was permanently black and scene matching
+// could never lock in the one scenario meant to stand in for a real game. It
+// now places a border and grants each side reconnaissance imagery over its own
+// ground, the same shape MakeRealisticWorld uses in src/KZ.Balance/Program.cs
+// (read, not edited, per WIRING-SPEC ownership).
 
 using System;
 using KZ.Sim;
@@ -17,6 +28,18 @@ namespace KZ.Headless
     {
         static Fix F(double v) { return Fix.FromDoubleContentOnly(v); }
         static Fix2 P(double x, double y) { return new Fix2(F(x), F(y)); }
+
+        // The attacker's infrastructure (Relay Mast at x=780) sits well west of
+        // this line; the defender's forward tank (x=1450) sits shortly east of
+        // it and the supply truck behind it (x=1900) a good deal further -
+        // exactly as FINDINGS 26 describes: push past your own border and your
+        // drones are on their own over ground you are attacking into, the
+        // shallow shot more than the deep one. Mirrors
+        // src/KZ.Balance/Program.cs's StandardBorderMetres.
+        const int BorderMetres = 1300;
+        const int NeutralMetres = 64; // two Territory cells either side of the line
+
+        static EntityHandle designatorHandle;
 
         public static int Main(string[] args)
         {
@@ -77,6 +100,12 @@ namespace KZ.Headless
             w.Player(1).Materiel = Fix.FromInt(12000);
             w.Player(2).Materiel = Fix.FromInt(12000);
 
+            // AUDIT-UNWIRED.md F6: the border a satellite link and scene
+            // matching both read. Team 1 owns the west, team 2 the east.
+            w.Territory.SetVerticalBorder(BorderMetres, 1, 2, NeutralMetres);
+            GrantHomeImagery(w, 1, true, BorderMetres - NeutralMetres);
+            GrantHomeImagery(w, 2, false, BorderMetres + NeutralMetres);
+
             // Attacker.
             w.Spawn(Catalog.IdOf("Command Post"), 1, P(300, 780));
             w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(380, 860));
@@ -86,6 +115,11 @@ namespace KZ.Headless
             // Far enough forward to extend radio control, far enough back that
             // the defending tank cannot simply shell it.
             w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(780, 780));
+            // On the attacker's own ground when the match starts - link green,
+            // in the constellation's licensed coverage. Script() below pushes
+            // it across the border later, which is the only way to see FINDINGS
+            // 26's mechanic happen in a played match rather than a unit test.
+            designatorHandle = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(1200, 700));
 
             // Defender.
             w.Spawn(Catalog.IdOf("Command Post"), 2, P(2100, 780));
@@ -102,8 +136,31 @@ namespace KZ.Headless
             return w;
         }
 
+        /// <summary>
+        /// Grants a team imagery over its own side of the border, cell by cell -
+        /// the same shape as src/KZ.Balance/Program.cs's GrantHomeImagery,
+        /// reproduced here rather than shared because the two console apps do
+        /// not reference each other's Program class.
+        /// </summary>
+        static void GrantHomeImagery(World w, byte team, bool west, int borderMetres)
+        {
+            int borderCell = borderMetres / ReferenceImagery.CellMetres;
+            for (int cy = 0; cy < w.Imagery.CellsY; cy++)
+                for (int cx = 0; cx < w.Imagery.CellsX; cx++)
+                    if (west ? cx <= borderCell : cx >= borderCell)
+                        w.Imagery.Grant(team, cx, cy);
+        }
+
         static void Script(World w, int tick)
         {
+            // AUDIT-UNWIRED.md F6 / FINDINGS 26: with the border now placed,
+            // push the forward observer across it partway through the match -
+            // ground the attacker is not shooting for, just standing on. This
+            // is the only line in the mission that makes the satellite link go
+            // black in a played match rather than a unit test.
+            if (tick == SimConstants.Seconds(10))
+                MovementSystem.OrderMoveTo(w, designatorHandle, P(1450, 700));
+
             // One sortie a second, alternating between the cheap radio airframe -
             // which the jammer will eat before it arrives - and the fiber airframe,
             // which it cannot touch.
@@ -160,6 +217,10 @@ namespace KZ.Headless
             Console.WriteLine("kills, verified       " + n.VerifiedKills);
             Console.WriteLine("kills, unverified     " + n.UnverifiedKills);
             Console.WriteLine();
+            Console.WriteLine("AUDIT-UNWIRED.md F6, wired this pass:");
+            Console.WriteLine("  satellite lost/regained crossing the border  "
+                              + n.SatelliteLost + " / " + n.SatelliteRegained);
+            Console.WriteLine();
 
             for (byte team = 1; team <= 2; team++)
             {
@@ -207,6 +268,7 @@ namespace KZ.Headless
 
         public int SortiesLaunched, RefusedNoCrew, LinksAmber, LinksBlack;
         public int LostToJamming, TethersCut, VerifiedKills, UnverifiedKills;
+        public int SatelliteLost, SatelliteRegained;
 
         public Narrator(World w, bool verbose) { world = w; this.verbose = verbose; }
 
@@ -252,6 +314,18 @@ namespace KZ.Headless
                         break;
                     case SimEventKind.DayPhaseChanged:
                         Say(e.Tick, "it is now " + ((DayPhase)e.Param).ToString().ToLowerInvariant());
+                        break;
+                    // AUDIT-UNWIRED.md F6: this fired only inside KZ.Tests
+                    // before this pass. Narrating it here is how a played
+                    // match, not just a unit test, shows the border actually
+                    // doing something.
+                    case SimEventKind.SatelliteCoverageLost:
+                        SatelliteLost++;
+                        Say(e.Tick, "the designator team crossed the border and lost satellite coverage");
+                        break;
+                    case SimEventKind.SatelliteCoverageRegained:
+                        SatelliteRegained++;
+                        Say(e.Tick, "the designator team is back over its own ground");
                         break;
                 }
             }
