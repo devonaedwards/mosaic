@@ -1401,6 +1401,70 @@ after both and none of them moved: same single shot, same zero reloads, same
 trace. The autocannon itself is not measured here at all; no balance experiment
 spawns it yet, and until one does it is a catalogue entry rather than a result.
 
+### Amended: half of this was correct and the other half was a defect
+
+A follow-up traced the same engagement with a probe that printed the mount's
+facing, detection state and acquisition timer every tick, instead of reasoning
+from the outputs. It found the finding above is two separate claims that happen
+to look like one, and they have different answers.
+
+**The first seventy metres are correct, and for the reason stated.** It is pure
+arc phase. The optical channel reaches 127 m against an FPV and is solid inside
+76 m; the head sweeps seventy degrees a second, so its 120-degree arc covers any
+given bearing for a 55-tick window once per revolution. The window before the one
+that caught this drone closed while the drone was still beyond 127 m. So it
+crossed the entire intermittent band with the head pointed elsewhere and latched
+at 72.5 m, already inside the guaranteed band. No double-charge, no arc reset —
+all three were checked. The omnidirectional channel does not rescue it either:
+acoustic scales linearly with signature, and an FPV at signature 12 gives a
+200 m array twenty-four metres.
+
+**The last nine ticks were a defect.** `Acquiring` was cleared after every shot,
+so the next cycle re-entered the acquisition branch and paid for acquisition and
+slew again — for a target the barrel had never left. Consecutive bursts came forty
+ticks apart instead of twenty-four. Three separate doc comments in the codebase
+say that is not supposed to happen, including one on the commitment mechanic
+explicitly promising not to charge twice. Fixed: the mount holds its lay between
+bursts and clears it only when the engagement genuinely ends.
+
+Gun survival at three drones moved **80% to 62%** by day; shots per attempt went
+1.00 to 1.80. Night did not move, because at 48 m of reach there is no time for a
+second shot at all.
+
+### And the belt claim above is wrong in a way worth keeping
+
+> **The five-round belt cannot bind.**
+
+That is true of the experiments and says nothing about the simulation, which is a
+different statement and a much weaker one.
+
+The belt was never unreachable in the code. It was unreachable in the
+**experiment design**, before the fix as well as after it: every balance
+experiment launches its drones simultaneously, so the mount gets exactly one
+engagement window and the belt could not bind in any cell. Vary only the launch
+stagger and it binds immediately:
+
+| eight drones | reloads per sixty trials, before | after |
+|---|---|---|
+| simultaneous | 0 | 0 |
+| three seconds apart | 33 | **60** |
+| eight seconds apart | 60 | 64 |
+
+So the belt-in versus belt-out A/B agreeing in every cell was a correct
+measurement that licensed no conclusion at all. This is item 32's failure mode —
+an experiment that cannot move the variable it is being read for — turning up in
+a place item 32 did not look, one finding later, in a claim written by the same
+pass that discovered item 32.
+
+**One systematic bias, found and deliberately not fixed.** Fifty-eight of those
+seventy-one ticks are a 180-degree swing plus a ground-to-low band change, because
+a mount spawns facing due east and tracking the ground while every attack in every
+experiment arrives from the west. That is not "wherever it happened to be facing"
+as written above — it is reliably the worst case available. It was left alone
+because no research figure covers a turret's resting facing, and inventing one
+would move every recorded number for a reason nothing supports. It is the largest
+remaining term in the 2.2 seconds and it is a design decision, not a defect.
+
 ## 32. Three of the ten balance experiments cannot detect a change to the simulation
 
 Stacking, Vertical and Decoy Escort produced **byte-identical output on six
