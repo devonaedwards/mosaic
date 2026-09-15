@@ -1538,3 +1538,100 @@ The one thing to guard against is reading that table as permission. It is tempti
 to conclude terrain does not matter. What it shows is that terrain is not yet
 *connected*, and item 29 is unambiguous that when it is, every detection figure in
 this document becomes an upper bound.
+
+## 34. The rescale killed "the gun mount fires once", and inverted the decoy answer
+
+The catalogue went to real metres and one global 4x time multiplier; the harness
+followed; generation 13 is the first trustworthy measurement since. It costs this
+document more than any previous pass, so what follows is a ledger rather than a
+narrative.
+
+### Item 31's headline is dead
+
+> **The gun mount fires once.**
+
+It does not. Against a single tap it now fires **4.95 rounds**, against a stream
+**7.90**, and it empties its five-round belt in nearly every trial. Reloads
+happen routinely.
+
+"Effectively a one-shot device" was a property of compressed units, not of the
+weapon. At 12:1 the mount reached 85 map metres and a drone crossed its envelope
+in 3.2 seconds; at real scale it reaches 1,000 m and the crossing takes about
+six seconds of play. The engagement was always long enough for several shots and
+the units hid it.
+
+**Item 31's amended half stands.** The `Acquiring` lay-and-hold defect — the
+mount re-paying acquisition and slew for a target the barrel had never left — was
+a genuine code fault and the fix survives the rescale. That is worth separating:
+the *diagnosis* was right and the *conclusion drawn around it* was an artefact.
+
+**And item 31's belt amendment is superseded in the opposite direction.** It said
+the belt "could not bind in any cell". It now binds in every cell of every arm.
+The reasoning behind that amendment was correct — a saturated experiment cannot
+move the variable it is read for — and the specific claim was still wrong, for a
+reason that had nothing to do with saturation.
+
+### Item 17 and 25's control: the answer inverts
+
+Heavy escort was the best package and is now the worst but one.
+
+| package | before | after |
+|---|---|---|
+| 3 real + 0 decoy | 0.38 through, 22% killed | 0.43, 20% |
+| 3 real + 1 decoy | 0.70, 37% | **0.75, 35%** |
+| 2 real + 6 decoy | **0.98, 45%** | 0.43, **7%** |
+| 1 real + 13 decoy | 0.48, 0% | 0.08, 0% |
+
+Light escort is now clearly best and clearly beats the no-decoy control; mass
+escort is close to useless. The gradient item 17 described survives in shape and
+reverses in ordering. Item 25's separate arithmetic — that radar cross-section is
+read at one place and gates only things already inside a weapon envelope — still
+holds, now with a 3,840 m envelope rather than 320.
+
+### The rest, briefly
+
+- **Item 2.** "A single gun mount hard-counters every frontal attack" — three
+  drones now take it 37% of the time.
+- **Item 12.** Its recorded numbers were **already stale before the rescale** and
+  do not match generation 12. It must be *replaced* from the current table, never
+  multiplied. A stale number multiplied by twelve is a confident wrong number.
+- **Items 13 and 16.** Answerable at last, and the answer is conditional: against
+  one tap, four mounts read within two points of one mount in every column;
+  against a stream they take six points off at three drones and twelve at six,
+  and every supporting mount fires four and a half rounds instead of zero. The
+  structural claim survives only for the simultaneous case.
+- **Item 18.** Shape survives, every magnitude moved by three or more.
+- **Item 22.** Aiming the narrow head was worth +26 points and is now worth
+  **−5**; the sweep cost 18 and now costs 1. The "missing aim-a-sensor mechanic
+  is worth 26 points" claim is gone. The conclusion that the panoramic head is
+  the only one worth buying survives, for a different reason.
+- **Item 32 is discharged**, not amended. All ten experiments moved and the guard
+  reports zero inertia warnings.
+- **Item 10 is the only finding the rescale leaves standing verbatim** — mines
+  are identical in every cell, which is exactly what a weapon with no sensor, no
+  hit roll, no magazine and no arrival order should do.
+
+### A trap worth naming
+
+**Item 31's times do not multiply.** Its distances go up twelvefold and its
+durations go up about twofold, in the opposite direction from the intuition, so
+the engagement that was 3.2 seconds is about 6.4 seconds of play. Anyone amending
+that entry by scaling every number in it by twelve will produce something
+internally consistent and wrong.
+
+### And a defect the rescale exposed, still open
+
+The aimpoint-displacement gate does not ask whether a munition is **terminally
+guided**. An FPV Team is dead-reckoning, one-way, *and* terminal-guidance on a
+live radio link with a camera — and at real geometry it accrues 66 m of error
+against a 40 m miss radius, so **every FPV strike in every gun-mount experiment
+missed and the mount was immortal at every drone count.**
+
+Nothing in `navigation-denied.md` says a munition being flown onto a target
+through a camera should miss for navigational reasons; §5's separability argument
+is about position versus operator. Nothing in the catalogue lets an attacker buy
+out of it either. The harness worked around it by construction — moving the
+border behind the objective, which is one of `SCALE.md`'s own three border
+relations — rather than engineering a thin margin, and the interaction is still
+measured on the flat control world. But the defect is in the simulation and it is
+not fixed.
