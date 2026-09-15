@@ -29,11 +29,74 @@ sorties, each of which is a decision, and short enough that a mistake is
 recoverable. Double the map and a sortie becomes a commitment rather than a
 choice; halve it and there is no transit worth defending.
 
-**Three. It fits an iPad.** At a readable zoom the device shows something like
-600–900 map metres, so a 2048 map is four to nine screens. That is a
-Command & Conquer map. It is not a coincidence that the first two arguments
-landed in the same place as the third; if they had not, the third would have won,
-because a game nobody can read is not a game.
+**Three. It fitted an iPad, and this is now the wrong device.** ~~At a readable
+zoom the device shows something like 600–900 map metres, so a 2048 map is four to
+nine screens.~~ The target is an **iPhone**, and the arithmetic does not survive
+the move.
+
+A fingertip is about 44 points on any device, so the number of distinguishable,
+tappable things across a screen is set by logical width — 1024 points on an iPad
+against 393 on a phone, a ratio of 2.6. At equal legibility a phone therefore
+shows **230–345 map metres** where an iPad showed 600–900. A 2048 map is then
+**seven screens across and fifty screens of area**, against the two to four a
+Command & Conquer map spanned.
+
+So the third argument has flipped from supporting 2048 to opposing it, and the
+sentence above about it winning any disagreement still stands. Two answers are
+coherent and they are genuinely different games.
+
+### The rescale
+
+Compression is a free parameter. Nothing in the simulation knows what a map metre
+is worth; it is a number in a comment. For the kill zone to fit a two-to-four
+screen map on a phone, compression has to run somewhere around **19:1 to 38:1**
+rather than 12:1 — call it 26 — which shrinks the map to roughly 850 map metres
+while representing exactly the same ground.
+
+Done properly this changes no gameplay at all. Halve the distances and halve the
+speeds and every relationship in argument two is preserved: the same sortie takes
+the same two minutes, the same twenty crossings fit in a match. It is a units
+change wearing a content change's clothes.
+
+The cost is real but bounded: it moves every distance in the catalogue and every
+number recorded in `FINDINGS.md`, and the drift guard will light up like a
+switchboard. It is a day of careful work, not a redesign.
+
+### Or the reframe, which I think is better
+
+**On a phone you cannot see the battlefield — and this game is about not being
+able to see the battlefield.**
+
+That is not a consolation. The entire research corpus is about what you can and
+cannot detect: five sensor channels, an aperture budget where seeing far and
+seeing wide are the same money, terrain masking, a turret that is mute because
+its head was pointed the wrong way for fifty-five ticks. A drone operator does
+not have a god's-eye view. They have a single camera feed and a map with contacts
+on it.
+
+**A phone screen is a soda straw, and so is the real thing.**
+
+The form factor also pushes toward the game the research already describes rather
+than away from it. Crews cap concurrency at six to twelve sorties. A sortie is the
+atomic action — a decision at launch and a decision at the terminal moment. That
+is a queue of decisions, not a field to survey, and a queue is native to a phone
+in a way a base-building overview never will be.
+
+Taking this seriously means the interface owes real work: a contact list that is
+the primary view rather than a decoration, alerts that bring you to the thing
+instead of expecting you to find it, and drop-in feeds. It also means the map is
+a *reference*, not the playfield.
+
+### Which, and what else moves
+
+The two are not exclusive — a modest rescale plus the reframe is probably the
+answer — but the reframe is the one that decides what the game *is*, so it goes
+first and the rescale falls out of whatever it implies.
+
+One consequence to face either way: **a forty-minute match is an iPad assumption.**
+Phone sessions are shorter and more interrupted. If a match has to survive being
+put down at three minutes' notice, that is a design constraint on par with the map
+size, and argument two above is written as though it is not.
 
 ## What a match is, and what it is not
 
