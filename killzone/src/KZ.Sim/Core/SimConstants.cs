@@ -528,6 +528,19 @@ namespace KZ.Sim
         /// It is NOT the old 8 map metres read at 12:1, which would be 96 m - far
         /// enough off that the warhead detonating there is not a near miss, it is
         /// a different field.
+        ///
+        /// Note what the "somewhere in frame when it looks" half of that argument
+        /// commits this number to, now that World.ApplyDamage exempts a munition
+        /// a person is flying on a live feed: forty metres is the slack a
+        /// *terminal seeker* has, and the munitions this radius is still read
+        /// against are exactly the ones with no operator watching. A one-way
+        /// airframe with neither an operator nor a seeker - AutonomyTier.None,
+        /// link black - is being held to a seeker's tolerance it does not have,
+        /// which makes it a fraction too accurate rather than too fragile. That
+        /// is a known conservatism and not a tuned one: the research gives no
+        /// figure for either case, and inventing a second, tighter radius to
+        /// separate them would be adding a number nobody has measured to a model
+        /// whose one measured input is the 3%/metre drift rate.
         /// </summary>
         public static readonly Fix MunitionMissRadiusMetres = Fix.FromDoubleContentOnly(40.0);
 

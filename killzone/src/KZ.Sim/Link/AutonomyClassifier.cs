@@ -273,16 +273,51 @@ namespace KZ.Sim
         }
 
         /// <summary>
-        /// Whether this attack is being flown by a person who can see what they are
-        /// attacking. If so the classifier is not consulted at all - the player's
-        /// order is the answer, and every decoy on the field is just scenery.
+        /// Whether a person is flying this airframe right now, on a picture that
+        /// is actually arriving. Crew first, link second, and in that order on
+        /// purpose: <see cref="LinkKind.Autonomy"/> is pinned Green by
+        /// LinkResolver because there is nothing there to jam, which is not the
+        /// same statement as "somebody is watching". Every deep-strike airframe
+        /// in the catalogue is on that rung with no crew at all, so a pip-only
+        /// test would hand the whole family an exemption it has not earned.
+        ///
+        /// Amber is deliberately not enough. A stuttering picture is the state
+        /// the pilot is already half blind in, and the decoy rule below has
+        /// always drawn the line at Green - two different definitions of "the
+        /// pilot can see" would be worse than one imperfect one.
+        ///
+        /// This is the question World.ApplyDamage asks before displacing a
+        /// munition's aimpoint, and it is why that gate is not about the
+        /// autonomy tier: a plain radio FPV with no terminal guidance at all,
+        /// flown into a vehicle on camera, does not need to know its own
+        /// coordinates either. What defeats navigational error is the eye, not
+        /// the tier.
         /// </summary>
-        public static bool IsPilotedWithClearFeed(World w, int attackerIndex, Fix2 targetPos)
+        public static bool IsPilotedOnLiveFeed(World w, int attackerIndex)
         {
             if (!w.Entities.Has(attackerIndex, ComponentMask.Sortie)) return false;
             if (w.Entities.Sortie[attackerIndex].CrewId < 0) return false;
             if (!w.Entities.Has(attackerIndex, ComponentMask.Link)) return false;
-            if (w.Entities.Link[attackerIndex].Pip != LinkPip.Green) return false;
+            return w.Entities.Link[attackerIndex].Pip == LinkPip.Green;
+        }
+
+        /// <summary>
+        /// Whether this attack is being flown by a person who can see what they are
+        /// attacking <em>well enough to tell it from an inflatable</em>. If so the
+        /// classifier is not consulted at all - the player's order is the answer,
+        /// and every decoy on the field is just scenery.
+        ///
+        /// The range test is what separates this from IsPilotedOnLiveFeed above,
+        /// and it belongs to this question alone: telling a real vehicle from a
+        /// decoy is a resolution problem, sized by optics
+        /// (SimConstants.PilotedDecoyImmunityRangeMetres), while steering a
+        /// warhead into something already filling the frame is not. Sharing one
+        /// constant between the two would mean a future decoy-balance change
+        /// silently moved strike accuracy.
+        /// </summary>
+        public static bool IsPilotedWithClearFeed(World w, int attackerIndex, Fix2 targetPos)
+        {
+            if (!IsPilotedOnLiveFeed(w, attackerIndex)) return false;
 
             Fix range = Fix.FromInt(SimConstants.PilotedDecoyImmunityRangeMetres);
             return Fix2.SqrDistance(w.Entities.Position[attackerIndex], targetPos) <= range * range;

@@ -875,13 +875,53 @@ namespace KZ.Sim
             // that does not come home. A drone holding a scene-matching lock
             // never reaches MunitionMissRadiusMetres (its error rounds to
             // nothing); unescorted dead reckoning over a deep denied
-            // penetration does. This gates on the airframe, not on whether it
-            // still has an operator - the autonomy penalty is a separate
-            // system, and §5 is explicit that the two should stay separable.
+            // penetration does.
+            //
+            // But the question this gate has to ask is not "did this thing
+            // drift". It is **does it still need to know where it is at the
+            // moment it arrives** - and a munition being flown into a vehicle
+            // on a live camera by a person does not. Its coordinates are
+            // irrelevant to it; the pilot is steering onto an image. Gating on
+            // the airframe alone made every FPV strike in every gun-mount
+            // experiment miss (FINDINGS 34), because an FPV Team is
+            // dead-reckoning and one-way and has to cross about two kilometres
+            // of denied ground to reach its own 96 m weapon range - FINDINGS 34
+            // measured 66 m of error against a 40 m radius, for an attack a
+            // human was watching all the way in.
+            //
+            // So the exemption is the eye, not the autonomy tier. It is
+            // deliberately not conditioned on AutonomyTier.TerminalGuidance:
+            // a plain radio FPV with no terminal guidance at all is flown the
+            // same way and is equally indifferent to its own position, and a
+            // terminal seeker's contribution is already priced into
+            // MunitionMissRadiusMetres, whose own derivation is "about as far
+            // off as a terminal seeker can be and still have the target
+            // somewhere in frame when it looks".
+            //
+            // And the exemption ends with the link, which is the decision
+            // worth stating rather than leaving to be read off the code. A
+            // terminal-guidance airframe under BlackPolicy.LastMile is not
+            // flying on a live feed - LinkResolver clears its OrderTarget and
+            // sends it to Sortie.DesignatedPoint, a remembered *coordinate*,
+            // in the same drifted frame this error describes. So jamming and
+            // navigation denial compound: cutting the link is what makes a
+            // drone's position start mattering, and 40 m is how much slack the
+            // seeker then has. That is §5's rule read in both directions -
+            // crossing the border costs you the operator, and losing the
+            // operator is what makes losing your position cost you the shot.
+            //
+            // None of which un-separates the two penalties, which is what the
+            // old comment here claimed this gate was preserving. §5's
+            // separability is that a drone which brought a map keeps its
+            // position while still losing its operator; it says nothing about
+            // charging a navigation penalty to a drone that never lost one,
+            // because its whole scenario is a drone past the geofence that
+            // already has.
             if (Entities.IsAlive(attacker) && Entities.Has(attacker.Index, ComponentMask.Sortie)
                 && Entities.Sortie[attacker.Index].OneWay
                 && Entities.Has(attacker.Index, ComponentMask.Nav)
-                && Entities.Nav[attacker.Index].ErrorMetres > SimConstants.MunitionMissRadiusMetres)
+                && Entities.Nav[attacker.Index].ErrorMetres > SimConstants.MunitionMissRadiusMetres
+                && !AutonomyClassifier.IsPilotedOnLiveFeed(this, attacker.Index))
             {
                 Events.Push(SimEventKind.NavMissedAimpoint, Tick, target, attacker,
                             Entities.Team[attacker.Index], 0);

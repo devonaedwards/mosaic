@@ -1389,6 +1389,68 @@ namespace KZ.Tests
                             "and the simulation says so, rather than silently doing no damage");
             });
 
+            r.Run("a pilot watching the target does not miss for navigational reasons", delegate
+            {
+                // FINDINGS 34's open defect. The F5 gate above asked only
+                // "did this airframe drift", so an FPV Team - dead reckoning,
+                // one-way, and flown the whole way in on a camera by a person -
+                // missed every time it crossed enough denied ground, and a Gun
+                // Mount was immortal at every drone count in every experiment.
+                //
+                // Nothing in navigation-denied.md §5 says that should happen:
+                // its separability argument is about position versus operator,
+                // and FINDINGS 28 is explicit that terminal guidance keeps its
+                // crew and makes the shot better rather than worse. The gate
+                // now asks whether the munition still needs to know where it
+                // is when it arrives, and a live feed is the answer that says
+                // no.
+                //
+                // Both lanes fly the identical run and accrue the identical
+                // error. The only difference is whether there is a radio
+                // anchor behind them, which is to say whether anybody is
+                // still flying it - so this is also the black-link half of the
+                // decision, on the record: cutting the link is what makes a
+                // drone's position start mattering, and the two denials
+                // compound.
+                DeniedStrike linked = FlyDeniedStrike("FPV Team", true, 4200, 2600);
+                DeniedStrike black = FlyDeniedStrike("FPV Team", false, 4200, 2600);
+
+                Assert.True(linked.PeakError > SimConstants.MunitionMissRadiusMetres,
+                            "the drift really happened - 4.7 km of denied ground at 3% is "
+                            + linked.PeakError.RoundToInt() + " m against a 40 m radius");
+                Assert.True(black.PeakError > SimConstants.MunitionMissRadiusMetres,
+                            "and identically in the unanchored lane");
+
+                Assert.True(linked.TargetDamaged,
+                            "a person on a live picture flew it into the vehicle anyway");
+                Assert.Equal(0, linked.Misses,
+                             "and the simulation never claimed otherwise");
+
+                Assert.True(!black.TargetDamaged,
+                            "the same airframe with nobody flying it is on a remembered "
+                            + "coordinate in its own drifted frame, and detonates on empty ground");
+                Assert.True(black.Misses > 0, "which it says out loud");
+            });
+
+            r.Run("a fiber drone's picture is the one thing nothing can take away", delegate
+            {
+                // The rule stated at the rung where it is least escapable.
+                // A Fiber FPV Team is dead reckoning like every other quad, so
+                // it accrues exactly the same error over exactly the same
+                // ground - but LinkKind.Fiber cannot be jammed and needs no
+                // anchor behind it, so there is no state of the world in which
+                // its crew loses the feed short of the thread parting. FINDINGS
+                // 28: what fiber buys is narrow and specific, and this is one
+                // of the two things on that list being worth something.
+                DeniedStrike fiber = FlyDeniedStrike("Fiber FPV Team", false, 4201, 3600);
+
+                Assert.True(fiber.PeakError > SimConstants.MunitionMissRadiusMetres,
+                            "same drift as any other quad ("
+                            + fiber.PeakError.RoundToInt() + " m)");
+                Assert.True(fiber.TargetDamaged, "and it lands the shot regardless");
+                Assert.Equal(0, fiber.Misses, "no navigational miss anywhere in the run");
+            });
+
             r.Run("a reconnaissance sortie buys the imagery scene matching needs", delegate
             {
                 // AUDIT-UNWIRED.md F6 / navigation-denied.md §6, the supply end.
@@ -1848,6 +1910,69 @@ namespace KZ.Tests
         }
 
         // ------------------------------------------------------------------
+
+        /// <summary>What one denied strike run did, as observed from outside.</summary>
+        struct DeniedStrike
+        {
+            public bool TargetDamaged;
+            public Fix PeakError;     // the most NavigationSystem ever had it wrong by
+            public int Misses;        // SimEventKind.NavMissedAimpoint over the run
+        }
+
+        /// <summary>
+        /// Launch one one-way airframe from friendly ground, across a border, at a
+        /// vehicle 4.7 km inside denied ground, and watch what arrives.
+        ///
+        /// Everything here is the production path on purpose. The airframe comes
+        /// from SortieSystem.Launch, so it has a real crew out of the real pool;
+        /// the order is the one Launch issues; the flight, the border crossing, the
+        /// drift, the link resolution and the strike are all World.Step. Nothing
+        /// hand-assigns NavState or LinkState - which is the whole point, since
+        /// F5's original tests passed by constructing the state they asserted on.
+        ///
+        /// <paramref name="radioAnchor"/> is the only lever: with one, a radio link
+        /// holds Green the whole way and somebody is flying the drone; without one
+        /// it falls to Amber and then Black, LinkResolver releases the crew, and
+        /// the airframe finishes on BlackPolicy.LastMile. Same geometry, same
+        /// drift, different answer to "does it still need to know where it is".
+        /// Open terrain throughout, so there is nothing to scene-match against and
+        /// nothing for a fiber tether to snag on.
+        /// </summary>
+        static DeniedStrike FlyDeniedStrike(string airframe, bool radioAnchor, ulong seed, int ticks)
+        {
+            Terrain t = new Terrain(24576, 24576);
+            t.Fill(TileClass.Open);
+            World w = new World(t, 512, 64, seed, 2);
+            w.Territory.SetVerticalBorder(7200, 1, 2, 0);
+
+            // Within SimConstants.RadioRangeMetres of the whole run when it is
+            // there at all, and simply absent when it is not - rather than parked
+            // just out of range, which would make the test depend on the exact
+            // radio range instead of on whether a link exists.
+            if (radioAnchor) w.Spawn(Catalog.IdOf("Command Post"), 1, P(6000, 12000));
+
+            EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 12000));
+            Fix fullHp = w.Entities.Hp[tank.Index];
+
+            EntityHandle drone;
+            SortieSystem.Launch(w, 1, Catalog.IdOf(airframe), P(6000, 12000), tank, 0, out drone);
+
+            DeniedStrike s = new DeniedStrike();
+            s.PeakError = Fix.Zero;
+            for (int k = 0; k < ticks; k++)
+            {
+                if (w.Entities.IsAlive(drone))
+                {
+                    Fix e = w.Entities.Nav[drone.Index].ErrorMetres;
+                    if (e > s.PeakError) s.PeakError = e;
+                }
+                w.Step();
+                s.Misses += w.Events.CountOf(SimEventKind.NavMissedAimpoint);
+            }
+
+            s.TargetDamaged = !w.Entities.IsAlive(tank) || w.Entities.Hp[tank.Index] < fullHp;
+            return s;
+        }
 
         static void RegisterDamage(TestRunner r)
         {
