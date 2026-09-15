@@ -6,49 +6,51 @@
 // the question is "can five drones take a gun position", the honest answer comes
 // from running it two hundred times, not from multiplying numbers on a page.
 //
-// AUDIT-UNWIRED.md F33/F34: until this pass, three experiments (Saturation,
-// Approach, Night, via RunAssault's old default) quietly overwrote the Gun
-// Mount's range back to 550 m after FINDINGS 2 corrected it to 85, and every
-// experiment ran on Fill(Open) with clear weather, firm ground, an ownerless
-// map and no imagery - conditions the game never produces. Both are fixed
-// below: the override is gone (a synthetic "Test Long Mount" catalogue entry
-// takes its place for the one experiment - GunRangeExperiment - whose actual
-// purpose is to vary range), and every experiment now runs on
-// MakeRealisticWorld's mixed terrain, stated weather/ground state, an owned
-// border and per-side imagery by default, printed in its own output.
+// AUDIT-UNWIRED.md F33/F34 (previous pass, kept because the reasoning is the
+// reason the file is shaped this way): three experiments used to overwrite the
+// Gun Mount's range back to 550 m after FINDINGS 2 corrected it to 85, and
+// every experiment ran on Fill(Open) with clear weather, firm ground, an
+// ownerless map and no imagery. Both are fixed: a mount that needs different
+// numbers is a "Test ..." catalogue entry rather than a shipped unit written
+// behind the reader's back, and every experiment states the world it ran on in
+// its own output.
 //
-// What actually moved, real Gun Mount (85 m) vs. the old 550 m override, same
-// seeds, same trial counts, terrain/weather/territory held aside (Stacking,
-// Vertical, Decoy Escort, Aperture, Mines and Sensors already used the real
-// 85 m and are numerically unchanged - occlusion, navigation and imagery are
-// not yet consumed by anything these experiments exercise, see F1/F5/F6):
+// FINDINGS 32 and the experiment-drift guard (docs/EXPERIMENT-DRIFT.md): seven
+// of the ten experiments here could not detect a change to the simulation.
+// Stacking, Vertical, Decoy Escort, Mines, Sensors, Aperture and Range have
+// been gone through one at a time; the reasoning for each is on the experiment
+// itself rather than summarised here, because a summary at the top of a file is
+// the first thing to go stale. In outline:
 //
-//   SATURATION (n drones at 1,200 m) - "arrived" up by ~0.2-0.4 across every
-//   row; "gun killed" at n=3 rose 60% -> 80%, at n=5 rose 88% -> 100%. A
-//   correctly short-ranged mount gets far less time to shoot, but its
-//   five-round magazine was already the binding constraint at higher counts
-//   under the old 550 m figure too - so the low end of FINDINGS 15's
-//   saturation table is what actually needs amending, not all of it.
+//   SENSORS and APERTURE were not experiments. They spawned a mount, overwrote
+//   its SensorSuite, stepped once and printed a detection range - the detection
+//   formula evaluated at a few points, which moves when a signature constant
+//   moves and never otherwise. Both now fight, using test-only catalogue
+//   mounts that differ only in what they can see with.
 //
-//   REACH (GunRangeExperiment) - now includes an 85 m row (3.9 s exposure,
-//   7.8/8 arrived, 100% gun killed) alongside the old hypothetical sweep, so
-//   the deployed figure is visible in the same table as the mistake it
-//   replaced.
+//   STACKING, VERTICAL and DECOY ESCORT were pinned to ceilings: a threshold
+//   ladder whose bottom rung already won, an attack the defence was
+//   structurally incapable of engaging, and a target no package in the budget
+//   could have killed. All three now run against forces and defences that can
+//   go either way.
 //
-//   APPROACH - "arrived" up by ~0.1-0.5 per row; the launch-pad set was tuned
-//   around the old 550 m edge (1,100 m) and barely resolves the real one
-//   (1,565 m) - see the in-output note.
+//   RANGE was asking a question FINDINGS 31 had already answered. It now asks
+//   which of the mount's two numbers is binding rather than assuming it is the
+//   barrel - and the answer turns out to depend on the arrival pattern.
 //
-//   DARKNESS (NightExperiment) - day reach printed as a measured 127 m (was
-//   asserted as 600 m), night as 48 m (was asserted as ~210 m); day "gun
-//   killed" at n=3 rose 60% -> 80%, matching Saturation's n=3 row exactly, as
-//   it should since both run the same RunAssault scenario at dawn.
+//   MINES was correctly flat and is still flat. What it needed was not
+//   resolution but honesty: its damage column was computed by re-deriving
+//   Catalog.DamageMultiplier in this harness rather than observed, and the
+//   indiscriminate rule FINDINGS 10 rests its argument on had no row at all.
 //
-// FINDINGS 2, 13, 15, 16 and 18 were measured against the 550 m figure and
-// need amending against these numbers; FINDINGS 25's decoy-escort numbers
-// were already correct because that experiment never had the override.
+// The single mechanism behind most of it: every experiment launched its whole
+// flight on one tick, so a mount got one engagement window per trial and any
+// quantity that only matters across engagements - a magazine, a second turret,
+// a band change, a longer barrel - could not be measured at all. See the
+// "Arrival scheduling" section below.
 
 using System;
+using System.Collections.Generic;
 using KZ.Sim;
 
 namespace KZ.Balance
@@ -532,193 +534,333 @@ namespace KZ.Balance
         }
 
         /// <summary>
-        /// More turrets covering the same ground. The question is whether defence
-        /// stacks cleanly or whether two guns are worth more than twice one.
+        /// More turrets covering the same ground, against flights that arrive
+        /// together and flights that arrive in a trickle.
+        ///
+        /// <para><b>What it used to measure, and why it could not move.</b> For
+        /// each turret count it walked a ladder {8, 12, 16, 24, 32, 48, 64} of
+        /// simultaneous drones and printed the first rung that won 18 trials in
+        /// 20. Eight drones beat four turrets, so every row printed the ladder's
+        /// bottom rung - 8, 8, 8, 8 - on every build in this project's history
+        /// (FINDINGS 32). A threshold search whose floor already wins reports the
+        /// floor, and the floor is a property of the ladder, not of the game.</para>
+        ///
+        /// <para><b>What it measures now.</b> The share of trials the attack
+        /// wins, at four forces small enough that the answer is not settled
+        /// before the run starts, crossed with two arrival patterns - and, beside
+        /// it, how many rounds each mount in the stack actually fired. A win rate
+        /// is a continuous quantity that moves when anything about the engagement
+        /// moves; the rounds column is what makes the win rate explicable rather
+        /// than just readable, and it is the column that shows *why* a stack does
+        /// or does not pay.</para>
+        ///
+        /// <para><b>Why the arrival axis is the point.</b> A second mount can only
+        /// pay for itself if there is a second engagement to service, and a
+        /// simultaneous wave offers exactly one (FINDINGS 31). If stacking matters
+        /// anywhere it has to matter here; if it does not matter here either then
+        /// FINDINGS 13's structural argument is about something this game does not
+        /// contain.</para>
         /// </summary>
         static void StackingExperiment()
         {
             Console.WriteLine();
             Console.WriteLine("STACKING - more turrets covering the same approach");
-            Console.WriteLine("twelve drones launched together, 450 Materiel per turret");
+            Console.WriteLine("a cluster of mounts all covering one defended point, 450 Materiel each");
             PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
-            Console.WriteLine("  turrets   defence cost   drones needed to take one   attacker cost");
-            Console.WriteLine("  " + new string('-', 68));
+            Console.WriteLine("  each cell: share of 40 trials in which the attack destroyed the lead");
+            Console.WriteLine("  mount. FPV Teams, 200 Materiel each, from a pad at 1,200 m. The last");
+            Console.WriteLine("  column is rounds fired per trial by each mount, lead first, averaged");
+            Console.WriteLine("  over every trial in the row.");
 
-            for (int guns = 1; guns <= 4; guns++)
+            int[] forces = { 3, 4, 5, 6 };
+            int[] spacings = { 0, Sec(3) };
+            string[] patterns = { "launched together", "one drone every 3 s" };
+
+            for (int sp = 0; sp < spacings.Length; sp++)
             {
-                int needed = -1;
-                int[] tries = { 8, 12, 16, 24, 32, 48, 64 };
-                for (int t = 0; t < tries.Length && needed < 0; t++)
-                {
-                    int wins = 0;
-                    for (int trial = 0; trial < 20; trial++)
-                        if (RunStacked(guns, tries[t], (ulong)(trial + 1))) wins++;
-                    if (wins >= 18) needed = tries[t];
-                }
+                Console.WriteLine();
+                Console.WriteLine("  " + patterns[sp] + ":");
+                Console.WriteLine();
+                Console.Write("  turrets ");
+                for (int f = 0; f < forces.Length; f++)
+                    Console.Write(string.Format("{0,9}", forces[f] + " drones"));
+                Console.WriteLine("   needed   rounds fired per trial");
+                Console.WriteLine("  " + new string('-', 88));
 
-                int defenceCost = guns * 450;
-                string attackerCost = needed > 0 ? (needed * 200).ToString() : "more than 12,800";
-                Console.WriteLine(string.Format("  {0,7}   {1,12}   {2,25}   {3,13}",
-                    guns, defenceCost,
-                    needed > 0 ? needed.ToString() : "more than 64",
-                    attackerCost));
+                for (int guns = 1; guns <= 4; guns++)
+                {
+                    Console.Write(string.Format("  {0,7} ", guns));
+                    int needed = -1;
+                    int[] shots = new int[4];
+                    int trialsInRow = 0;
+                    for (int f = 0; f < forces.Length; f++)
+                    {
+                        int wins = 0;
+                        const int trials = 40;
+                        for (int trial = 0; trial < trials; trial++)
+                            if (RunStacked(guns, forces[f], (ulong)(trial + 1), spacings[sp], shots)) wins++;
+                        trialsInRow += trials;
+                        int pct = wins * 100 / trials;
+                        if (needed < 0 && pct >= 90) needed = forces[f];
+                        Console.Write(string.Format("{0,9}", pct + "%"));
+                    }
+
+                    string rounds = "";
+                    for (int g = 0; g < guns; g++)
+                        rounds += (g > 0 ? " | " : "")
+                                + (shots[g] / (double)trialsInRow).ToString("0.00");
+                    Console.WriteLine(string.Format("   {0,6}   {1}",
+                        needed > 0 ? needed.ToString() : "over 6", rounds));
+                }
             }
+
             Console.WriteLine();
-            Console.WriteLine("  Each turret adds its own rate of fire over the same crossing time,");
-            Console.WriteLine("  so the cost of attacking rises roughly in step with the number of");
-            Console.WriteLine("  guns - but the attacker is also paying for drones that die to guns");
-            Console.WriteLine("  they were never sent at.");
+            Console.WriteLine("  A mount is bought to service an engagement. A flight that arrives in");
+            Console.WriteLine("  one instant offers exactly one, and the rounds column says what that");
+            Console.WriteLine("  costs: against a wave the third and fourth mounts in a cluster fire");
+            Console.WriteLine("  nothing at all, because by the time a drone is 70 m from them it is");
+            Console.WriteLine("  already on top of the mount it was sent at. Against a stream the same");
+            Console.WriteLine("  four mounts all shoot, the lead one empties its five-round belt in");
+            Console.WriteLine("  nearly every trial, and the stack starts to be worth its money.");
         }
 
-        static bool RunStacked(int gunCount, int droneCount, ulong seed)
+        /// <summary>
+        /// One attempt against a stack of mounts. Wins if the lead turret dies.
+        /// <paramref name="shotsByMount"/> accumulates rounds fired, read from
+        /// each mount's own EngagementsRemaining rather than inferred from the
+        /// outcome - the belt is the thing FINDINGS 31 found unreachable, so an
+        /// experiment about stacking should say out loud whether it is reached.
+        /// </summary>
+        static bool RunStacked(int gunCount, int droneCount, ulong seed, int spacingTicks,
+                               int[] shotsByMount)
         {
             World w = MakeRealisticWorld(2400, 1600, 512, 32, seed, 2, 0, StandardBorderMetres, 1, 2);
+            BuildAttackerRear(w);
 
-            w.Player(1).Materiel = Fix.FromInt(200000);
-            w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
-            for (int q = 0; q < 6; q++) w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(300 + q * 40, 900));
-            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1000, 780));
-            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1450, 1150));
+            // A fixed cluster, so the lead mount - the one the attack is aimed at
+            // and the one a win is measured on - sits at the same place whatever
+            // the stack size, and every mount added to it has the defended point
+            // inside its own 85 m envelope. The old layout spread mounts along a
+            // line centred on the stack, which moved the lead as the count changed
+            // and put the third mount 120 m from the engagement, out of reach - so
+            // two turrets and three turrets measured identically to the digit for
+            // a reason that had nothing to do with stacking.
+            //
+            // Every supporting mount is beside or behind the lead, never in front
+            // of it. A mount 40 m forward of the one being defended measured as
+            // worth more than two mounts beside it, because it opens fire first.
+            // That is a real and interesting fact about siting, and a confound in
+            // a table whose one variable is supposed to be how many mounts there
+            // are.
+            Fix2[] positions = { P(1650, 780), P(1695, 735), P(1695, 825), P(1720, 780) };
 
             EntityHandle first = EntityHandle.None;
+            int[] gunIdx = new int[4];
+            int[] lastBelt = new int[4];
             for (int g = 0; g < gunCount; g++)
             {
-                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(1650, 780 + (g - gunCount / 2) * 60));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 2, positions[g]);
+                gunIdx[g] = gun.Index;
+                lastBelt[g] = -1;
                 if (g == 0) first = gun;
             }
 
-            for (int i = 0; i < droneCount; i++)
-                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("FPV Team"),
-                    new Fix2(F(1200), F(780 + (i - droneCount / 2) * 12)), first, i));
+            List<Arrival> plan = PlanFlight(1, Catalog.IdOf("FPV Team"), F(1200), F(780), 12,
+                                            first, droneCount, spacingTicks, 0);
+            int next = 0;
+            int lastLaunchTick = plan[plan.Count - 1].Tick;
 
             for (int tick = 0; tick < 200 * SimConstants.TicksPerSecond; tick++)
             {
+                IssueDue(w, plan, ref next, tick);
                 w.Step();
+
+                for (int g = 0; g < gunCount; g++)
+                {
+                    if (!w.Entities.IsSlotAlive(gunIdx[g])) continue;
+                    int belt = w.Entities.Weapon[gunIdx[g]].EngagementsRemaining;
+                    // A reload refills the belt, so only a fall counts as a round.
+                    if (lastBelt[g] >= 0 && belt < lastBelt[g]) shotsByMount[g] += lastBelt[g] - belt;
+                    lastBelt[g] = belt;
+                }
+
                 if (!w.Entities.IsAlive(first)) return true;
-                if (CountFriendlyDronesAirborne(w) == 0 && tick > 8) return false;
+                if (next >= plan.Count && tick > lastLaunchTick + 8
+                    && CountFriendlyDronesAirborne(w) == 0) return false;
             }
             return false;
         }
 
         /// <summary>
-        /// The same number of drones, split between altitudes.
+        /// The same flight, split between altitudes, against two different mounts.
         ///
-        /// A turret's sensors and its reach are both altitude-dependent, and not in
-        /// the same direction. Low drones are heard by the microphone and are well
-        /// inside the gun's envelope. High drones are almost inaudible and force
-        /// the gun to shoot upward, which costs it range - but they are exactly
-        /// what a radar is for. Sending both at once asks the turret a question it
-        /// has no single answer to.
+        /// <para><b>What it used to measure, and why it could not move.</b> Six
+        /// Multirole Quads, launched together, against a Gun Mount - with and
+        /// without a Radar Mast parked beside it. Every one of the ten rows read
+        /// 6.0 arrived and 100% killed on every build in this project's history
+        /// (FINDINGS 32), and two separate ceilings held it there.</para>
+        ///
+        /// <para>The first is that <c>CanReachHigh</c> is false on the Gun Mount,
+        /// and <c>CombatSystem.EffectiveReach</c> returns zero range against a
+        /// High target for a weapon that cannot reach high. Against this mount,
+        /// height is not cover that has to be paid for - it is immunity. Any mix
+        /// containing a high drone therefore contains drones the defence is
+        /// incapable of engaging, and the experiment was asking which of five
+        /// winning hands wins. The second is that the radar arm changed nothing
+        /// because a Radar Mast carries no weapon: it could improve a firing
+        /// solution the Gun Mount is not allowed to take.</para>
+        ///
+        /// <para><b>What it measures now.</b> The same splits against the mount
+        /// that cannot reach high and against the Autocannon Mount, which can -
+        /// and which until now no balance experiment had ever spawned (FINDINGS
+        /// 31). Against the first, the table is a statement about the roster:
+        /// there is no answer to the high band in this game, and that is a design
+        /// fact worth printing rather than a measurement. Against the second the
+        /// question FINDINGS 18 was actually asking becomes askable, because a
+        /// mount that can engage both bands is a mount that can be made to choose
+        /// between them.</para>
+        ///
+        /// <para>Arrivals are spaced. The mechanism that is supposed to make
+        /// splitting pay is the band-change penalty in
+        /// <c>CombatSystem.SlewTicks</c>, which is only ever charged when a mount
+        /// re-lays from one engagement to the next - so an experiment that gives
+        /// it one engagement cannot see it at all, whatever the constant is set
+        /// to. This is the same error FINDINGS 18 records making twice already.</para>
         /// </summary>
         static void VerticalExperiment()
         {
             Console.WriteLine();
-            Console.WriteLine("VERTICAL - six drones against one turret, split between altitudes");
+            Console.WriteLine("VERTICAL - three Multirole Quads, split between altitudes");
+            Console.WriteLine("arriving one every 3 s, because a band change is only charged between");
+            Console.WriteLine("engagements and a simultaneous wave only ever offers one");
             PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
-            Console.WriteLine("  attack                  arrived   turret killed");
-            Console.WriteLine("  " + new string('-', 48));
+            Console.WriteLine("                          Gun Mount (85 m,           Autocannon Mount");
+            Console.WriteLine("                          cannot reach high)         (280 m, reaches high)");
+            Console.WriteLine("  attack                  quads lost   mount killed  quads lost   mount killed");
+            Console.WriteLine("  " + new string('-', 78));
 
             int[][] splits = {
-                new int[] {6, 0}, new int[] {4, 2}, new int[] {3, 3},
-                new int[] {2, 4}, new int[] {0, 6}
+                new int[] {3, 0}, new int[] {2, 1}, new int[] {1, 2}, new int[] {0, 3}
             };
             string[] labels = {
-                "all low", "four low, two high", "three low, three high",
-                "two low, four high", "all high"
+                "all low", "two low, one high", "one low, two high", "all high"
             };
+            string[] mounts = { "Gun Mount", "Autocannon Mount" };
 
             for (int i = 0; i < splits.Length; i++)
             {
-                int arrivedTotal = 0, killed = 0;
-                const int trials = 40;
-                for (int trial = 0; trial < trials; trial++)
+                string row = string.Format("  {0,-22}", labels[i]);
+                for (int m = 0; m < mounts.Length; m++)
                 {
-                    int arrived;
-                    if (RunSplitAssault(splits[i][0], splits[i][1], (ulong)(trial + 1), false, out arrived))
-                        killed++;
-                    arrivedTotal += arrived;
+                    int lostTotal = 0, killed = 0;
+                    const int trials = 40;
+                    for (int trial = 0; trial < trials; trial++)
+                    {
+                        int lost;
+                        if (RunSplitAssault(splits[i][0], splits[i][1], (ulong)(trial + 1),
+                                            mounts[m], Sec(3), out lost)) killed++;
+                        lostTotal += lost;
+                    }
+                    row += string.Format("  {0,10}   {1,12}",
+                        (lostTotal / (double)trials).ToString("0.00"),
+                        (killed * 100 / trials) + "%");
                 }
-                Console.WriteLine(string.Format("  {0,-22}  {1,7}   {2,12}",
-                    labels[i], (arrivedTotal / (double)trials).ToString("0.0"),
-                    (killed * 100 / trials) + "%"));
+                Console.WriteLine(row);
             }
 
             Console.WriteLine();
-            Console.WriteLine("  and the same, against a turret that also has a radar:");
+            Console.WriteLine("  The left pair is not a tactic and should not be read as one. A Gun");
+            Console.WriteLine("  Mount cannot engage the high band at all, so a drone sent there is");
+            Console.WriteLine("  not evading the defence, it is outside it - which is why one high");
+            Console.WriteLine("  drone in the flight takes the mount's score to exactly zero and");
+            Console.WriteLine("  keeps it there. Its 100% column is a ceiling and carries no");
+            Console.WriteLine("  information; the quads-lost column beside it is the live one.");
             Console.WriteLine();
-            for (int i = 0; i < splits.Length; i++)
-            {
-                int arrivedTotal = 0, killed = 0;
-                const int trials = 40;
-                for (int trial = 0; trial < trials; trial++)
-                {
-                    int arrived;
-                    if (RunSplitAssault(splits[i][0], splits[i][1], (ulong)(trial + 1), true, out arrived))
-                        killed++;
-                    arrivedTotal += arrived;
-                }
-                Console.WriteLine(string.Format("  {0,-22}  {1,7}   {2,12}",
-                    labels[i], (arrivedTotal / (double)trials).ToString("0.0"),
-                    (killed * 100 / trials) + "%"));
-            }
-            Console.WriteLine();
-            Console.WriteLine("  Height is cover from a gun and exposure to a radar. Which of those");
-            Console.WriteLine("  matters depends entirely on what the defender bought.");
+            Console.WriteLine("  The right pair is the question FINDINGS 18 was asking. The Autocannon");
+            Console.WriteLine("  reaches both bands, pays 20 ticks every time it re-lays across them,");
+            Console.WriteLine("  and loses 40% of its range and 30% of its hit chance shooting");
+            Console.WriteLine("  upward. Against it, splitting is worth something and committing");
+            Console.WriteLine("  everything high is worth slightly less than splitting - which is the");
+            Console.WriteLine("  shape FINDINGS 18 guessed at and could not measure, arrived at");
+            Console.WriteLine("  against a defence that is allowed to answer.");
         }
 
-        static bool RunSplitAssault(int low, int high, ulong seed, bool withRadar, out int arrived)
+        /// <summary>
+        /// One attempt. The flight is launched on a spacing and each airframe is
+        /// sent to its band as it appears, rather than the whole flight being
+        /// spawned and then sorted: with staggered launches there is no single
+        /// tick at which every drone exists to be sorted.
+        /// </summary>
+        static bool RunSplitAssault(int low, int high, ulong seed, string mountDefName,
+                                    int spacingTicks, out int quadsLost)
         {
             World w = MakeRealisticWorld(2400, 1600, 512, 32, seed, 2, 0, StandardBorderMetres, 1, 2);
+            BuildAttackerRear(w);
 
-            w.Player(1).Materiel = Fix.FromInt(200000);
-            w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
-            for (int q = 0; q < 6; q++) w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(300 + q * 40, 900));
-            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1000, 780));
-            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1450, 1150));
-
-            EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(1650, 780));
-            if (withRadar) w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(1750, 780));
+            EntityHandle gun = w.Spawn(Catalog.IdOf(mountDefName), 2, P(1650, 780));
 
             int total = low + high;
-            for (int i = 0; i < total; i++)
-                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Multirole Quad"),
-                    new Fix2(F(1200), F(780 + (i - total / 2) * 12)), gun, i));
-            w.Step();
+            // Spread the high drones through the order rather than sending the
+            // low half first: a flight that goes low then high is a sequential
+            // attack, which is a different tactic from a split one.
+            bool[] goesHigh = new bool[total];
+            for (int k = 0; k < high; k++) goesHigh[(k * total) / high] = true;
 
-            // Send the back half of the flight upstairs.
-            int sent = 0;
-            for (int i = 1; i < w.Entities.HighWater && sent < high; i++)
-            {
-                if (!w.Entities.IsSlotAlive(i)) continue;
-                if (w.Entities.Team[i] != 1) continue;
-                if (w.Entities.EntityLayer[i] != Layer.Low) continue;
-                if (!w.Entities.Has(i, ComponentMask.Sortie)) continue;
-                w.Enqueue(Command.SetAltitude(1, w.Entities.HandleAt(i), Layer.High));
-                sent++;
-            }
+            List<Arrival> plan = PlanFlight(1, Catalog.IdOf("Multirole Quad"), F(1200), F(780), 12,
+                                            gun, total, spacingTicks, 0);
+            int next = 0;
+            int lastLaunchTick = plan[plan.Count - 1].Tick;
 
-            bool[] struck = new bool[w.Entities.Capacity];
-            int reached = 0;
-            Fix strikeRange = F(50);
+            bool[] sorted = new bool[w.Entities.Capacity];
+            int sortedCount = 0;
+
+            bool[] airborneOnce = new bool[w.Entities.Capacity];
+            bool[] counted = new bool[w.Entities.Capacity];
+            int lost = 0;
 
             for (int tick = 0; tick < 200 * SimConstants.TicksPerSecond; tick++)
             {
+                IssueDue(w, plan, ref next, tick);
                 w.Step();
-                if (!w.Entities.IsAlive(gun)) { arrived = reached; return true; }
 
-                Fix2 gunPos = w.Entities.Position[gun.Index];
+                // Newly airborne airframes, in the order they were launched -
+                // CommandBuffer.Execute applies launches in enqueue order and
+                // World.Spawn hands out ascending slots, so index order is launch
+                // order for the length of one of these trials.
+                for (int i = 1; i < w.Entities.HighWater && sortedCount < total; i++)
+                {
+                    if (sorted[i] || !w.Entities.IsSlotAlive(i)) continue;
+                    if (w.Entities.Team[i] != 1) continue;
+                    if (!w.Entities.Has(i, ComponentMask.Sortie)) continue;
+                    sorted[i] = true;
+                    if (goesHigh[sortedCount])
+                        w.Enqueue(Command.SetAltitude(1, w.Entities.HandleAt(i), Layer.High));
+                    sortedCount++;
+                }
+
+                // What the defence actually achieved, counted as airframes it
+                // removed. "Arrived" was the old measure and it is unusable once
+                // the mount can die mid-flight: the trial stops at that instant,
+                // so a defence that dies early scores well on drones-not-arrived
+                // for the same reason it lost.
                 for (int i = 1; i < w.Entities.HighWater; i++)
                 {
-                    if (struck[i] || !w.Entities.IsSlotAlive(i)) continue;
-                    if (w.Entities.Team[i] != 1 || w.Entities.EntityLayer[i] == Layer.Ground) continue;
-                    if (Fix2.Distance(w.Entities.Position[i], gunPos) <= strikeRange)
-                    { struck[i] = true; reached++; }
+                    if (!w.Entities.IsSlotAlive(i)) continue;
+                    if (w.Entities.Team[i] != 1) continue;
+                    if (w.Entities.Has(i, ComponentMask.Sortie)) airborneOnce[i] = true;
                 }
-                if (CountFriendlyDronesAirborne(w) == 0 && tick > 8) break;
+                for (int i = 1; i < w.Entities.HighWater; i++)
+                    if (airborneOnce[i] && !counted[i] && !w.Entities.IsSlotAlive(i))
+                    { counted[i] = true; lost++; }
+
+                if (!w.Entities.IsAlive(gun)) { quadsLost = lost; return true; }
+
+                if (next >= plan.Count && tick > lastLaunchTick + 8
+                    && CountFriendlyDronesAirborne(w) == 0) break;
             }
-            arrived = reached;
+            quadsLost = lost;
             return false;
         }
 
@@ -918,6 +1060,100 @@ namespace KZ.Balance
 
         // ------------------------------------------------------------------
 
+        // ------------------------------------------------------------------
+        // Arrival scheduling, and why half the experiments below needed it.
+        //
+        // Every experiment in this file used to launch its whole flight on tick
+        // zero. A mount therefore got exactly one engagement window per trial:
+        // it holds a track at about 70 m, lays on one drone, fires once, and the
+        // rest of the flight arrives together (FINDINGS 31). In one window a
+        // five-round belt cannot bind, a second turret adds nothing it would not
+        // have added in the same instant, and an attack split between two
+        // altitudes is one simultaneous problem rather than two problems in
+        // sequence. That is the mechanism behind FINDINGS 32's three dead
+        // experiments and most of the four the drift guard added to them: vary
+        // only the launch spacing and the same mount goes from 0 reloads in 60
+        // trials to 60 (FINDINGS 31, amended).
+        //
+        // A simultaneous wave is not wrong. It is one real tactic - the one a
+        // player gets by pre-staging a flight and tapping once - and it is the
+        // one the recorded findings were measured under, so it stays as a column
+        // rather than being replaced. What was wrong is that it was the only
+        // tactic any experiment could express.
+        //
+        // The simulation has its own staggered-departure field
+        // (SortieState.EgressUntilTick, written by SortieSystem.Launch from the
+        // launchIndex every call below already passes) and nothing anywhere
+        // reads it - AUDIT-UNWIRED F19, still open, and not this harness's to
+        // fix. So spacing is done the one honest way available from outside the
+        // simulation: each launch command is enqueued on the tick it is meant to
+        // be issued on, which is also exactly what a player tapping a card eight
+        // times over eight seconds produces.
+        struct Arrival { public int Tick; public Command Cmd; }
+
+        /// <summary>
+        /// A flight of <paramref name="count"/> airframes leaving the same pad
+        /// area, one every <paramref name="spacingTicks"/> ticks. Spacing zero is
+        /// the old simultaneous wave.
+        /// </summary>
+        static List<Arrival> PlanFlight(byte team, int defId, Fix padX, Fix padY, int spreadY,
+                                        EntityHandle target, int count, int spacingTicks,
+                                        int firstIndex)
+        {
+            List<Arrival> plan = new List<Arrival>();
+            for (int i = 0; i < count; i++)
+            {
+                Arrival a;
+                a.Tick = i * spacingTicks;
+                Fix2 spot = new Fix2(padX, padY + F((i - count / 2) * spreadY));
+                a.Cmd = Command.LaunchSortie(team, defId, spot, target, firstIndex + i);
+                plan.Add(a);
+            }
+            return plan;
+        }
+
+        /// <summary>
+        /// Merge two already-ordered flights into one schedule, taking from the
+        /// first on a tie. A stable merge, because an unstable sort would let two
+        /// runs of the same seed launch in different orders and every guarantee
+        /// this harness rests on would be gone.
+        /// </summary>
+        static List<Arrival> MergeByTick(List<Arrival> a, List<Arrival> b)
+        {
+            List<Arrival> merged = new List<Arrival>();
+            int i = 0, j = 0;
+            while (i < a.Count || j < b.Count)
+            {
+                if (j >= b.Count || (i < a.Count && a[i].Tick <= b[j].Tick)) merged.Add(a[i++]);
+                else merged.Add(b[j++]);
+            }
+            return merged;
+        }
+
+        /// <summary>Issue every launch whose tick has come.</summary>
+        static void IssueDue(World w, List<Arrival> plan, ref int next, int tick)
+        {
+            while (next < plan.Count && plan[next].Tick <= tick) { w.Enqueue(plan[next].Cmd); next++; }
+        }
+
+        /// <summary>Seconds expressed in ticks, for readability at the call sites.</summary>
+        static int Sec(int seconds) { return seconds * SimConstants.TicksPerSecond; }
+
+        /// <summary>
+        /// The attacker's rear: money, a command post, crews and two relays. Every
+        /// assault experiment needs the same one, and the second relay is far
+        /// enough back that the experiment measures the mount against drones and
+        /// not the mount against a relay mast.
+        /// </summary>
+        static void BuildAttackerRear(World w)
+        {
+            w.Player(1).Materiel = Fix.FromInt(200000);
+            w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
+            for (int q = 0; q < 6; q++) w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(300 + q * 40, 900));
+            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1000, 780));
+            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1450, 1150));
+        }
+
         static bool RunAssault(int droneCount, Fix padX, ulong seed, out int arrived)
         {
             return RunAssault(droneCount, padX, seed, out arrived, 0);
@@ -954,8 +1190,46 @@ namespace KZ.Balance
         /// The shared engagement: build the attacker's rear, spawn one mount of
         /// the given kind for the defender, launch the drones, and play it out.
         /// </summary>
+        /// <summary>
+        /// A change made to the defending mount after it is spawned. Two of the
+        /// experiments below sweep one of the mount's own numbers as their
+        /// independent variable, which is the one legitimate reason to write a
+        /// spawned unit's state from here: the unit being written is "Test Long
+        /// Mount", a catalogue entry that exists for exactly this and is never
+        /// shown to a player. Writing a *shipped* unit's stats behind the
+        /// reader's back is AUDIT-UNWIRED F33 and is what this harness was fixed
+        /// for.
+        /// </summary>
+        struct MountTweak
+        {
+            public Fix? WeaponRange;
+            public Fix? Optical;
+            public bool AimSensorWest;
+            public static MountTweak None { get { return new MountTweak(); } }
+            public static MountTweak Range(Fix r)
+            { MountTweak t = new MountTweak(); t.WeaponRange = r; return t; }
+            public static MountTweak Optics(Fix o)
+            { MountTweak t = new MountTweak(); t.Optical = o; return t; }
+            public static MountTweak Aimed()
+            { MountTweak t = new MountTweak(); t.AimSensorWest = true; return t; }
+        }
+
         static bool RunAssaultScenario(World w, string gunDefName, Fix? gunRangeOverride,
                                        int droneCount, Fix padX, out int arrived)
+        {
+            MountTweak t = gunRangeOverride.HasValue
+                ? MountTweak.Range(gunRangeOverride.Value) : MountTweak.None;
+            return RunAssaultScenario(w, gunDefName, t, droneCount, padX, 0, out arrived);
+        }
+
+        /// <summary>
+        /// The shared engagement: build the attacker's rear, spawn one mount of
+        /// the given kind for the defender, launch the drones on the given
+        /// spacing, and play it out. Spacing zero is the simultaneous wave the
+        /// recorded findings were measured under.
+        /// </summary>
+        static bool RunAssaultScenario(World w, string gunDefName, MountTweak tweak,
+                                       int droneCount, Fix padX, int spacingTicks, out int arrived)
         {
             w.Player(1).Materiel = Fix.FromInt(100000);
             w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
@@ -967,15 +1241,16 @@ namespace KZ.Balance
             w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1450, 1150));
 
             EntityHandle gun = w.Spawn(Catalog.IdOf(gunDefName), 2, P(1650, 780));
-            if (gunRangeOverride.HasValue)
-                w.Entities.Weapon[gun.Index].RangeMetres = gunRangeOverride.Value;
+            if (tweak.WeaponRange.HasValue)
+                w.Entities.Weapon[gun.Index].RangeMetres = tweak.WeaponRange.Value;
+            if (tweak.Optical.HasValue)
+                w.Entities.Sensor[gun.Index].Optical = tweak.Optical.Value;
+            if (tweak.AimSensorWest) AimWest(w, gun);
 
-            for (int i = 0; i < droneCount; i++)
-            {
-                // A small spread, so they are not literally stacked in one point.
-                Fix2 spot = new Fix2(padX, F(780 + (i - droneCount / 2) * 14));
-                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("FPV Team"), spot, gun, i));
-            }
+            List<Arrival> plan = PlanFlight(1, Catalog.IdOf("FPV Team"), padX, F(780), 14,
+                                            gun, droneCount, spacingTicks, 0);
+            int next = 0;
+            int lastLaunchTick = plan[plan.Count - 1].Tick;
 
             bool[] struck = new bool[w.Entities.Capacity];
             int reached = 0;
@@ -983,6 +1258,7 @@ namespace KZ.Balance
 
             for (int tick = 0; tick < 200 * SimConstants.TicksPerSecond; tick++)
             {
+                IssueDue(w, plan, ref next, tick);
                 w.Step();
                 if (!w.Entities.IsAlive(gun)) break;
 
@@ -1000,11 +1276,24 @@ namespace KZ.Balance
                     }
                 }
 
-                if (CountFriendlyDronesAirborne(w) == 0 && tick > 8) break;
+                if (next >= plan.Count && tick > lastLaunchTick + 8
+                    && CountFriendlyDronesAirborne(w) == 0) break;
             }
 
             arrived = reached;
             return !w.Entities.IsAlive(gun);
+        }
+
+        /// <summary>
+        /// Point a staring head at the threat axis. Half a turn of bearing, done
+        /// from outside the simulation because the simulation offers no way to do
+        /// it from inside - see the note printed by ApertureExperiment.
+        /// </summary>
+        static void AimWest(World w, EntityHandle mount)
+        {
+            SensorSuite s = w.Entities.Sensor[mount.Index];
+            s.Facing = 32768;   // 180 degrees in the 16-bit bearing units Trig uses
+            w.Entities.Sensor[mount.Index] = s;
         }
 
         static int CountFriendlyDronesAirborne(World w)
