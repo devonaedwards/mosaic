@@ -1635,3 +1635,64 @@ border behind the objective, which is one of `SCALE.md`'s own three border
 relations — rather than engineering a thin margin, and the interaction is still
 measured on the flat control world. But the defect is in the simulation and it is
 not fixed.
+
+### Fixed, and the fix produced a better rule than the brief asked for
+
+I framed this as "terminal guidance should defeat navigational miss". That was
+the wrong question. The gate now asks **"is a person flying this on a picture that
+is actually arriving?"** — the eye, not the tier.
+
+Conditioning on `AutonomyTier.TerminalGuidance` would have double-counted the
+seeker: `MunitionMissRadiusMetres` is *already* derived as a terminal seeker's
+in-frame tolerance. And a plain radio FPV with no terminal guidance is flown the
+same way and is equally indifferent to its own coordinates.
+
+Two ordering details carry the fix, and neither was obvious:
+
+**Crew is checked before the link pip, and must be.** `LinkResolver` pins
+`LinkKind.Autonomy` to Green, because there is nothing on that rung to jam. Every
+deep-strike one-way airframe in the catalogue sits on that rung with no crew, so a
+pip-only test would have handed that entire family a blanket exemption from
+navigation error — the exact opposite of the intent.
+
+**Amber does not count.** A stuttering picture is the state a pilot is already
+half blind in, and the decoy rule had already drawn its line at Green. Two
+different definitions of "the pilot can see" would be worse than one imperfect
+one.
+
+### The black link compounds, which is a real mechanic
+
+The open question was whether a drone that lost its link mid-flight — carrying on
+to its designated point under `BlackPolicy.LastMile` — should still be exempt. No,
+and the reason is in the code rather than in taste: `LastMile` navigates to a
+remembered **world coordinate**, in exactly the drifted frame `ErrorMetres`
+describes. Exempting it would mean the drone somehow knows the true coordinate it
+was handed, which is the assumption the whole navigation system exists to deny.
+
+So the rule reads in both directions now:
+
+> Crossing the border costs you the operator. **Losing the operator is what makes
+> losing your position cost you the shot.** Navigation error is latent until the
+> link dies.
+
+Jamming and navigation denial compound, for a stated reason rather than as a
+tuning choice. This does not break `navigation-denied.md` §5's separability, which
+is about a drone that *brought a map* keeping its position while still losing its
+operator — it says nothing about charging a navigation penalty to a drone that
+never lost one.
+
+**One experiment moved, and it moved back into agreement.** The reach sweep's flat
+control world went 100% to 89% mount survival, and now reads identically to the
+same mount on the realistic world — which is what item 33 recorded before this
+defect bit. The drones had always been arriving; only their warheads were landing
+on grass.
+
+**Neither number I suspected was the problem.** The 3%/metre drift rate is sourced
+and the 40 m miss radius has an argued derivation. The gate was asking the wrong
+question and no constant needed to move. Worth recording, because the reflex when
+a model misbehaves is to reach for the nearest tunable.
+
+What remains undefended is recorded in the constant rather than tuned away: a
+one-way airframe with **neither** an operator nor a seeker is held to a seeker's
+tolerance, making it slightly too accurate. The honest fix is a second number, and
+a second unmeasured estimate is worse than a known conservatism.
