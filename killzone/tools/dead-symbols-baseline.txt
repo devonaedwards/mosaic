@@ -26,7 +26,6 @@ unitdef-field   UnitDef.Tier
 unitdef-default UnitDef.SignatureWhileEmitting
 sim-constant    SimConstants.AutonomySmokePenalty
 sim-constant    SimConstants.CrewRecoveryPriorityTicks
-sim-constant    SimConstants.DawnTicks
 sim-constant    SimConstants.FrozenEnduranceScale
 sim-constant    SimConstants.MaxEntitiesCompact
 sim-constant    SimConstants.MaxEntitiesStandard
@@ -87,7 +86,6 @@ sim-public      MeshGraph.MaxNeighbourCandidates
 sim-public      SignalGrid.EmitterCount
 sim-public      SignalGrid.GetEmitter
 sim-public      SignalGrid.JamAtCell
-sim-public      SimConstants.Millis
 sim-public      SortieSystem.Recover
 sim-public      Terrain.BlocksGroundSight
 sim-public      TetherSystem.LiveCount

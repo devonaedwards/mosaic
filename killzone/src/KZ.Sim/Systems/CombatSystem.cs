@@ -213,7 +213,9 @@ namespace KZ.Sim
                 chance = chance * Fix.Clamp(size, Fix.FromDoubleContentOnly(0.45),
                                                   Fix.FromDoubleContentOnly(1.30));
 
-                // Speed. A target crossing at fifty metres a second gives a mount
+                // Speed, measured against the Shahed-class cruise these systems
+                // were designed for (SimConstants.FiringSolutionReferenceSpeed).
+                // A target crossing at three times that gives a mount
                 // very little time in which its solution is still good - unless the
                 // round does not need a good solution, which is what the fuze is
                 // for. Aim forgiveness pulls the speed penalty back toward one.
@@ -225,7 +227,7 @@ namespace KZ.Sim
                 Fix speed = def.SpeedMetresPerSecond;
                 if (speed.Raw > 0)
                 {
-                    Fix speedTerm = Fix.FromInt(20) / speed;
+                    Fix speedTerm = SimConstants.FiringSolutionReferenceSpeed / speed;
                     speedTerm = Fix.Clamp(speedTerm, Fix.FromDoubleContentOnly(0.20),
                                                      Fix.FromDoubleContentOnly(1.15));
 

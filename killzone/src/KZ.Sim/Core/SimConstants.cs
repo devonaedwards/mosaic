@@ -1,7 +1,27 @@
 // KILL ZONE - a real-time strategy video game.
 // Every tuning number the simulation depends on, in one place, in ticks and
-// map metres. These are balance values for a game: they exist to be argued
+// REAL metres. These are balance values for a game: they exist to be argued
 // about in playtests and changed.
+//
+// Units, since this file is where they are decided (docs/SCALE.md, "What robust
+// looks like"):
+//
+//   Distance   real metres. Not "map metres" at some compression - the kill
+//              zone is 22 km deep whoever is looking at it, and a number in
+//              real units can be checked against the reporting in
+//              docs/research, which is the whole method here. A number in
+//              compressed units cannot.
+//   Time       real seconds for anything with a physical rate, converted to
+//              ticks by Seconds(). PlaySeconds() exists for the few durations
+//              that are pacing rather than physics, and says so.
+//   Speed      real metres per real second.
+//
+// The game still plays faster than life: TimeMultiplier below advances the
+// world four seconds for every second at the controls. It is one number,
+// applied once, in Dt - not a compression baked separately into every speed,
+// which is the state this file was in before (an FPV at 1,469 km/h, four
+// airframes disagreeing about the scale by a factor of three, and a day/night
+// cycle disagreeing with all of them by a factor of fifty).
 
 namespace KZ.Sim
 {
@@ -10,30 +30,102 @@ namespace KZ.Sim
         // ---- time ---------------------------------------------------------
 
         /// <summary>
-        /// 32 rather than 30 because 1/32 is exact in binary, so dt introduces no
-        /// rounding drift over a 25-minute match. It also makes every derived
-        /// duration a clean power-of-two count of ticks.
+        /// Ticks per second of play. 32 rather than 30 because 1/32 is exact in
+        /// binary, so dt introduces no rounding drift over a 25-minute match. It
+        /// also makes every derived duration a clean power-of-two count of ticks.
         /// </summary>
         public const int TicksPerSecond = 32;
 
-        public static readonly Fix Dt = new Fix(Fix.OneRaw / TicksPerSecond);
+        /// <summary>
+        /// How many seconds of world the simulation advances per second of play.
+        ///
+        /// The one explicit knob docs/SCALE.md asks for, replacing a distance
+        /// compression that had been baked separately into every speed and never
+        /// reconciled. At 4x an FPV crosses the 22 km kill zone in 2.3 minutes of
+        /// play and a supply truck in 6.1 - the two-minute sortie the map-size
+        /// argument reasoned toward, now derived from a real speed rather than
+        /// reverse-engineered from a feel.
+        ///
+        /// It is global and it is a match setting, never a camera setting:
+        /// lockstep requires every participant to simulate the same ticks, so a
+        /// player who could speed up their own clock would simply be playing a
+        /// different match. Zoom is the per-player dial; this is not.
+        ///
+        /// 4 rather than any other number because it divides TicksPerSecond
+        /// exactly, so Dt stays a power of two and a real second stays a whole
+        /// number of ticks. A multiplier that did not divide 32 would reintroduce
+        /// rounding into the one place this codebase has been careful to keep it
+        /// out of.
+        /// </summary>
+        public const int TimeMultiplier = 4;
 
-        public static int Seconds(int s) { return s * TicksPerSecond; }
-        public static int Millis(int ms) { return (ms * TicksPerSecond) / 1000; }
+        /// <summary>Ticks in one real-world second: 8, at 32 Hz and 4x.</summary>
+        public const int TicksPerRealSecond = TicksPerSecond / TimeMultiplier;
+
+        /// <summary>Seconds of world per tick. Speeds are real metres per real second.</summary>
+        public static readonly Fix Dt = new Fix(Fix.OneRaw / TicksPerRealSecond);
+
+        /// <summary>Real-world seconds to ticks. Everything with a physical rate uses this.</summary>
+        public static int Seconds(int s) { return s * TicksPerRealSecond; }
+
+        /// <summary>
+        /// Real-world milliseconds to ticks. Granularity is 125 ms at 4x, so this
+        /// is only honest for durations of a second or more.
+        /// </summary>
+        public static int Millis(int ms) { return (ms * TicksPerRealSecond) / 1000; }
+
+        /// <summary>
+        /// Seconds of *play* to ticks, for the handful of durations that are
+        /// pacing rather than physics - a build timer is not a thing anything in
+        /// the world does at a rate, it is how long the player waits. Keeping
+        /// those in play seconds is what stops the rescale quietly making every
+        /// production queue four times faster. Anything with a source in
+        /// docs/research uses Seconds() instead.
+        /// </summary>
+        public static int PlaySeconds(int s) { return s * TicksPerSecond; }
 
         /// <summary>Commands are gathered into 4-tick turns (125 ms) for network play.</summary>
         public const int TicksPerCommandTurn = 4;
 
         // ---- the map ------------------------------------------------------
 
-        /// <summary>One build tile is 8 m. Structure footprints are given in tiles.</summary>
-        public const int BuildTileMetres = 8;
+        // The three grids below are engine resolution, not measurements of
+        // anything. They were 8 / 32 / 16 against a 2,048-map-metre map and are
+        // twelve times that against the same ground in real metres, so every grid
+        // is the same number of cells across as it was: the signal field still
+        // rebuilds 64x64 cells rather than 768x768, and a terrain array still
+        // costs 65 kB rather than 9 MB. A finer grid is a cost decision to argue
+        // separately, not something the change of units should have made for us.
 
-        /// <summary>Jamming and threat are tracked on a coarser 32 m grid.</summary>
-        public const int SignalCellMetres = 32;
+        /// <summary>One build tile is 96 m. Structure footprints are given in tiles.</summary>
+        public const int BuildTileMetres = 96;
 
-        /// <summary>Vision sits between the two, at 16 m.</summary>
-        public const int VisionCellMetres = 16;
+        /// <summary>Jamming and threat are tracked on a coarser 384 m grid.</summary>
+        public const int SignalCellMetres = 384;
+
+        /// <summary>Vision sits between the two, at 192 m.</summary>
+        public const int VisionCellMetres = 192;
+
+        /// <summary>
+        /// The longest reach the simulation will compare against a squared
+        /// distance, in real metres.
+        ///
+        /// Q31.32 stores two billion, so a 1.2 million metre front is nothing to
+        /// it - but detection and weapon tests compare *squared* distances to
+        /// avoid a square root per pair per tick, and a square is what runs out
+        /// first: 46,340 m is the largest range whose square still fits, and
+        /// beyond it Fix.MulRaw wraps and a sensor silently sees nothing at all.
+        /// That is the real headroom limit of the move to real metres, and it is
+        /// reached in practice: a radar mast at 16.8 km against a decoy built to
+        /// return 3.2x its own cross-section works out to 53 km of nominal reach.
+        ///
+        /// Capping is the right answer rather than a trap to avoid, because a
+        /// sensor that reaches beyond the map already sees all of it. It also
+        /// caps the map: the same arithmetic puts the largest safe square map at
+        /// about 32 km a side (its diagonal squared is what overflows), so the
+        /// standard 24.6 km map is fine and a doubled one is not.
+        /// </summary>
+        public static readonly Fix MaxComparableRangeMetres = Fix.FromInt(45000);
 
         /// <summary>The signal grid is rebuilt at 8 Hz; jam fields do not move fast.</summary>
         public const int SignalRebuildInterval = 4;
@@ -44,16 +136,27 @@ namespace KZ.Sim
         // ---- the control-link layer ---------------------------------------
 
         /// <summary>
-        /// A jammed drone flies amber for four seconds before the link is
-        /// considered lost. Long enough to react, short enough to hurt.
+        /// A jammed drone flies amber for four seconds of play before the link is
+        /// considered lost. Long enough to react, short enough to hurt - which is
+        /// a statement about the player's hands, not about a radio, so it is
+        /// PlaySeconds and stays at the 128 ticks it has always been.
         /// </summary>
-        public const int AmberToBlackTicks = 128;
+        public static readonly int AmberToBlackTicks = PlaySeconds(4);
 
-        /// <summary>A drone with a dead link orbits for twelve seconds, then is lost.</summary>
-        public const int BlackToLostTicks = 384;
+        /// <summary>
+        /// A drone with a dead link orbits for twelve seconds of play, then is
+        /// lost. The same argument as above: it is the window in which a player
+        /// can do something about it.
+        /// </summary>
+        public static readonly int BlackToLostTicks = PlaySeconds(12);
 
-        /// <summary>Dual-link airframes fall back to their alternate link after two seconds.</summary>
-        public const int DualLinkSwitchTicks = 64;
+        /// <summary>
+        /// Dual-link airframes fall back to their alternate link after two real
+        /// seconds. This one is the radio and not the player - re-acquiring a mesh
+        /// or satellite path takes as long as it takes - so it converts, and at 4x
+        /// it costs a quarter of the play time it used to.
+        /// </summary>
+        public static readonly int DualLinkSwitchTicks = Seconds(2);
 
         /// <summary>
         /// Jamming falls off linearly from the emitter and is scaled by 1.3, so a
@@ -65,19 +168,34 @@ namespace KZ.Sim
         /// <summary>
         /// Within this margin of a drone's robustness, the coarse grid value is not
         /// trusted and the exact distance to each contributing emitter is evaluated.
-        /// Without it a drone flickers green/amber as it crosses 32 m cell borders.
+        /// Without it a drone flickers green/amber as it crosses a cell border.
         /// </summary>
         public const int JamBoundaryRefineMargin = 12;
 
         /// <summary>A robustness of 255 means "nothing to jam" - fiber and autonomy.</summary>
         public const int UnjammableRobustness = 255;
 
-        public const int MeshRangePerHopMetres = 700;
+        /// <summary>
+        /// How far one airborne relay hop carries, in real metres. Designer
+        /// estimate: the corpus gives control ranges for ground robots (a Kuryer
+        /// at 3-10 km, ground-logistics.md §3) and nothing for a drone-to-drone
+        /// relay leg, so this is the old 700 map metres read at the 12:1 the rest
+        /// of the catalogue was written against, which lands inside that band.
+        /// </summary>
+        public const int MeshRangePerHopMetres = 8400;
         public const int MeshMaxHops = 4;
         public const int MeshRobustnessPerAltHop = 5;
         public const int MeshRobustnessAltCap = 15;
         public const int MeshAcquisitionPenaltyTicksPerHop = 13;
-        public const int RadioRangeMetres = 1000;
+
+        /// <summary>
+        /// Direct radio control range, real metres. Designer estimate on the same
+        /// footing as the hop above - ground-logistics.md §3's 3-10 km control
+        /// range for a tele-operated ground robot is the nearest sourced figure,
+        /// and an airborne link with line of sight reaches further than one
+        /// talking to a robot in a ditch.
+        /// </summary>
+        public const int RadioRangeMetres = 12000;
 
         /// <summary>A veteran crew pushes a drone through interference a rookie would lose.</summary>
         public const int VeteranLinkRobustnessBonus = 8;
@@ -85,26 +203,40 @@ namespace KZ.Sim
         // ---- fiber tethers ------------------------------------------------
 
         public const int TetherMaxNodes = 64;
-        public const int TetherNodeSpacingMetres = 12;
 
-        /// <summary>Three seconds at full stretch before the line parts.</summary>
-        public const int TetherTautGraceTicks = 96;
+        /// <summary>
+        /// How far apart the thread's geometry is sampled, real metres. Engine
+        /// resolution rather than a measurement, scaled with everything else so
+        /// the 64-node cap still describes the same shape of flight path.
+        /// </summary>
+        public const int TetherNodeSpacingMetres = 144;
 
-        /// <summary>A cut thread stays on the map for thirty seconds. It still leads home.</summary>
-        public const int TetherLingerTicks = 960;
+        /// <summary>Three seconds of play at full stretch before the line parts.</summary>
+        public static readonly int TetherTautGraceTicks = PlaySeconds(3);
+
+        /// <summary>
+        /// A cut thread stays on the map for thirty seconds of play. It still
+        /// leads home. Map clutter is a pacing question, not a physical one.
+        /// </summary>
+        public static readonly int TetherLingerTicks = PlaySeconds(30);
 
         /// <summary>Each tether checks its newest segment plus one older one per tick.</summary>
         public const int TetherSegmentsPerTick = 2;
 
         // ---- crews and sorties ---------------------------------------------
 
-        public const int CrewRecoveryTicks = 256;          // 8 s
-        public const int CrewRecoveryPriorityTicks = 160;  // 5 s with Priority Recovery
-        public const int CrewFatiguedRecoveryTicks = 448;  // 14 s
+        // Crew timers are pacing, and deliberately so. A crew turning a sortie
+        // round in eight seconds is not a claim about people; it is how long the
+        // player waits before the roster refills, and the real thing takes an
+        // afternoon. So these stay in seconds of play at the values they have
+        // always had rather than becoming four times faster for free.
+        public static readonly int CrewRecoveryTicks = PlaySeconds(8);
+        public static readonly int CrewRecoveryPriorityTicks = 160;  // 5 s of play with Priority Recovery
+        public static readonly int CrewFatiguedRecoveryTicks = 448;  // 14 s of play
         public const int CrewFatigueSortieThreshold = 5;
-        public const int CrewFatigueWindowTicks = 3840;    // 120 s
-        public const int CrewFatigueClearIdleTicks = 960;  // 30 s
-        public const int CrewBenchedTicks = 1440;          // 45 s, for remote piloting bays
+        public static readonly int CrewFatigueWindowTicks = PlaySeconds(120);
+        public static readonly int CrewFatigueClearIdleTicks = PlaySeconds(30);
+        public static readonly int CrewBenchedTicks = PlaySeconds(45);  // remote piloting bays
 
         public const int CrewRankUpKills2 = 3;
         public const int CrewRankUpKills3 = 9;
@@ -127,23 +259,77 @@ namespace KZ.Sim
         /// fight, in the middle, in daylight.
         /// </summary>
         public static readonly Fix SalvageFraction = Fix.FromDoubleContentOnly(0.35);
-        public const int SalvageDecayTicks = 1600;         // 50 s to nothing
+
+        /// <summary>Fifty seconds of play to nothing. A window to react in, so PlaySeconds.</summary>
+        public static readonly int SalvageDecayTicks = PlaySeconds(50);
 
         /// <summary>Verified kills pay 12% of the victim's cost as Tasking Points.</summary>
         public static readonly Fix TaskingPointsUnitFraction = Fix.FromDoubleContentOnly(0.12);
         public static readonly Fix TaskingPointsStructureFraction = Fix.FromDoubleContentOnly(0.08);
         public static readonly Fix TaskingPointsUnverifiedScale = Fix.FromDoubleContentOnly(0.5);
 
-        /// <summary>A kill counts as verified if a friendly saw it happen within this range.</summary>
-        public const int VerificationWitnessRangeMetres = 400;
+        /// <summary>
+        /// A kill counts as verified if a friendly saw it happen within this range,
+        /// in real metres. Designer estimate: the corpus is emphatic that strike
+        /// confirmation is a real problem and gives no radius for it, so this is
+        /// the old 400 map metres at 12:1.
+        /// </summary>
+        public const int VerificationWitnessRangeMetres = 4800;
 
-        // ---- day and night --------------------------------------------------
+        // ---- the time of day a match is fought at ----------------------------
 
-        public const int DayNightCycleTicks = 11520;       // 6:00
-        public const int DayTicks = 5760;                  // 3:00
-        public const int DuskTicks = 1440;                 // 0:45
-        public const int NightTicks = 3360;                // 1:45
-        public const int DawnTicks = 960;                  // 0:30
+        /// <summary>
+        /// A match happens *at* a time of day. It does not contain one.
+        ///
+        /// This used to be a cycle the match ran through: a full day every six
+        /// minutes of play, which is 240x real time against a simulation whose
+        /// airframes were at 3-10x and whose turret slews over 71 ticks. At the 4x
+        /// this file now runs at, a real 24-hour cycle is six hours of play, so
+        /// the two cannot share a match at all - docs/SCALE.md, "What this costs,
+        /// and the one thing it cannot buy". The honest resolution is the one that
+        /// document reaches: the phase is fixed when the match is set up and never
+        /// changes, and the cycle belongs to the campaign layer, whose clock
+        /// already runs in months.
+        ///
+        /// What survives here is a mapping, not a duration. A match is opened with
+        /// a clock reading - the campaign hands one over, an experiment picks one -
+        /// and these four spans carve that reading into the four phases. The
+        /// numbers are deliberately unchanged from the cycle they replace, because
+        /// nothing lives through them any more and changing them would silently
+        /// move every match that was set up as "night" into daylight.
+        /// </summary>
+        /// <remarks>
+        /// Private, and deliberately: they are the internals of TimeOfDayAt, not
+        /// dials anything else should read. Nothing outside can usefully do
+        /// arithmetic on a phase boundary now that no match crosses one, and the
+        /// dead-symbol guard is right that a constant which only feeds another
+        /// constant is not wired to anything. The public surface is the function.
+        /// </remarks>
+        const int TimeOfDayDialTicks = 11520;
+        const int DayTicks = 5760;
+        const int DuskTicks = 1440;
+        const int NightTicks = 3360;
+        const int DawnTicks = 960;
+
+        /// <summary>
+        /// Which phase a match opened on this clock reading is fought in, for its
+        /// whole length. Integer-only and total: the four spans above tile the
+        /// dial, so every reading lands somewhere and no match is phaseless.
+        /// </summary>
+        public static DayPhase TimeOfDayAt(int clockTicks)
+        {
+            int t = clockTicks % TimeOfDayDialTicks;
+            if (t < 0) t += TimeOfDayDialTicks;
+
+            if (t < DayTicks) return DayPhase.Day;
+            t -= DayTicks;
+            if (t < DuskTicks) return DayPhase.Dusk;
+            t -= DuskTicks;
+            if (t < NightTicks) return DayPhase.Night;
+            t -= NightTicks;
+            if (t < DawnTicks) return DayPhase.Dawn;
+            return DayPhase.Day;
+        }
 
         /// <summary>
         /// Optical sensors collapse at night unless the player has bought thermal.
@@ -277,15 +463,17 @@ namespace KZ.Sim
         // ---- navigation, once nobody is telling it where it is ---------------
 
         /// <summary>
-        /// What scene matching is wrong by, in map metres, when it has a lock.
+        /// What scene matching is wrong by, in real metres, when it has a lock.
         ///
         /// Four unrelated fielded systems agree on ten to thirty real metres of
-        /// bounded error. At this game's twelve-to-one compression that is one to
-        /// three map metres, which is why this tier is not "more accurate" but
-        /// "knows where it is" - the error rounds to nothing and the interesting
-        /// question becomes whether it has a lock at all.
+        /// bounded error (navigation-denied.md §4), and now that the catalogue is
+        /// in real metres that figure can be written down as itself instead of
+        /// being divided by twelve first. Twenty metres is the middle of the band.
+        /// This tier is still not "more accurate" but "knows where it is": twenty
+        /// metres is under the miss radius below, so the interesting question stays
+        /// whether it has a lock at all.
         /// </summary>
-        public static readonly Fix SceneMatchErrorMetres = Fix.FromDoubleContentOnly(2.0);
+        public static readonly Fix SceneMatchErrorMetres = Fix.FromDoubleContentOnly(20.0);
 
         /// <summary>
         /// Error added per metre flown on inertial alone. The literature's growth
@@ -310,9 +498,12 @@ namespace KZ.Sim
 
         /// <summary>
         /// How far a drone must fly over matchable ground to get a lost lock back.
-        /// The research puts re-acquisition at roughly 700-1,300 real metres.
+        /// navigation-denied.md §4 puts re-acquisition at 700-1,300 real metres
+        /// ("at 30 m/s that is 700-1,300 m of flight to re-converge"); 1,000 is
+        /// the middle of it, and is now stored as the metres the research says
+        /// rather than as an eightieth of a compressed map.
         /// </summary>
-        public static readonly Fix NavReacquireMetres = Fix.FromDoubleContentOnly(80.0);
+        public static readonly Fix NavReacquireMetres = Fix.FromDoubleContentOnly(1000.0);
 
         /// <summary>
         /// How far NavState.ErrorMetres can displace a one-way munition's
@@ -320,18 +511,25 @@ namespace KZ.Sim
         /// target - see World.ApplyDamage. AUDIT-UNWIRED.md F5: the whole
         /// navigation system computed this number and nothing consumed it.
         ///
-        /// navigation-denied.md §5 sources the error itself (scene matching's
-        /// 1-3 map metres "rounds to nothing"; dead reckoning over a deep
-        /// denied penetration reaches tens of map metres - the worked example
-        /// is 50 at 20 real km). It does not say how much displacement a given
-        /// warhead can tolerate and still land on something the size of a
-        /// vehicle, so this radius is a designer estimate: comfortably above
-        /// SceneMatchErrorMetres, so a drone that brought a map never misses on
-        /// navigation grounds, and reachable by NavDriftRateInertial well
-        /// inside a plausible flight (8 / 0.03 ~= 270 m of unescorted denied
-        /// flight), so the mount that makes the geofence hurt actually does.
+        /// navigation-denied.md §5 sources the error itself (scene matching is
+        /// good to tens of metres and "rounds to nothing"; dead reckoning over a
+        /// deep denied penetration is 3% of distance flown, which its worked
+        /// example puts at 600 m over a 20 km run). It does not say how much
+        /// displacement a given warhead can tolerate and still land on something
+        /// the size of a vehicle, so this radius is a designer estimate, and in
+        /// real metres it is one that can now be argued with: forty metres is
+        /// twice the scene-matching error, so a drone that brought a map never
+        /// misses on navigation grounds, and it is about as far off as a terminal
+        /// seeker can be and still have the target somewhere in frame when it
+        /// looks. It is reached after 1,300 m of unescorted denied flight
+        /// (40 / 0.03), so the geofence still costs an airframe something inside a
+        /// realistic run rather than only on a deep raid.
+        ///
+        /// It is NOT the old 8 map metres read at 12:1, which would be 96 m - far
+        /// enough off that the warhead detonating there is not a near miss, it is
+        /// a different field.
         /// </summary>
-        public static readonly Fix MunitionMissRadiusMetres = Fix.FromDoubleContentOnly(8.0);
+        public static readonly Fix MunitionMissRadiusMetres = Fix.FromDoubleContentOnly(40.0);
 
         /// <summary>
         /// How much warhead a hit needs to carry before it counts as the "heavy
@@ -349,19 +547,25 @@ namespace KZ.Sim
         /// </summary>
         public static readonly Fix HeavyBombardmentDamageThreshold = Fix.FromDoubleContentOnly(350.0);
 
-        /// <summary>How much of a sector one heavy hit churns past matching. Designer estimate - see HeavyBombardmentDamageThreshold.</summary>
-        public static readonly Fix HeavyBombardmentInvalidateRadiusMetres = Fix.FromDoubleContentOnly(150.0);
+        /// <summary>
+        /// How much of a sector one heavy hit churns past matching, in real
+        /// metres. Designer estimate - see HeavyBombardmentDamageThreshold - and
+        /// the word the research uses is "sector", which is why this is 1.8 km of
+        /// ground rather than a crater radius: what stops a scene matcher is not
+        /// the hole, it is that the landmarks around it have been rearranged.
+        /// </summary>
+        public static readonly Fix HeavyBombardmentInvalidateRadiusMetres = Fix.FromDoubleContentOnly(1800.0);
 
         /// <summary>
         /// How often a reconnaissance airframe's camera pays into the imagery
         /// resource - navigation-denied.md §6's supply end, AUDIT-UNWIRED.md F6.
         /// Coverage is a persistent bit per cell, so granting it every tick buys
         /// nothing once a cell is already covered and only spends the tick
-        /// budget detection already needs. Four times a second is enough that a
-        /// recon airframe cruising at up to Recon Wing's 12 m/s (well under one
-        /// 64 m imagery cell between grants) never skips a cell it flew over -
-        /// an engineering cadence, not a content number, so it is not cited to
-        /// a section.
+        /// budget detection already needs. Once a second of world time is enough
+        /// that a recon airframe cruising at Recon Wing's 25 m/s covers 25 m
+        /// between grants, far under one 768 m imagery cell, so it never skips a
+        /// cell it flew over - an engineering cadence, not a content number, so it
+        /// is not cited to a section.
         /// </summary>
         public const int ReconImageryGrantInterval = 8;
 
@@ -375,22 +579,52 @@ namespace KZ.Sim
         public static readonly Fix DetectionSolidFraction = Fix.FromDoubleContentOnly(0.60);
 
         /// <summary>
-        /// Once something has been seen, the track is held this long even if the
-        /// sensor loses it. Real systems coast a track rather than dropping it the
-        /// instant a return is missed, and without this a marginal contact strobes.
+        /// The target speed a gun's firing solution is quoted against, in real
+        /// metres per second - CombatSystem.AirHitChance scores every target
+        /// relative to this, faster ones harder and slower ones easier.
+        ///
+        /// 45 m/s is 160 km/h, the bottom of point-defence.md §"The target set
+        /// these systems have to beat" for the Shahed-136/Geran-2 row (160-220
+        /// km/h cruise) - the threat every system in that document was sized
+        /// against, which is exactly what a reference speed should be.
+        ///
+        /// It was a bare 20 in the middle of AirHitChance, and 20 was a *map*
+        /// metre per second at the old compression, so once the catalogue moved
+        /// to real speeds every airframe in the game read as a harder target than
+        /// it had been - an FPV at 33 m/s scoring worse than it used to at 22.
+        /// A reference speed in real units is a figure the reporting can be held
+        /// against; a reference speed in compressed units is a number that moves
+        /// whenever the compression does.
         /// </summary>
-        public const int TrackHoldTicks = 64;   // 2 s
+        public static readonly Fix FiringSolutionReferenceSpeed = Fix.FromInt(45);
+
+        /// <summary>
+        /// Once something has been seen, the track is held for two real seconds
+        /// even if the sensor loses it. Real systems coast a track rather than
+        /// dropping it the instant a return is missed, and without this a marginal
+        /// contact strobes. This is the tracker and not the player, so it is two
+        /// seconds of world - a quarter of the play time the flat 64 ticks used to
+        /// buy, and the same two seconds FINDINGS #21 describes.
+        /// </summary>
+        public static readonly int TrackHoldTicks = Seconds(2);
 
         // ---- mines -----------------------------------------------------------
 
         /// <summary>
         /// A short arming delay, so a bomber cannot drop a mine directly onto a
-        /// vehicle and have it go off in the same instant.
+        /// vehicle and have it go off in the same instant. A fuze arming is
+        /// physical, so it is real seconds.
         /// </summary>
-        public const int MineArmingTicks = 48;   // 1.5 s
+        public static readonly int MineArmingTicks = Millis(1500);
 
-        /// <summary>How far apart a stick of mines is spaced when laid from the air.</summary>
-        public const int MineSpacingMetres = 26;
+        /// <summary>
+        /// How far apart a stick of mines is spaced when laid from the air, real
+        /// metres. Designer estimate: deep-strike.md describes road mining from
+        /// the air without giving a stick spacing, so this is the old 26 map
+        /// metres at 12:1, which is about the length of ground a low pass covers
+        /// between releases.
+        /// </summary>
+        public const int MineSpacingMetres = 312;
 
         // ---- autonomy --------------------------------------------------------
 
@@ -402,14 +636,29 @@ namespace KZ.Sim
         public const int AutonomyDecoyQualityPenalty = 5;
         public const int AutonomyNightNoThermalPenalty = 20;
         public const int AutonomySmokePenalty = 15;
-        public const int AutonomySeekerConeMetres = 120;
+        /// <summary>
+        /// How far ahead a terminal seeker looks for candidates, real metres.
+        /// Designer estimate: autonomy.md describes the terminal decision without
+        /// sizing the search volume. 1.4 km is roughly where a seeker's camera
+        /// stops resolving a vehicle well enough to argue about it, and it is the
+        /// old 120 map metres at 12:1.
+        /// </summary>
+        public const int AutonomySeekerConeMetres = 1440;
         public const int AutonomyMaxCandidates = 24;
 
         /// <summary>
         /// Deception fools machines, never people. An attack flown by a crew with a
         /// live link from inside this range ignores decoys completely.
+        ///
+        /// One kilometre, not the 4.8 km a straight 12:1 reading of the old 400
+        /// would give. thermal-optical.md §8.3's resolution table is the check the
+        /// real units make possible: a wide-search camera resolves a 7 m vehicle
+        /// at 7 km but a narrow tracker is what gives a pilot enough pixels to
+        /// tell a real vehicle from an inflatable, and that argument runs out
+        /// somewhere around a kilometre on the cheap optics an FPV carries.
+        /// Designer estimate, but a checkable one.
         /// </summary>
-        public const int PilotedDecoyImmunityRangeMetres = 400;
+        public const int PilotedDecoyImmunityRangeMetres = 1000;
 
         // ---- entity caps ----------------------------------------------------
         // These are match rules, not device settings. In a lockstep match every

@@ -1,6 +1,21 @@
 // KILL ZONE - a real-time strategy video game.
 // Unit and structure definitions - the stat blocks.
 //
+// Units: distances are REAL metres and speeds are REAL metres per real second,
+// not the compressed "map metres" this catalogue used to hold. The simulation
+// runs the world at SimConstants.TimeMultiplier - four seconds of world per
+// second of play - and that is the only compression left anywhere. Before this,
+// twelve-to-one distance compression had been baked separately into every speed
+// by hand, which is how the catalogue ended up implying 10.2x time compression
+// for an interceptor, 3.4x for a heavy strike drone and 240x for the clock, and
+// an FPV flying at 1,469 km/h. See docs/SCALE.md, "The scale is currently
+// incoherent, which is the real answer to accuracy".
+//
+// Every distance and speed below cites the research document it came from, or
+// says in as many words that it is a designer estimate. That is the point of
+// real units: 180 km/h can be checked against reporting and 18 map metres per
+// second cannot.
+//
 // These are balance numbers for a game. They are written here in code for now so
 // the simulation can be tested end to end; they will move out to data files that
 // designers and modders can edit without a compiler, and that get hashed into
@@ -43,8 +58,21 @@ namespace KZ.Sim
         public Fix WeaponDamage;
         public DamageType WeaponType = DamageType.Fragmentation;
         public Fix WeaponRangeMetres;
-        public int WeaponCooldownTicks = 32;
-        public int WeaponAcquisitionTicks = 16;
+        /// <summary>
+        /// Time between engagements. A tick is an eighth of a real second at the
+        /// global time multiplier, so the default is four real seconds - the cycle
+        /// point-defence.md's "Suggested replacement units" gives a gun turret.
+        /// </summary>
+        public int WeaponCooldownTicks = SimConstants.Seconds(4);
+
+        /// <summary>
+        /// What it costs to lay onto a target the mount was not already laid on:
+        /// two real seconds of settling, re-ranging and re-classification.
+        /// point-defence.md §"Where the existing numbers break" 7 names this as
+        /// the real cost rather than the slew, and says a passive EO turret "pays
+        /// that in full every time".
+        /// </summary>
+        public int WeaponAcquisitionTicks = SimConstants.Seconds(2);
         public bool IsInterceptor;
 
         /// <summary>
@@ -217,16 +245,16 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Command Post", IsStructure = true, Tier = 1,
-                CostMateriel = 2000, BuildTicks = SimConstants.Seconds(60),
+                CostMateriel = 2000, BuildTicks = SimConstants.PlaySeconds(60),
                 Hp = M(5000), Armour = ArmourClass.Structure, FootprintTiles = 8,
-                SensorOptical = M(400), SensorEsm = M(500),
+                SensorOptical = M(4800), SensorEsm = M(6000),
                 SigRadio = 80, SigThermal = 60, SigAcoustic = 25, SigVisual = 95,
                 SensorArcDegrees = 360});
 
             Add(new UnitDef
             {
                 Name = "Crew Quarters", IsStructure = true, Tier = 1,
-                CostMateriel = 700, BuildTicks = SimConstants.Seconds(22),
+                CostMateriel = 700, BuildTicks = SimConstants.PlaySeconds(22),
                 Hp = M(1400), Armour = ArmourClass.Structure, FootprintTiles = 4,
                 SigRadio = 55, SigThermal = 40, SigAcoustic = 20, SigVisual = 75
             });
@@ -234,7 +262,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Drone Workshop", IsStructure = true, Tier = 1,
-                CostMateriel = 900, BuildTicks = SimConstants.Seconds(28),
+                CostMateriel = 900, BuildTicks = SimConstants.PlaySeconds(28),
                 Hp = M(1600), Armour = ArmourClass.Structure, FootprintTiles = 5,
                 SigRadio = 40, SigThermal = 45, SigAcoustic = 35, SigVisual = 80
             });
@@ -242,16 +270,16 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Radar Mast", IsStructure = true, Tier = 2,
-                CostMateriel = 1000, BuildTicks = SimConstants.Seconds(30),
+                CostMateriel = 1000, BuildTicks = SimConstants.PlaySeconds(30),
                 Hp = M(900), Armour = ArmourClass.Structure, FootprintTiles = 3,
-                SensorRadar = M(1400), SensorEsm = M(900),
+                SensorRadar = M(16800), SensorEsm = M(10800),
                 SigRadio = 25, SigThermal = 25, SigAcoustic = 15, SigVisual = 70
             });
 
             Add(new UnitDef
             {
                 Name = "Spool Plant", IsStructure = true, Tier = 2,
-                CostMateriel = 800, BuildTicks = SimConstants.Seconds(26),
+                CostMateriel = 800, BuildTicks = SimConstants.PlaySeconds(26),
                 Hp = M(1200), Armour = ArmourClass.Structure, FootprintTiles = 4,
                 SigRadio = 20, SigThermal = 35, SigAcoustic = 25, SigVisual = 75
             });
@@ -261,9 +289,9 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "EW Post", IsStructure = true, Tier = 2,
-                CostMateriel = 750, BuildTicks = SimConstants.Seconds(24),
+                CostMateriel = 750, BuildTicks = SimConstants.PlaySeconds(24),
                 Hp = M(1100), Armour = ArmourClass.Structure, FootprintTiles = 3,
-                JamStrength = 70, JamRadiusMetres = M(450),
+                JamStrength = 70, JamRadiusMetres = M(5400),
                 // thermal-optical.md §11 "Jammer, transmitting": thermal 48 (was
                 // 40), visual 75 (was 70). Kilowatts into an amplifier and a
                 // cooling loop is a genuine hot spot on a vehicle-sized target.
@@ -273,7 +301,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Relay Mast", IsStructure = true, Tier = 2,
-                CostMateriel = 500, BuildTicks = SimConstants.Seconds(18),
+                CostMateriel = 500, BuildTicks = SimConstants.PlaySeconds(18),
                 Hp = M(600), Armour = ArmourClass.Structure, FootprintTiles = 2,
                 SigRadio = 70, SigThermal = 15, SigAcoustic = 10, SigVisual = 55
             });
@@ -282,17 +310,23 @@ namespace KZ.Sim
             {
                 Name = "Gun Mount", IsStructure = true, Tier = 2,
                 CanEngageAir = true,
-                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                CostMateriel = 450, BuildTicks = SimConstants.PlaySeconds(16),
                 Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
-                // Eighty-five metres, not the five hundred and fifty this had.
-                // The old figure was the mount's *detection* reach being used as
-                // its kill ring, and the two are an order of magnitude apart: a
-                // heavy machine gun's useful engagement envelope against a small
-                // drone is a few hundred real metres, which is tens of metres on
-                // this map. Getting that wrong was most of why a single turret
-                // looked unbeatable.
+                // A thousand metres, which is point-defence.md §Q2's ceiling read
+                // straight: "Above ~1,000-1,200 m: machine-gun-class point defence
+                // is finished." The M2's quoted effective range is 1,830 m, but
+                // that is slant range against an aircraft-sized target and hit
+                // probability against a drone collapses long before it.
+                //
+                // In the old compressed units this was 85 map metres, itself a
+                // correction of a 550 that was the mount's *detection* reach being
+                // used as its kill ring - the two are an order of magnitude apart,
+                // and getting it wrong was most of why a single turret looked
+                // unbeatable. In real metres the mistake is much harder to make
+                // again: 550 map metres would have to be written as 6,600 m, and
+                // nobody types six kilometres for a machine gun.
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                WeaponRangeMetres = M(1000), WeaponCooldownTicks = SimConstants.Seconds(4),
                 CanReachHigh = false,
                 // This mount shipped with neither a traverse rate nor a magazine,
                 // and both mechanics quietly did nothing for the one unit every
@@ -309,7 +343,22 @@ namespace KZ.Sim
                 // sensors failing.
                 TraverseDegreesPerSecond = 150,       // point-defence.md §"Where the existing numbers break" 5 (was 0: instant)
                 EngagementsPerBelt = 5, ReloadSeconds = 20, // point-defence.md §"Suggested replacement units" (was 0: never ran dry)
-                SensorOptical = M(600), SensorAcoustic = M(200),
+                // Optical 7,200 m: thermal-optical.md §8.3's resolution-limited
+                // table gives 7.00 km wide-search detection of a 7 m vehicle,
+                // which is what this reach is quoted against (the signature curve
+                // then cuts it down for smaller targets - a 0.3 m quad comes out
+                // an order of magnitude closer, as §8.3's own 0.30 km row says it
+                // should).
+                //
+                // Acoustic 2,400 m is one microphone, not a network, and the gap
+                // is deliberate: point-defence.md §"Where the existing numbers
+                // break" 3 notes that Sky Fortress detects Shaheds at ~5 km and
+                // concludes the answer is "a cheap networked acoustic unit whose
+                // value is coverage rather than accuracy" - a unit this catalogue
+                // does not have yet. Against a Shahed-class signature this mount
+                // reaches 2.2 km of that 5 km, which is the right shape for one
+                // node standing alone.
+                SensorOptical = M(7200), SensorAcoustic = M(2400),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
 
@@ -338,18 +387,17 @@ namespace KZ.Sim
             {
                 Name = "Autocannon Mount", IsStructure = true, Tier = 3,
                 CanEngageAir = true,
-                CostMateriel = 1600, BuildTicks = SimConstants.Seconds(36),
+                CostMateriel = 1600, BuildTicks = SimConstants.PlaySeconds(36),
                 Hp = M(950), Armour = ArmourClass.Structure, FootprintTiles = 3,
                 WeaponDamage = M(130), WeaponType = DamageType.Fragmentation,
-                // 280 map metres, not converted here but taken directly from
-                // point-defence.md §"Suggested replacement units", row
-                // "Airburst Autocannon (Skyranger class)" - the same table the
-                // Gun Mount's own 85 m and 5-shot/20 s magazine come from. It
-                // is close to a bare 12:1 conversion of the comparison table's
-                // "3,000 m (30 mm)" (250 map metres) but the replacement-units
-                // table is the one already treated as the game-ready spec, so
-                // it wins over recomputing from the raw metres.
-                WeaponRangeMetres = M(280),
+                // point-defence.md §"Suggested replacement units", row "Airburst
+                // Autocannon (Skyranger class)": 280, in a table whose own header
+                // says "Range in map metres (12:1)", so 3,360 real metres. That
+                // is the same figure to within 12% as §Q2's "Above ~3,000 m:
+                // 30 mm is finished" and as ground-force.md §3.1's "3,000 m with
+                // AHEAD airburst", which is the corroboration worth having: two
+                // documents and a conversion agree.
+                WeaponRangeMetres = M(3360),
                 // ~2 s per target, revolver cannon - point-defence.md §Q3
                 // comparison table and §"Suggested replacement units" "Cycle: 2 s".
                 WeaponCooldownTicks = SimConstants.Seconds(2),
@@ -386,33 +434,34 @@ namespace KZ.Sim
                 // rate, and a revolver cannon with an ammunition feed and a
                 // radar is heavier than a machine gun on a light robotic mount.
                 TraverseDegreesPerSecond = 90,
-                SensorOptical = M(600),
-                SensorRadar = M(800),
+                SensorOptical = M(7200),
+                SensorRadar = M(9600),
                 SigRadio = 20, SigThermal = 35, SigAcoustic = 25, SigVisual = 60,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
 
             // TEST-ONLY. Not a shipping unit and never presented to a player -
             // it exists so KZ.Balance's GunRangeExperiment can sweep the mount's
             // reach as its one independent variable without silently overwriting
-            // the real Gun Mount's 85 m (AUDIT-UNWIRED.md F33: three experiments
-            // used to do exactly that, and reported the result as if it were the
-            // shipped gun). 550 is not a design value or a citation - it is the
-            // old, wrong "detection reach used as kill ring" figure the Gun Mount
-            // comment above corrects, kept here as the sweep's upper bound so the
-            // experiment still shows how much that mistake was worth. Every other
+            // the real Gun Mount's 1,000 m (AUDIT-UNWIRED.md F33: three
+            // experiments used to do exactly that, and reported the result as if
+            // it were the shipped gun). 6,600 m is not a design value or a
+            // citation - it is the old, wrong "detection reach used as kill ring"
+            // figure (550 map metres) the Gun Mount comment above corrects, kept
+            // here as the sweep's upper bound so the experiment still shows how
+            // much that mistake was worth. Every other
             // field is copied from Gun Mount so the sweep isolates range alone.
             Add(new UnitDef
             {
                 Name = "Test Long Mount", IsStructure = true, Tier = 2,
                 CanEngageAir = true,
-                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                CostMateriel = 450, BuildTicks = SimConstants.PlaySeconds(16),
                 Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(550), WeaponCooldownTicks = 24,
+                WeaponRangeMetres = M(6600), WeaponCooldownTicks = SimConstants.Seconds(4),
                 CanReachHigh = false,
                 TraverseDegreesPerSecond = 150,
                 EngagementsPerBelt = 5, ReloadSeconds = 20,
-                SensorOptical = M(600), SensorAcoustic = M(200),
+                SensorOptical = M(7200), SensorAcoustic = M(2400),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
 
@@ -426,25 +475,26 @@ namespace KZ.Sim
             // World.Spawn like anything else, so the experiment can fight them.
             //
             // Every field except the sensor fit is copied from Gun Mount,
-            // including the 85 m barrel, so the one variable is what the mount
+            // including the 1,000 m barrel, so the one variable is what the mount
             // can find things with. The sensor reaches are the Gun Mount's own
-            // optical 600 and a 400 m microphone array (acoustic.md's man-portable
-            // array figure, already used as the hypothetical fit in this
-            // experiment before it had units to carry it) and a 450 m uncooled
-            // imager, between the tank's 250 and the Interceptor Battery's 520.
+            // optical 7,200 m, a 4,800 m microphone array (acoustic.md's
+            // man-portable array figure, already used as the hypothetical fit in
+            // this experiment before it had units to carry it) and a 5,400 m
+            // uncooled imager, between the tank's 3,000 and the Interceptor
+            // Battery's 6,240.
             // None of the four is a shipping unit or a proposal for one.
             Add(new UnitDef
             {
                 Name = "Test Mount Optics", IsStructure = true, Tier = 2,
                 CanEngageAir = true,
-                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                CostMateriel = 450, BuildTicks = SimConstants.PlaySeconds(16),
                 Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                WeaponRangeMetres = M(1000), WeaponCooldownTicks = SimConstants.Seconds(4),
                 CanReachHigh = false,
                 TraverseDegreesPerSecond = 150,
                 EngagementsPerBelt = 5, ReloadSeconds = 20,
-                SensorOptical = M(600),
+                SensorOptical = M(7200),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
 
@@ -452,14 +502,14 @@ namespace KZ.Sim
             {
                 Name = "Test Mount Acoustic", IsStructure = true, Tier = 2,
                 CanEngageAir = true,
-                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                CostMateriel = 450, BuildTicks = SimConstants.PlaySeconds(16),
                 Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                WeaponRangeMetres = M(1000), WeaponCooldownTicks = SimConstants.Seconds(4),
                 CanReachHigh = false,
                 TraverseDegreesPerSecond = 150,
                 EngagementsPerBelt = 5, ReloadSeconds = 20,
-                SensorAcoustic = M(400),
+                SensorAcoustic = M(4800),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
 
@@ -467,14 +517,14 @@ namespace KZ.Sim
             {
                 Name = "Test Mount Optics Acoustic", IsStructure = true, Tier = 2,
                 CanEngageAir = true,
-                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                CostMateriel = 450, BuildTicks = SimConstants.PlaySeconds(16),
                 Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                WeaponRangeMetres = M(1000), WeaponCooldownTicks = SimConstants.Seconds(4),
                 CanReachHigh = false,
                 TraverseDegreesPerSecond = 150,
                 EngagementsPerBelt = 5, ReloadSeconds = 20,
-                SensorOptical = M(600), SensorAcoustic = M(400),
+                SensorOptical = M(7200), SensorAcoustic = M(4800),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
 
@@ -482,14 +532,14 @@ namespace KZ.Sim
             {
                 Name = "Test Mount Optics Acoustic Thermal", IsStructure = true, Tier = 2,
                 CanEngageAir = true,
-                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                CostMateriel = 450, BuildTicks = SimConstants.PlaySeconds(16),
                 Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                WeaponRangeMetres = M(1000), WeaponCooldownTicks = SimConstants.Seconds(4),
                 CanReachHigh = false,
                 TraverseDegreesPerSecond = 150,
                 EngagementsPerBelt = 5, ReloadSeconds = 20,
-                SensorOptical = M(600), SensorThermal = M(450), SensorAcoustic = M(400),
+                SensorOptical = M(7200), SensorThermal = M(5400), SensorAcoustic = M(4800),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
 
@@ -505,14 +555,14 @@ namespace KZ.Sim
             {
                 Name = "Test Mount Arc 30", IsStructure = true, Tier = 2,
                 CanEngageAir = true,
-                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                CostMateriel = 450, BuildTicks = SimConstants.PlaySeconds(16),
                 Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                WeaponRangeMetres = M(1000), WeaponCooldownTicks = SimConstants.Seconds(4),
                 CanReachHigh = false,
                 TraverseDegreesPerSecond = 150,
                 EngagementsPerBelt = 5, ReloadSeconds = 20,
-                SensorOptical = M(600), SensorAcoustic = M(200),
+                SensorOptical = M(7200), SensorAcoustic = M(2400),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 30, SensorScanDegreesPerSecond = 0});
 
@@ -520,14 +570,14 @@ namespace KZ.Sim
             {
                 Name = "Test Mount Arc 120 Staring", IsStructure = true, Tier = 2,
                 CanEngageAir = true,
-                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                CostMateriel = 450, BuildTicks = SimConstants.PlaySeconds(16),
                 Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                WeaponRangeMetres = M(1000), WeaponCooldownTicks = SimConstants.Seconds(4),
                 CanReachHigh = false,
                 TraverseDegreesPerSecond = 150,
                 EngagementsPerBelt = 5, ReloadSeconds = 20,
-                SensorOptical = M(600), SensorAcoustic = M(200),
+                SensorOptical = M(7200), SensorAcoustic = M(2400),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 0});
 
@@ -535,21 +585,21 @@ namespace KZ.Sim
             {
                 Name = "Test Mount Arc 360", IsStructure = true, Tier = 2,
                 CanEngageAir = true,
-                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                CostMateriel = 450, BuildTicks = SimConstants.PlaySeconds(16),
                 Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
                 WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                WeaponRangeMetres = M(1000), WeaponCooldownTicks = SimConstants.Seconds(4),
                 CanReachHigh = false,
                 TraverseDegreesPerSecond = 150,
                 EngagementsPerBelt = 5, ReloadSeconds = 20,
-                SensorOptical = M(600), SensorAcoustic = M(200),
+                SensorOptical = M(7200), SensorAcoustic = M(2400),
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 360, SensorScanDegreesPerSecond = 0});
 
             Add(new UnitDef
             {
                 Name = "Uplink Terminal", IsStructure = true, Faction = FactionId.KestrelPact, Tier = 3,
-                CostMateriel = 2200, BuildTicks = SimConstants.Seconds(50),
+                CostMateriel = 2200, BuildTicks = SimConstants.PlaySeconds(50),
                 Hp = M(1800), Armour = ArmourClass.Structure, FootprintTiles = 5,
                 SigRadio = 85, SigThermal = 40, SigAcoustic = 20, SigVisual = 80
             });
@@ -557,7 +607,7 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Autonomy Lab", IsStructure = true, Faction = FactionId.ObsidianDirectorate, Tier = 3,
-                CostMateriel = 2000, BuildTicks = SimConstants.Seconds(48),
+                CostMateriel = 2000, BuildTicks = SimConstants.PlaySeconds(48),
                 Hp = M(1700), Armour = ArmourClass.Structure, FootprintTiles = 5,
                 SigRadio = 30, SigThermal = 45, SigAcoustic = 30, SigVisual = 80
             });
@@ -568,38 +618,57 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Recovery UGV", Tier = 1,
-                CostMateriel = 500, BuildTicks = SimConstants.Seconds(18),
-                Hp = M(420), Armour = ArmourClass.Light, SpeedMetresPerSecond = M(5.5),
-                SensorOptical = M(180),
+                CostMateriel = 500, BuildTicks = SimConstants.PlaySeconds(18),
+                Hp = M(420), Armour = ArmourClass.Light,
+                // 20 km/h. ground-logistics.md §12 correction 1: logistics robots
+                // "run 20-60 km/h flat out but far slower in practice", with a
+                // documented medevac averaging 16 km/h over 36.5 km.
+                SpeedMetresPerSecond = M(5.5),
+                SensorOptical = M(2160),
                 SigRadio = 0, SigThermal = 40, SigAcoustic = 45, SigVisual = 55
             });
 
             Add(new UnitDef
             {
                 Name = "Net Engineer", Tier = 1,
-                CostMateriel = 250, BuildTicks = SimConstants.Seconds(12),
-                Hp = M(220), Armour = ArmourClass.Soft, SpeedMetresPerSecond = M(4.5),
-                SensorOptical = M(200),
+                CostMateriel = 250, BuildTicks = SimConstants.PlaySeconds(12),
+                Hp = M(220), Armour = ArmourClass.Soft,
+                // 5.4 km/h, a section on foot carrying netting. Designer estimate -
+                // the corpus describes net-laying as a construction rate (5-12 km a
+                // day, ground-logistics.md §12 correction 3) and never as a walking
+                // pace.
+                SpeedMetresPerSecond = M(1.5),
+                SensorOptical = M(2400),
                 SigRadio = 0, SigThermal = 22, SigAcoustic = 15, SigVisual = 20
             });
 
             Add(new UnitDef
             {
                 Name = "Motorcycle Squad", Tier = 1,
-                CostMateriel = 300, BuildTicks = SimConstants.Seconds(12),
-                Hp = M(260), Armour = ArmourClass.Soft, SpeedMetresPerSecond = M(17.0),
+                CostMateriel = 300, BuildTicks = SimConstants.PlaySeconds(12),
+                Hp = M(260), Armour = ArmourClass.Soft,
+                // 61 km/h. Designer estimate: ground-logistics.md documents the
+                // motorbike assault as a tactic without giving a speed.
+                SpeedMetresPerSecond = M(17.0),
                 WeaponDamage = M(45), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(160),
-                SensorOptical = M(220),
+                // 400 m of small arms from a moving bike. Designer estimate; the
+                // corpus documents the motorbike assault without giving one. The
+                // old 160 map metres would read as 1,920 m, which is a rifle
+                // squad's *maximum* range on a range card, not an engagement.
+                WeaponRangeMetres = M(400),
+                SensorOptical = M(2640),
                 SigRadio = 0, SigThermal = 35, SigAcoustic = 60, SigVisual = 30
             });
 
             Add(new UnitDef
             {
                 Name = "Supply Truck", Tier = 1,
-                CostMateriel = 350, BuildTicks = SimConstants.Seconds(14),
-                Hp = M(520), Armour = ArmourClass.Light, SpeedMetresPerSecond = M(14.0),
-                SensorOptical = M(160),
+                CostMateriel = 350, BuildTicks = SimConstants.PlaySeconds(14),
+                Hp = M(520), Armour = ArmourClass.Light,
+                // 50 km/h. Designer estimate - ground-logistics.md §12 correction 2
+                // is about where trucks die (30-50 km depth), not how fast they go.
+                SpeedMetresPerSecond = M(14.0),
+                SensorOptical = M(1920),
                 SigRadio = 0, SigThermal = 55, SigAcoustic = 60, SigVisual = 70
             });
 
@@ -609,31 +678,44 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Logistics UGV", Tier = 2,
-                CostMateriel = 400, BuildTicks = SimConstants.Seconds(16),
-                Hp = M(500), Armour = ArmourClass.Light, SpeedMetresPerSecond = M(5.0),
+                CostMateriel = 400, BuildTicks = SimConstants.PlaySeconds(16),
+                Hp = M(500), Armour = ArmourClass.Light,
+                // 18 km/h, just under the 20 km/h bottom of ground-logistics.md §12's
+                // flat-out band and near its 16 km/h medevac anchor, because a robot
+                // under tele-operation does not drive flat out. The Kuryer in §3 is
+                // quoted at 35 km/h.
+                SpeedMetresPerSecond = M(5.0),
                 Link = LinkKind.Radio, LinkRobustness = 40,
-                SensorOptical = M(160),
+                SensorOptical = M(1920),
                 SigRadio = 45, SigThermal = 35, SigAcoustic = 40, SigVisual = 50
             });
 
             Add(new UnitDef
             {
                 Name = "EW Truck", Tier = 2,
-                CostMateriel = 700, BuildTicks = SimConstants.Seconds(24),
-                Hp = M(380), Armour = ArmourClass.Light, SpeedMetresPerSecond = M(8.0),
-                JamStrength = 55, JamRadiusMetres = M(350),
-                SensorOptical = M(200), SensorEsm = M(400),
+                CostMateriel = 700, BuildTicks = SimConstants.PlaySeconds(24),
+                Hp = M(380), Armour = ArmourClass.Light,
+                // 29 km/h cross-country. Designer estimate.
+                SpeedMetresPerSecond = M(8.0),
+                JamStrength = 55, JamRadiusMetres = M(4200),
+                SensorOptical = M(2400), SensorEsm = M(4800),
                 SigRadio = 30, SigThermal = 45, SigAcoustic = 45, SigVisual = 55
             });
 
             Add(new UnitDef
             {
                 Name = "IFV", Tier = 2,
-                CostMateriel = 900, BuildTicks = SimConstants.Seconds(26),
-                Hp = M(1250), Armour = ArmourClass.Heavy, SpeedMetresPerSecond = M(9.0),
+                CostMateriel = 900, BuildTicks = SimConstants.PlaySeconds(26),
+                Hp = M(1250), Armour = ArmourClass.Heavy,
+                // 32 km/h cross-country. Designer estimate.
+                SpeedMetresPerSecond = M(9.0),
                 WeaponDamage = M(130), WeaponType = DamageType.Kinetic,
-                WeaponRangeMetres = M(420),
-                SensorOptical = M(320), SensorThermal = M(250),
+                // 2,000 m: ground-force.md §3.1 sizes a 30 mm remote weapon
+                // station ("Dune") at "30 mm, out to about 2 km", which is this
+                // vehicle's gun. A straight reading of the old 420 map metres
+                // would have been 5,040 m, which no 30 mm autocannon does.
+                WeaponRangeMetres = M(2000),
+                SensorOptical = M(3840), SensorThermal = M(3000),
                 SigRadio = 0, SigThermal = 75, SigAcoustic = 75, SigVisual = 80,
                 SensorArcDegrees = 90, SensorScanDegreesPerSecond = 30});
 
@@ -642,21 +724,35 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Main Tank", Tier = 2,
-                CostMateriel = 1600, BuildTicks = SimConstants.Seconds(40),
+                CostMateriel = 1600, BuildTicks = SimConstants.PlaySeconds(40),
                 // 2250 rather than the 2300 in the design document, which does not
                 // quite deliver its own stated intent: a shaped charge into the top
                 // plate does 572, and four of those come to 2288, so at 2300 the
                 // fourth drone leaves the tank alive on twelve hit points. The
                 // intent - four drones kill a tank and three do not - is the thing
                 // worth preserving; the arithmetic slip is not.
-                Hp = M(2250), Armour = ArmourClass.Heavy, SpeedMetresPerSecond = M(7.5),
+                Hp = M(2250), Armour = ArmourClass.Heavy,
+                // 27 km/h cross-country. Designer estimate; front-2026.md describes
+                // armour being used as standoff fire rather than for breakthrough
+                // speed, and gives no figure.
+                SpeedMetresPerSecond = M(7.5),
                 WeaponDamage = M(340), WeaponType = DamageType.Kinetic,
-                WeaponRangeMetres = M(620),
-                // Thermal 250 rather than 300: thermal-optical.md §10 "Cooled/
-                // uncooled implied by the sensor table" - the battery's cooled
-                // imager should out-reach a tank's uncooled one by about two to
-                // one, and 500 against 300 was too tight.
-                SensorOptical = M(360), SensorThermal = M(250),
+                WeaponRangeMetres = M(3000),
+                // Thermal 3,000 m: thermal-optical.md §10 "Cooled/uncooled
+                // implied by the sensor table" - the battery's cooled imager
+                // should out-reach a tank's uncooled one by about two to one, and
+                // it does (6,240 against 3,000). §2's own table puts a good
+                // uncooled sensor on a running tank at 3.53 km by night and
+                // 1.43 km by day, which brackets this.
+                //
+                // The main gun reaches 3,000 m, and that is a change of substance
+                // rather than of units: a straight reading of the old 620 map
+                // metres would be 7,440 m, which is not a figure any tank gun
+                // has. The corpus gives no tank main-gun engagement range, so
+                // 3,000 is a designer estimate anchored on the two direct-fire
+                // envelopes it does give - ground-force.md §3.1's 30 mm RWS "out
+                // to about 2 km" and the same section's 3,000 m airburst turret.
+                SensorOptical = M(4320), SensorThermal = M(3000),
                 // thermal-optical.md §11: visual 100 (was 90) anchors the top of
                 // the optical scale. Thermal 90 stays as the night value.
                 SigRadio = 0, SigThermal = 90, SigAcoustic = 80, SigVisual = 100,
@@ -665,10 +761,12 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Designator Team", Faction = FactionId.KestrelPact, Tier = 2,
-                CostMateriel = 280, BuildTicks = SimConstants.Seconds(12),
-                Hp = M(180), Armour = ArmourClass.Soft, SpeedMetresPerSecond = M(4.0),
+                CostMateriel = 280, BuildTicks = SimConstants.PlaySeconds(12),
+                Hp = M(180), Armour = ArmourClass.Soft,
+                // 5.4 km/h on foot. Designer estimate, as Net Engineer.
+                SpeedMetresPerSecond = M(1.5),
                 Link = LinkKind.Satellite, LinkRobustness = 95,
-                SensorOptical = M(600), SensorThermal = M(300),
+                SensorOptical = M(7200), SensorThermal = M(3600),
                 SigRadio = 40, SigThermal = 22, SigAcoustic = 15, SigVisual = 20,
                 SensorArcDegrees = 30});
 
@@ -680,14 +778,19 @@ namespace KZ.Sim
                 Name = "Interceptor Battery", Faction = FactionId.KestrelPact, Tier = 3,
                 CanEngageAir = true, TraverseDegreesPerSecond = 45,
                 Ammo = AmmoType.Proximity, EngagementsPerBelt = 12, ReloadSeconds = 20,
-                CostMateriel = 1200, BuildTicks = SimConstants.Seconds(32),
-                Hp = M(600), Armour = ArmourClass.Light, SpeedMetresPerSecond = M(6.0),
+                CostMateriel = 1200, BuildTicks = SimConstants.PlaySeconds(32),
+                Hp = M(600), Armour = ArmourClass.Light,
+                // 21 km/h repositioning. Designer estimate.
+                SpeedMetresPerSecond = M(6.0),
                 WeaponDamage = M(220), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(320), WeaponCooldownTicks = 96,
+                WeaponRangeMetres = M(3840), WeaponCooldownTicks = SimConstants.Seconds(15),
                 IsInterceptor = true, InterceptBaseChance = M(0.75),
-                // Thermal 520 rather than 500: thermal-optical.md §10 "Cooled/
-                // uncooled implied by the sensor table", paired with the tank's 250.
-                SensorThermal = M(520), SensorRadar = M(800), SensorEsm = M(600),
+                // Thermal 6,240 m, a cooled imager: thermal-optical.md §10
+                // "Cooled/uncooled implied by the sensor table", paired with the
+                // tank's uncooled 3,000. §2's table puts a cooled sensor on a
+                // sky-backed Shahed past 20 km and on a running tank at 18.8 km by
+                // night, so this is conservative rather than generous.
+                SensorThermal = M(6240), SensorRadar = M(9600), SensorEsm = M(7200),
                 SigRadio = 70, SigThermal = 50, SigAcoustic = 40, SigVisual = 60,
                 SensorArcDegrees = 360});
         }
@@ -697,14 +800,17 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Scout Quad", CanChangeAltitude = true, Tier = 1, Propulsion = Propulsion.SmallElectric,
-                CostMateriel = 120, BuildTicks = SimConstants.Seconds(6),
+                CostMateriel = 120, BuildTicks = SimConstants.PlaySeconds(6),
                 Hp = M(40), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
-                SpeedMetresPerSecond = M(16.0),
+                // 60 km/h, the bottom of point-defence.md §"The target set these
+                // systems have to beat": "Small FPV / multirotor | 60-150 km/h". A
+                // scout loiters rather than races, so it sits at the bottom.
+                SpeedMetresPerSecond = M(17.0),
                 Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true, IsMeshRepeater = true,
-                SensorOptical = M(250),
+                SensorOptical = M(3000),
                 // thermal-optical.md §11 "Small electric quad": visual 6 (was 12).
-                // A 0.3 m airframe; §8.3 puts the wide-search limit at about 25
-                // map metres, and 6 is still generous.
+                // A 0.3 m airframe; §8.3 puts wide-search detection of one at
+                // 300 m, and 6 is still generous.
                 SigRadio = 60, SigThermal = 8, SigAcoustic = 12, SigVisual = 6, SigRadar = 22,
                 SensorArcDegrees = 180});
 
@@ -713,18 +819,22 @@ namespace KZ.Sim
             {
                 Name = "FPV Team", CanChangeAltitude = true, Tier = 1, Propulsion = Propulsion.SmallElectric,
                 AutonomyTier = AutonomyTier.TerminalGuidance,
-                CostMateriel = 200, BuildTicks = SimConstants.Seconds(8),
+                CostMateriel = 200, BuildTicks = SimConstants.PlaySeconds(8),
                 Hp = M(55), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
-                SpeedMetresPerSecond = M(22.0),
+                // 120 km/h. ground-force.md §3.3(a) gives the attack run directly -
+                // "an FPV covers 100 m in 2-3 seconds", which is 33-50 m/s - and
+                // acoustic.md §"sound is late" works its example against "an FPV doing
+                // 120 km/h". Inside point-defence.md's 60-150 km/h band.
+                SpeedMetresPerSecond = M(33.0),
                 BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true, OneWay = true,
                 WeaponDamage = M(260), WeaponType = DamageType.Shaped,
-                WeaponRangeMetres = M(8), WeaponAcquisitionTicks = 12, IsMeshRepeater = true,
-                SensorOptical = M(140),
+                WeaponRangeMetres = M(96), WeaponAcquisitionTicks = SimConstants.Millis(1500), IsMeshRepeater = true,
+                SensorOptical = M(1680),
                 // thermal-optical.md §11 "Small electric quad": visual 6 (was 15).
                 // This number is also the target's size in the gun's hit roll, so
-                // 15 was giving the mount 232 m against a 0.3 m airframe; §8.3
-                // puts the wide-search limit at about 25 map metres.
+                // 15 was giving the mount nearly 2.8 km against a 0.3 m airframe;
+                // §8.3 puts wide-search detection of one at 300 m.
                 SigRadio = 70, SigThermal = 8, SigAcoustic = 12, SigVisual = 6, SigRadar = 22
             });
 
@@ -734,15 +844,22 @@ namespace KZ.Sim
             {
                 Name = "Fiber FPV Team", Tier = 2, Propulsion = Propulsion.SmallElectric,
                 AutonomyTier = AutonomyTier.TerminalGuidance,
-                CostMateriel = 420, BuildTicks = SimConstants.Seconds(12),
+                CostMateriel = 420, BuildTicks = SimConstants.PlaySeconds(12),
                 Hp = M(70), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
-                SpeedMetresPerSecond = M(15.0), TurnRateDegreesPerSecond = 140,
+                // 79 km/h. Designer estimate inside point-defence.md's 60-150 km/h
+                // band, at the slow end: the spool is drag, and the research is
+                // consistent that fiber buys immunity at the cost of agility.
+                SpeedMetresPerSecond = M(22.0), TurnRateDegreesPerSecond = 140,
                 BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Fiber, LinkRobustness = SimConstants.UnjammableRobustness,
-                SpoolLengthMetres = M(1400), ConsumesCrew = true, OneWay = true,
+                // 16.8 km of fiber. ground-logistics.md §12 puts the fielded
+                // spool limit at "5-20 km", and this sits at the top of it -
+                // which is the point of the unit, since the leash is what it
+                // trades agility for.
+                SpoolLengthMetres = M(16800), ConsumesCrew = true, OneWay = true,
                 WeaponDamage = M(340), WeaponType = DamageType.Shaped,
-                WeaponRangeMetres = M(8), WeaponAcquisitionTicks = 12,
-                SensorOptical = M(220),
+                WeaponRangeMetres = M(96), WeaponAcquisitionTicks = SimConstants.Millis(1500),
+                SensorOptical = M(2640),
                 // thermal-optical.md §11 "Fiber-optic quad": thermal 9 (was 8) for
                 // the spool drag on the motors, visual 6 (was 15) as the FPV Team.
                 SigRadio = 0, SigThermal = 9, SigAcoustic = 12, SigVisual = 6, SigRadar = 22
@@ -752,16 +869,17 @@ namespace KZ.Sim
             {
                 Name = "Multirole Quad", CanChangeAltitude = true, Tier = 2, Propulsion = Propulsion.SmallElectric,
                 AutonomyTier = AutonomyTier.TerminalGuidance,
-                CostMateriel = 380, BuildTicks = SimConstants.Seconds(14),
+                CostMateriel = 380, BuildTicks = SimConstants.PlaySeconds(14),
                 Hp = M(110), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
-                SpeedMetresPerSecond = M(19.0),
+                // 101 km/h, mid-band of point-defence.md §"The target set".
+                SpeedMetresPerSecond = M(28.0),
                 BlackPolicy = BlackPolicy.DualLink,  // reusable and dual-linked: it tries the other link rather than committing
                 Link = LinkKind.Radio, AltLink = LinkKind.Mesh, LinkRobustness = 45,
                 ConsumesCrew = true,
                 WeaponDamage = M(180), WeaponType = DamageType.Shaped,
-                WeaponRangeMetres = M(40),
+                WeaponRangeMetres = M(480),
                 IsMeshRepeater = true,
-                SensorOptical = M(260),
+                SensorOptical = M(3120),
                 SigRadio = 65, SigThermal = 10, SigAcoustic = 14, SigVisual = 20, SigRadar = 26,
                 SensorArcDegrees = 120});
 
@@ -771,14 +889,17 @@ namespace KZ.Sim
             {
                 Name = "Interceptor FPV", CanChangeAltitude = true, Tier = 2, CanEngageAir = true,
                 Propulsion = Propulsion.SmallElectric,
-                CostMateriel = 300, BuildTicks = SimConstants.Seconds(10),
+                CostMateriel = 300, BuildTicks = SimConstants.PlaySeconds(10),
                 Hp = M(60), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
-                SpeedMetresPerSecond = M(34.0),
+                // 306 km/h. point-defence.md §5: "Propeller interceptors top out
+                // around 300-315 km/h" - and the same paragraph is why this unit is
+                // in trouble, because the jet drones it is meant to catch do 500-600.
+                SpeedMetresPerSecond = M(85.0),
                 BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true, OneWay = true,
                 WeaponDamage = M(0), WeaponType = DamageType.Ram,
-                WeaponRangeMetres = M(12), IsInterceptor = true, InterceptBaseChance = M(0.55), IsMeshRepeater = true,
-                SensorOptical = M(180),
+                WeaponRangeMetres = M(144), IsInterceptor = true, InterceptBaseChance = M(0.55), IsMeshRepeater = true,
+                SensorOptical = M(2160),
                 SigRadio = 70, SigThermal = 9, SigAcoustic = 15, SigVisual = 15, SigRadar = 22
             });
 
@@ -789,13 +910,15 @@ namespace KZ.Sim
             {
                 Name = "Recon Wing", Tier = 2, NavAid = NavAid.SceneMatching,
                 Propulsion = Propulsion.SmallElectric,
-                CostMateriel = 900, BuildTicks = SimConstants.Seconds(30),
+                CostMateriel = 900, BuildTicks = SimConstants.PlaySeconds(30),
                 Hp = M(200), Armour = ArmourClass.AirFixed, Layer = Layer.High,
-                SpeedMetresPerSecond = M(12.0), TurnRateDegreesPerSecond = 60,
+                // 90 km/h. Designer estimate: the corpus sizes recon by endurance and
+                // altitude rather than speed.
+                SpeedMetresPerSecond = M(25.0), TurnRateDegreesPerSecond = 60,
                 BlackPolicy = BlackPolicy.DualLink,  // reusable and dual-linked: it tries the other link rather than committing
                 Link = LinkKind.Radio, AltLink = LinkKind.Mesh, LinkRobustness = 45,
                 ConsumesCrew = true, IsMeshRepeater = true,
-                SensorOptical = M(900),
+                SensorOptical = M(10800),
                 // thermal-optical.md §11 "Fixed-wing recon": the research gives 14
                 // for an electric airframe and 38 for a small two-stroke, and calls
                 // the old 25 the average of two different aircraft. This one is
@@ -809,13 +932,15 @@ namespace KZ.Sim
                 Name = "Night Bomber", CanChangeAltitude = true, Tier = 2, NightOnly = true,
                 Propulsion = Propulsion.HeavyElectric,
                 MinesCarried = 4, MineDamage = M(600),
-                CostMateriel = 1100, BuildTicks = SimConstants.Seconds(34),
+                CostMateriel = 1100, BuildTicks = SimConstants.PlaySeconds(34),
                 Hp = M(480), Armour = ArmourClass.AirRotary, Layer = Layer.Low,
-                SpeedMetresPerSecond = M(8.0), TurnRateDegreesPerSecond = 90,
+                // 50 km/h. Designer estimate - the heavy multirotor is characterised
+                // everywhere in the corpus by payload and noise, never by speed.
+                SpeedMetresPerSecond = M(14.0), TurnRateDegreesPerSecond = 90,
                 Link = LinkKind.Radio, LinkRobustness = 40, ConsumesCrew = true,
                 WeaponDamage = M(300), WeaponType = DamageType.Fragmentation,
-                WeaponRangeMetres = M(30), WeaponCooldownTicks = 96,
-                SensorOptical = M(300), SensorThermal = M(400),
+                WeaponRangeMetres = M(360), WeaponCooldownTicks = SimConstants.Seconds(6),
+                SensorOptical = M(3600), SensorThermal = M(4800),
                 // thermal-optical.md §11 "Electric heavy multirotor": thermal 32
                 // (was 22) - six to eight motors at 60-90 °C plus large packs is
                 // about ten times the FPV's radiating area, and these are
@@ -846,14 +971,17 @@ namespace KZ.Sim
             {
                 Name = "Loitering Munition", Tier = 2, Propulsion = Propulsion.Combustion,
                 AutonomyTier = AutonomyTier.TerminalGuidance,
-                CostMateriel = 550, BuildTicks = SimConstants.Seconds(16),
+                CostMateriel = 550, BuildTicks = SimConstants.PlaySeconds(16),
                 Hp = M(90), Armour = ArmourClass.AirFixed, Layer = Layer.High,
-                SpeedMetresPerSecond = M(24.0), TurnRateDegreesPerSecond = 70,
+                // 130 km/h. Designer estimate for a piston loitering munition,
+                // under the 160-220 km/h point-defence.md §"The target set" gives the
+                // Shahed-136 because this airframe is smaller and loiters.
+                SpeedMetresPerSecond = M(36.0), TurnRateDegreesPerSecond = 70,
                 BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Mesh, LinkRobustness = 65, ConsumesCrew = true, OneWay = true,
                 WeaponDamage = M(300), WeaponType = DamageType.Shaped,
-                WeaponRangeMetres = M(10),
-                SensorOptical = M(240),
+                WeaponRangeMetres = M(120),
+                SensorOptical = M(2880),
                 // thermal-optical.md §11 "Combustion loitering munition": thermal
                 // 52 (was 45), a two-stroke at 325-345 °C; visual 20 (was 25), a
                 // one-to-two-metre airframe usually seen frontally in a dive.
@@ -869,15 +997,17 @@ namespace KZ.Sim
                 Propulsion = Propulsion.Combustion,
                 AutonomyTier = AutonomyTier.TerminalGuidance,
                 NavAid = NavAid.SceneMatching,
-                CostMateriel = 700, BuildTicks = SimConstants.Seconds(20),
+                CostMateriel = 700, BuildTicks = SimConstants.PlaySeconds(20),
                 Hp = M(120), Armour = ArmourClass.AirFixed, Layer = Layer.High,
-                SpeedMetresPerSecond = M(28.0), TurnRateDegreesPerSecond = 60,
+                // 162 km/h, the bottom of point-defence.md §"The target set":
+                // "Shahed-136 / Geran-2 | 160-220 km/h cruise".
+                SpeedMetresPerSecond = M(45.0), TurnRateDegreesPerSecond = 60,
                 BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
                 ConsumesCrew = false, OneWay = true,
                 WeaponDamage = M(420), WeaponType = DamageType.Shaped,
-                WeaponRangeMetres = M(10),
-                SensorOptical = M(200),
+                WeaponRangeMetres = M(120),
+                SensorOptical = M(2400),
                 SigRadio = 0, SigThermal = 40, SigAcoustic = 50, SigVisual = 25, SigRadar = 44
             });
 
@@ -893,16 +1023,19 @@ namespace KZ.Sim
                 Name = "Heavy Strike Drone", Tier = 3, NavAid = NavAid.SceneMatching,
                 Propulsion = Propulsion.Combustion,
                 AutonomyTier = AutonomyTier.TerminalGuidance,
-                CostMateriel = 800, BuildTicks = SimConstants.Seconds(22),
+                CostMateriel = 800, BuildTicks = SimConstants.PlaySeconds(22),
                 Hp = M(210), Armour = ArmourClass.AirFixed, Layer = Layer.High,
-                SpeedMetresPerSecond = M(18.0), TurnRateDegreesPerSecond = 35,
+                // 180 km/h. point-defence.md §"The target set these systems have to
+                // beat": "Shahed-136 / Geran-2 | 160-220 km/h cruise `[H]`", middle of
+                // the band. This is the airframe that row is about.
+                SpeedMetresPerSecond = M(50.0), TurnRateDegreesPerSecond = 35,
                 BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
                 ConsumesCrew = false, OneWay = true,
                 CanChangeAltitude = true,
                 WeaponDamage = M(520), WeaponType = DamageType.Shaped,
-                WeaponRangeMetres = M(10),
-                SensorOptical = M(200),
+                WeaponRangeMetres = M(120),
+                SensorOptical = M(2400),
                 // thermal-optical.md §11 "Combustion heavy strike drone": thermal
                 // 72 (was 60) - a fifty-horsepower two-stroke with an exposed
                 // exhaust, credibly found beyond 3-5 km by mid-wave infrared;
@@ -919,15 +1052,22 @@ namespace KZ.Sim
                 Name = "Jet Strike Drone", Tier = 3, Propulsion = Propulsion.Turbojet,
                 AutonomyTier = AutonomyTier.TerminalGuidance,
                 NavAid = NavAid.SceneMatching, HasCelestialHeading = true,
-                CostMateriel = 1900, BuildTicks = SimConstants.Seconds(34),
+                CostMateriel = 1900, BuildTicks = SimConstants.PlaySeconds(34),
                 Hp = M(180), Armour = ArmourClass.AirFixed, Layer = Layer.High,
-                SpeedMetresPerSecond = M(55.0), TurnRateDegreesPerSecond = 22,
+                // 504 km/h. point-defence.md §5: jet Geran variants "are designed for
+                // 500-600 km/h"; economics.md §1 makes the same figure the headline
+                // trend - "interceptors were designed against a 185 km/h target and
+                // Russia has moved to ~500 km/h jet airframes". The observed cruise
+                // in §5 is lower (300-350 with a terminal sprint); the design figure
+                // is used because this unit exists to be the thing the gun cannot
+                // track.
+                SpeedMetresPerSecond = M(140.0), TurnRateDegreesPerSecond = 22,
                 BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
                 ConsumesCrew = false, OneWay = true,
                 WeaponDamage = M(380), WeaponType = DamageType.Shaped,
-                WeaponRangeMetres = M(10),
-                SensorOptical = M(180),
+                WeaponRangeMetres = M(120),
+                SensorOptical = M(2160),
                 // thermal-optical.md §11 "Turbojet strike drone": thermal 92 (was
                 // 85), the hottest thing in the sky; visual 34 (was 40) - smaller
                 // and faster than the piston version, not bigger.
@@ -941,9 +1081,15 @@ namespace KZ.Sim
             Add(new UnitDef
             {
                 Name = "Decoy Drone", Tier = 3, Propulsion = Propulsion.Combustion,
-                CostMateriel = 130, BuildTicks = SimConstants.Seconds(7),
+                CostMateriel = 130, BuildTicks = SimConstants.PlaySeconds(7),
                 Hp = M(90), Armour = ArmourClass.AirFixed, Layer = Layer.High,
-                SpeedMetresPerSecond = M(20.0), TurnRateDegreesPerSecond = 40,
+                // The speed of the thing it is imitating, which is the entire product:
+                // point-defence.md §"The target set" gives the Gerbera decoy's speed
+                // as "as above", meaning the Shahed's 160-220 km/h. Anything slower
+                // and radar discrimination has it on velocity alone - which
+                // decoys-masking.md §"the most important change" says is exactly how
+                // a 120 km/h reflector glider gets rejected.
+                SpeedMetresPerSecond = M(50.0), TurnRateDegreesPerSecond = 40,
                 Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
                 ConsumesCrew = false, OneWay = true,
                 IsFlyingDecoy = true, CanChangeAltitude = true,
@@ -962,11 +1108,12 @@ namespace KZ.Sim
             {
                 Name = "Mothership", Faction = FactionId.ObsidianDirectorate, Tier = 3,
                 Propulsion = Propulsion.HeavyElectric,
-                CostMateriel = 1400, BuildTicks = SimConstants.Seconds(38),
+                CostMateriel = 1400, BuildTicks = SimConstants.PlaySeconds(38),
                 Hp = M(520), Armour = ArmourClass.AirFixed, Layer = Layer.High,
-                SpeedMetresPerSecond = M(13.0), TurnRateDegreesPerSecond = 50,
+                // 60 km/h. Designer estimate; a heavy multirotor carrying FPVs.
+                SpeedMetresPerSecond = M(17.0), TurnRateDegreesPerSecond = 50,
                 Link = LinkKind.Mesh, LinkRobustness = 65, ConsumesCrew = true, IsMeshRepeater = true,
-                SensorOptical = M(400), SensorEsm = M(300),
+                SensorOptical = M(4800), SensorEsm = M(3600),
                 SigRadio = 75, SigThermal = 45, SigAcoustic = 40, SigVisual = 45, SigRadar = 66
             });
 
@@ -975,15 +1122,16 @@ namespace KZ.Sim
                 Name = "Autonomous Munition", Faction = FactionId.ObsidianDirectorate, Tier = 3,
                 Propulsion = Propulsion.Combustion, AutonomyTier = AutonomyTier.TargetSelection,
                 NavAid = NavAid.SceneMatching,
-                CostMateriel = 620, BuildTicks = SimConstants.Seconds(18),
+                CostMateriel = 620, BuildTicks = SimConstants.PlaySeconds(18),
                 Hp = M(110), Armour = ArmourClass.AirFixed, Layer = Layer.High,
-                SpeedMetresPerSecond = M(22.0), TurnRateDegreesPerSecond = 70,
+                // 130 km/h. Designer estimate, as Loitering Munition.
+                SpeedMetresPerSecond = M(36.0), TurnRateDegreesPerSecond = 70,
                 BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
                 Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
                 ConsumesCrew = false, OneWay = true, AutonomyQuality = 55,
                 WeaponDamage = M(320), WeaponType = DamageType.Shaped,
-                WeaponRangeMetres = M(10),
-                SensorOptical = M(220),
+                WeaponRangeMetres = M(120),
+                SensorOptical = M(2640),
                 SigRadio = 0, SigThermal = 42, SigAcoustic = 52, SigVisual = 25, SigRadar = 44
             });
         }

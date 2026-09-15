@@ -42,8 +42,10 @@ namespace KZ.Sim
         SatelliteCoverageLost,     // crossed a border out of the constellation's licensed ground
         SatelliteCoverageRegained,
         SortieRefusedDaylight,
-        SortieRefusedWeather,
-        DayPhaseChanged
+        SortieRefusedWeather
+        // DayPhaseChanged is gone with the day/night cycle. A match is fought at
+        // one time of day now and never changes phase, so nothing ever pushed
+        // it - World.Phase is a constant to read, not an event to wait for.
     }
 
     public struct SimEvent

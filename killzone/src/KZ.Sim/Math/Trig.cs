@@ -168,11 +168,21 @@ namespace KZ.Sim
             return (ushort)((from + d) & 0xFFFF);
         }
 
-        /// <summary>Degrees per second converted to bam per tick at the sim's 32 Hz.</summary>
+        /// <summary>
+        /// Real degrees per real second converted to bam per tick.
+        ///
+        /// The multiplier belongs here for the same reason it belongs in Dt: a
+        /// turret's traverse rate and a drone's turn rate are physical rates in
+        /// the same world the drone is flying through, so if the world runs at 4x
+        /// they do too. Leaving this at the bare tick rate is what would make a
+        /// 150 deg/s mount take four times as long to come round as the airframe
+        /// crossing in front of it thinks it should.
+        /// </summary>
         public static int DegreesPerSecondToBamPerTick(int degreesPerSecond)
         {
-            // 360 degrees = 65536 bam; one tick is 1/32 s.
-            return (degreesPerSecond * 65536) / (360 * SimConstants.TicksPerSecond);
+            // 360 degrees = 65536 bam; one tick is 1/8 of a real second at 4x.
+            return (degreesPerSecond * 65536 * SimConstants.TimeMultiplier)
+                 / (360 * SimConstants.TicksPerSecond);
         }
     }
 }

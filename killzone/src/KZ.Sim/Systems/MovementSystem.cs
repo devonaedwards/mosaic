@@ -37,7 +37,14 @@ namespace KZ.Sim
             Fix2 toTarget = destination - pos;
             Fix distance = toTarget.Magnitude();
 
-            Fix arriveRadius = Fix.FromInt(2);
+            // Twenty-four metres, not two. This has to stay larger than one
+            // tick of travel or nothing ever arrives: at real speeds and a tick
+            // of an eighth of a real second, a jet strike drone covers 17.5 m
+            // between ticks and would step straight over a 2 m circle, turn
+            // round, and orbit its own destination forever. The old 2 was safe
+            // only because the fastest thing in the catalogue moved 1.7 map
+            // metres a tick.
+            Fix arriveRadius = Fix.FromInt(24);
             if (distance <= arriveRadius)
             {
                 w.Entities.Velocity[i] = Fix2.Zero;

@@ -174,7 +174,7 @@ namespace KZ.Sim
     ///
     /// The ladder is short because the research says it is short. There is no
     /// affordable middle: either an airframe carries an absolute optical
-    /// reference and knows its position to within a map metre or two, or it is
+    /// reference and knows its position to within a few tens of metres, or it is
     /// dead reckoning and its error grows without bound. Celestial navigation,
     /// which sounds like the missing rung, is not one - see CelestialHeading.
     /// </summary>
@@ -190,8 +190,8 @@ namespace KZ.Sim
         /// <summary>
         /// Matches what the camera sees against stored imagery of the ground
         /// below. Four unrelated fielded systems agree on ten to thirty real
-        /// metres of bounded error, which at this game's compression is one to
-        /// three map metres - near enough exact.
+        /// metres of bounded error - well inside the radius at which a warhead
+        /// still lands on the target, so near enough exact.
         ///
         /// So this is not a more accurate tier, it is a different *kind* of
         /// tier: it either has a lock and is essentially right, or it has lost

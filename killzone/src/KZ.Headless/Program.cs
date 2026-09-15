@@ -36,8 +36,8 @@ namespace KZ.Headless
         // drones are on their own over ground you are attacking into, the
         // shallow shot more than the deep one. Mirrors
         // src/KZ.Balance/Program.cs's StandardBorderMetres.
-        const int BorderMetres = 1300;
-        const int NeutralMetres = 64; // two Territory cells either side of the line
+        const int BorderMetres = 15600;   // real metres; 1,300 at the old 12:1
+        const int NeutralMetres = 768; // two Territory cells (384 m) either side of the line
 
         static EntityHandle designatorHandle;
 
@@ -59,7 +59,9 @@ namespace KZ.Headless
             }
 
             Console.WriteLine("KILL ZONE - headless match");
-            Console.WriteLine("seed " + seed + ", " + seconds + " seconds of simulated time");
+            Console.WriteLine("seed " + seed + ", " + seconds + " seconds of play ("
+                              + (seconds * SimConstants.TimeMultiplier) + " s of world at "
+                              + SimConstants.TimeMultiplier + "x)");
             Console.WriteLine(new string('-', 68));
 
             World w = BuildMap(seed);
@@ -89,7 +91,12 @@ namespace KZ.Headless
         /// </summary>
         static World BuildMap(ulong seed)
         {
-            Terrain t = new Terrain(2400, 1600);
+            // 28.8 x 19.2 real kilometres - the same ground as the old
+            // 2400 x 1600 at the twelve-to-one the catalogue used to be written
+            // in, now stated in the units everything else is in. The tile
+            // rectangles below are tile indices and are unchanged, because the
+            // build tile grew with the map.
+            Terrain t = new Terrain(28800, 19200);
             t.Fill(TileClass.Open);
             // A treeline across the middle, and power lines beside the road, so
             // there is a fast route and a safe route and they are not the same.
@@ -111,31 +118,32 @@ namespace KZ.Headless
             GrantHomeImagery(w, 2, false, BorderMetres + NeutralMetres);
 
             // Attacker.
-            w.Spawn(Catalog.IdOf("Command Post"), 1, P(300, 780));
-            w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(380, 860));
-            w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(300, 900));
-            w.Spawn(Catalog.IdOf("Drone Workshop"), 1, P(380, 700));
-            w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(450, 780));
+            w.Spawn(Catalog.IdOf("Command Post"), 1, P(3600, 9360));
+            w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(4560, 10320));
+            w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(3600, 10800));
+            w.Spawn(Catalog.IdOf("Drone Workshop"), 1, P(4560, 8400));
+            w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(5400, 9360));
             // Far enough forward to extend radio control, far enough back that
             // the defending tank cannot simply shell it.
-            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(780, 780));
+            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(9360, 9360));
             // On the attacker's own ground when the match starts - link green,
             // in the constellation's licensed coverage. Script() below pushes
             // it across the border later, which is the only way to see FINDINGS
             // 26's mechanic happen in a played match rather than a unit test.
-            designatorHandle = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(1200, 700));
+            designatorHandle = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(14400, 8400));
 
             // Defender.
-            w.Spawn(Catalog.IdOf("Command Post"), 2, P(2100, 780));
-            w.Spawn(Catalog.IdOf("EW Post"), 2, P(1500, 780));
+            w.Spawn(Catalog.IdOf("Command Post"), 2, P(25200, 9360));
+            w.Spawn(Catalog.IdOf("EW Post"), 2, P(18000, 9360));
             // The gun mount sits back on the base rather than covering the whole
-            // approach. As currently tuned one of them kills a drone every 1.25
-            // seconds across 550 metres, which nothing in the roster can cross -
+            // approach. As currently tuned one of them kills a drone every four
+            // seconds across a kilometre, which nothing in the roster crosses
+            // for free -
             // see docs/FINDINGS.md, item 2 - so where it is placed decides whether
             // there is a game in front of it.
-            w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(2050, 780));
-            w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1450, 780));
-            w.Spawn(Catalog.IdOf("Supply Truck"), 2, P(1900, 860));
+            w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(24600, 9360));
+            w.Spawn(Catalog.IdOf("Main Tank"), 2, P(17400, 9360));
+            w.Spawn(Catalog.IdOf("Supply Truck"), 2, P(22800, 10320));
 
             return w;
         }
@@ -163,7 +171,7 @@ namespace KZ.Headless
             // is the only line in the mission that makes the satellite link go
             // black in a played match rather than a unit test.
             if (tick == SimConstants.Seconds(10))
-                MovementSystem.OrderMoveTo(w, designatorHandle, P(1450, 700));
+                MovementSystem.OrderMoveTo(w, designatorHandle, P(17400, 8400));
 
             // One extra, early strike straight at the supply truck - deep
             // enough behind the border that a scene-matching drone with no
@@ -176,7 +184,7 @@ namespace KZ.Headless
                 EntityHandle truck = FindFirst(w, 2, "Supply Truck");
                 if (w.Entities.IsAlive(truck))
                     w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Heavy Strike Drone"),
-                                                    P(860, 780), truck, 1000));
+                                                    P(10320, 9360), truck, 1000));
             }
 
             // One sortie a second, rotating the cheap radio airframe - which the
@@ -209,7 +217,7 @@ namespace KZ.Headless
             // for every second it is in the air, so a drone launched a kilometre
             // further back usually loses its line before it arrives. Where you
             // launch from is a real decision, not a detail.
-            Fix2 pad = P(860, 780);
+            Fix2 pad = P(10320, 9360);
 
             EntityHandle target = FindFirst(w, 2, "Main Tank");
             if (!w.Entities.IsAlive(target)) target = FindFirst(w, 2, "Supply Truck");
@@ -347,9 +355,6 @@ namespace KZ.Headless
                     case SimEventKind.AutonomyMisidentified:
                         Say(e.Tick, "an autonomous munition picked the wrong target");
                         break;
-                    case SimEventKind.DayPhaseChanged:
-                        Say(e.Tick, "it is now " + ((DayPhase)e.Param).ToString().ToLowerInvariant());
-                        break;
                     // AUDIT-UNWIRED.md F5/F6: these four fired only inside
                     // KZ.Tests before this pass. Narrating them here is how a
                     // played match, not just a unit test, shows the border
@@ -386,6 +391,9 @@ namespace KZ.Headless
         void Say(int tick, string what)
         {
             if (!verbose) return;
+            // The match clock a reader wants is play time, which is what the
+            // tick rate measures; the world's own clock runs TimeMultiplier
+            // times faster and is not what anyone is watching.
             int seconds = tick / SimConstants.TicksPerSecond;
             Console.WriteLine(string.Format("  {0,2}:{1:00}  {2}", seconds / 60, seconds % 60, what));
         }

@@ -39,6 +39,15 @@ namespace KZ.Sim
         public readonly CommandBuffer Commands = new CommandBuffer();
 
         public int Tick { get; private set; }
+
+        /// <summary>
+        /// What time of day this match is fought at. Fixed when the match is set
+        /// up and constant for its whole length: at the global time multiplier a
+        /// 24-hour cycle would take six hours of play, so a match cannot contain
+        /// one and a turret that slews in 71 ticks at the same time. The cycle
+        /// belongs to the campaign layer, whose clock runs in months.
+        /// docs/SCALE.md, "What this costs, and the one thing it cannot buy".
+        /// </summary>
         public DayPhase Phase { get; private set; }
 
         /// <summary>
@@ -57,9 +66,11 @@ namespace KZ.Sim
             : this(terrain, entityCapacity, tetherCapacity, matchSeed, playerCount, 0) { }
 
         /// <summary>
-        /// startTick offsets where in the day and night cycle the match begins.
-        /// Missions use it to open at dawn or in darkness; experiments use it to
-        /// test the same engagement under both.
+        /// startTick is the clock reading the match opens on. It sets what time of
+        /// day the match is fought at - missions open at dawn or in darkness,
+        /// experiments run the same engagement under both - and, unlike before,
+        /// that is all it sets: the phase never changes again once the match is
+        /// running. SimConstants.TimeOfDayAt is the mapping.
         /// </summary>
         public World(Terrain terrain, int entityCapacity, int tetherCapacity, ulong matchSeed,
                      int playerCount, int startTick)
@@ -96,8 +107,7 @@ namespace KZ.Sim
                 };
             }
             Tick = startTick;
-            Phase = DayPhase.Day;
-            UpdateDayPhase();
+            Phase = SimConstants.TimeOfDayAt(startTick);
         }
 
         public PlayerState Player(byte team) { return Players[team]; }
@@ -322,7 +332,11 @@ namespace KZ.Sim
             {
                 Damage = damage,
                 Type = DamageType.Shaped,
-                TriggerRadiusMetres = Fix.FromInt(12),
+                // 144 real metres of trigger. Designer estimate - deep-strike.md
+                // describes air-laid road mining without giving an influence
+                // radius - and it is the old 12 at the catalogue's 12:1, which
+                // reads as "the vehicle drove over the stretch of road it is on".
+                TriggerRadiusMetres = Fix.FromInt(144),
                 ArmedAtTick = Tick + SimConstants.MineArmingTicks,
                 LaidByTeam = laidByTeam
             };
@@ -362,8 +376,6 @@ namespace KZ.Sim
             // the renderer, the interface and the replay together.
             Commands.Execute(this);
 
-            UpdateDayPhase();
-
             if (Tick % SimConstants.SignalRebuildInterval == 0) RebuildSignalField();
             if (Tick % SimConstants.MeshRebuildInterval == 0) RebuildMeshGraphs();
 
@@ -392,23 +404,6 @@ namespace KZ.Sim
             for (int t = 1; t < Players.Length; t++) Players[t].Crews.Tick(Tick, Events);
 
             FlushDeaths();
-        }
-
-        void UpdateDayPhase()
-        {
-            int t = Tick % SimConstants.DayNightCycleTicks;
-            DayPhase p;
-            if (t < SimConstants.DayTicks) p = DayPhase.Day;
-            else if (t < SimConstants.DayTicks + SimConstants.DuskTicks) p = DayPhase.Dusk;
-            else if (t < SimConstants.DayTicks + SimConstants.DuskTicks + SimConstants.NightTicks) p = DayPhase.Night;
-            else p = DayPhase.Dawn;
-
-            if (p != Phase)
-            {
-                Phase = p;
-                Events.Push(SimEventKind.DayPhaseChanged, Tick, EntityHandle.None,
-                            EntityHandle.None, 0, (int)p);
-            }
         }
 
         void RebuildSignalField()
@@ -1025,6 +1020,8 @@ namespace KZ.Sim
             Fix effective = sensorRange * modifier * WeatherScale(channel)
                             * SignatureScale(signature, channel);
             if (effective.Raw <= 0) return false;
+            if (effective > SimConstants.MaxComparableRangeMetres)
+                effective = SimConstants.MaxComparableRangeMetres;
             if (distSq > effective * effective) return false;
 
             Fix solid = effective * SimConstants.DetectionSolidFraction;
@@ -1278,7 +1275,15 @@ namespace KZ.Sim
             }
 
             if (nominal.Raw <= 0 || strength == 0) return Fix.Zero;
-            return nominal * mod * WeatherScale(channel) * SignatureScale(strength, channel);
+
+            // Capped, because every caller squares this to avoid a square root
+            // per pair per tick and a Q31.32 square runs out at 46,340 m - see
+            // SimConstants.MaxComparableRangeMetres. A radar mast against a decoy
+            // built to return three times its own cross-section clears that, and
+            // uncapped it would wrap and the mast would see nothing at all.
+            Fix reach = nominal * mod * WeatherScale(channel) * SignatureScale(strength, channel);
+            return reach > SimConstants.MaxComparableRangeMetres
+                 ? SimConstants.MaxComparableRangeMetres : reach;
         }
 
         /// <summary>The best reach any channel of one sensor has against one target.</summary>
@@ -1399,6 +1404,13 @@ namespace KZ.Sim
                         h = (h ^ (ulong)(uint)last[i]) * Prime;
                 }
             }
+
+            // The match's time of day. It used to be a pure function of Tick
+            // (which is hashed above) and is now a setting chosen when the world
+            // is built, so it is persistent state of its own: two peers that
+            // disagreed about whether it is night would disagree about every
+            // optical detection from the first tick.
+            h = (h ^ (ulong)Phase) * Prime;
 
             h = (h ^ Territory.StateHash()) * Prime;
             h = (h ^ Imagery.StateHash()) * Prime;

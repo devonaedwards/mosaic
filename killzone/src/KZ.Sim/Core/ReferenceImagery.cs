@@ -29,7 +29,8 @@ namespace KZ.Sim
 {
     public sealed class ReferenceImagery
     {
-        public const int CellMetres = 64;
+        // 768 real metres - engine resolution scaled with the map, as Territory.
+        public const int CellMetres = 768;
 
         public readonly int CellsX;
         public readonly int CellsY;

@@ -148,7 +148,7 @@ namespace KZ.Tests
         /// </summary>
         static World BuildScenario(ulong seed)
         {
-            Terrain t = new Terrain(2048, 2048);
+            Terrain t = new Terrain(24576, 24576);
             t.Fill(TileClass.Open);
             // A treeline and a power-line corridor for tethers to catch on.
             t.FillRect(60, 40, 90, 70, TileClass.Forest);
@@ -156,14 +156,14 @@ namespace KZ.Tests
 
             World w = new World(t, 512, 64, seed, 2);
 
-            w.Spawn(Catalog.IdOf("Command Post"), 1, P(300, 1000));
-            w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(360, 1060));
-            w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(420, 1000));
+            w.Spawn(Catalog.IdOf("Command Post"), 1, P(3600, 12000));
+            w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(4320, 12720));
+            w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(5040, 12000));
 
-            w.Spawn(Catalog.IdOf("Command Post"), 2, P(1700, 1000));
-            w.Spawn(Catalog.IdOf("EW Post"), 2, P(1200, 1000));
-            w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1300, 1000));
-            w.Spawn(Catalog.IdOf("Supply Truck"), 2, P(1400, 1100));
+            w.Spawn(Catalog.IdOf("Command Post"), 2, P(20400, 12000));
+            w.Spawn(Catalog.IdOf("EW Post"), 2, P(14400, 12000));
+            w.Spawn(Catalog.IdOf("Main Tank"), 2, P(15600, 12000));
+            w.Spawn(Catalog.IdOf("Supply Truck"), 2, P(16800, 13200));
 
             w.Player(1).Materiel = Fix.FromInt(20000);
             w.Player(2).Materiel = Fix.FromInt(20000);
@@ -181,9 +181,9 @@ namespace KZ.Tests
 
             EntityHandle spawned;
             LaunchResult res = SortieSystem.Launch(w, 1, Catalog.IdOf(airframe),
-                                                   P(400, 1000), EntityHandle.None, wave, out spawned);
+                                                   P(4800, 12000), EntityHandle.None, wave, out spawned);
             if (res == LaunchResult.Launched)
-                MovementSystem.OrderMoveTo(w, spawned, P(1300, 1000));
+                MovementSystem.OrderMoveTo(w, spawned, P(15600, 12000));
 
             // The defender sends a truck back and forth, so something is moving on
             // both sides.
@@ -194,7 +194,7 @@ namespace KZ.Tests
                     if (!w.Entities.IsSlotAlive(i)) continue;
                     if (w.Entities.Team[i] != 2) continue;
                     if (w.Entities.DefId[i] != Catalog.IdOf("Supply Truck")) continue;
-                    Fix2 dest = (wave % 8 == 0) ? P(1600, 1100) : P(1250, 1100);
+                    Fix2 dest = (wave % 8 == 0) ? P(19200, 13200) : P(15000, 13200);
                     MovementSystem.OrderMoveTo(w, w.Entities.HandleAt(i), dest);
                 }
             }

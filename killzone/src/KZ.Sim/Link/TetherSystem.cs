@@ -266,7 +266,12 @@ namespace KZ.Sim
             }
 
             if (worst.Raw <= 0) return false;
-            return rng.Chance(worst / Fix.FromInt(SimConstants.TicksPerSecond));
+            // Terrain.SnagRatePerSecond is per real second, so it divides by the
+            // ticks in a real second, not by the tick rate. At 4x that is eight,
+            // and the probability per second of *world* is unchanged - which is
+            // what keeps a forest crossing as dangerous per kilometre flown as it
+            // was before the rescale.
+            return rng.Chance(worst / Fix.FromInt(SimConstants.TicksPerRealSecond));
         }
 
         /// <summary>The per-second hazard carried by the ground one segment lies across.</summary>

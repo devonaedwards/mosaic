@@ -63,10 +63,20 @@ namespace KZ.Tests
             {
                 // This is the reason the game ticks at 32 Hz and not 30: 1/32 is
                 // exact in binary, so dt accumulates no rounding error over a
-                // match, and "22 metres per second" means 22 metres per second.
+                // match, and "33 metres per second" means 33 metres per second.
+                //
+                // The time multiplier has to divide the tick rate for that to
+                // survive, which is the real content of this test now: eight ticks
+                // are one second of world at 4x, exactly, and the second the
+                // player experiences is still thirty-two of them.
                 Fix accumulated = Fix.Zero;
-                for (int i = 0; i < SimConstants.TicksPerSecond; i++) accumulated += SimConstants.Dt;
-                Assert.Equal(Fix.OneRaw, accumulated.Raw, "32 ticks sum to exactly one second");
+                for (int i = 0; i < SimConstants.TicksPerRealSecond; i++) accumulated += SimConstants.Dt;
+                Assert.Equal(Fix.OneRaw, accumulated.Raw, "eight ticks sum to exactly one real second");
+
+                for (int i = SimConstants.TicksPerRealSecond; i < SimConstants.TicksPerSecond; i++)
+                    accumulated += SimConstants.Dt;
+                Assert.Equal(Fix.FromInt(SimConstants.TimeMultiplier).Raw, accumulated.Raw,
+                             "and a second of play is exactly four of them");
             });
 
             r.Group("vectors");

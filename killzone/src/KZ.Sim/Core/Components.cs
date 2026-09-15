@@ -73,7 +73,7 @@ namespace KZ.Sim
         public bool CelestialHeading;
 
         /// <summary>
-        /// Current aimpoint error, in map metres. What the drone is wrong by.
+        /// Current aimpoint error, in real metres. What the drone is wrong by.
         /// </summary>
         public Fix ErrorMetres;
 

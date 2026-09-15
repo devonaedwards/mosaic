@@ -26,7 +26,10 @@ namespace KZ.Sim
 {
     public sealed class Territory
     {
-        public const int CellMetres = 32;
+        // 384 real metres. Engine resolution scaled with the map (SimConstants,
+        // "the map"), so the ownership grid is the same number of cells across
+        // the same ground as it was in compressed units.
+        public const int CellMetres = 384;
 
         public readonly int CellsX;
         public readonly int CellsY;

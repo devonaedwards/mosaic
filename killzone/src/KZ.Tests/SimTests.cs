@@ -11,12 +11,13 @@ namespace KZ.Tests
     public static class SimTests
     {
         static Fix F(double v) { return Fix.FromDoubleContentOnly(v); }
+        /// <summary>A point on the map, in real metres - as everything is now.</summary>
         static Fix2 P(double x, double y) { return new Fix2(F(x), F(y)); }
 
         /// <summary>A small empty map with two teams, for tests that need a world.</summary>
         static World MakeWorld(ulong seed)
         {
-            Terrain t = new Terrain(2048, 2048);
+            Terrain t = new Terrain(24576, 24576);
             t.Fill(TileClass.Open);
             return new World(t, 512, 64, seed, 2);
         }
@@ -42,11 +43,11 @@ namespace KZ.Tests
 
             r.Run("a bubble bites hardest at the centre and frays at the rim", delegate
             {
-                // An electronic warfare post: strength 70, reach 450 metres.
-                Assert.Equal(91, SignalGrid.EffectiveJam(70, F(450), F(0)), "at the emitter");
-                Assert.Equal(46, SignalGrid.EffectiveJam(70, F(450), F(225)), "at half reach");
-                Assert.Equal(0, SignalGrid.EffectiveJam(70, F(450), F(450)), "at the rim");
-                Assert.Equal(0, SignalGrid.EffectiveJam(70, F(450), F(600)), "outside");
+                // An electronic warfare post: strength 70, reach 5,400 metres.
+                Assert.Equal(91, SignalGrid.EffectiveJam(70, F(5400), F(0)), "at the emitter");
+                Assert.Equal(46, SignalGrid.EffectiveJam(70, F(5400), F(2700)), "at half reach");
+                Assert.Equal(0, SignalGrid.EffectiveJam(70, F(5400), F(5400)), "at the rim");
+                Assert.Equal(0, SignalGrid.EffectiveJam(70, F(5400), F(7200)), "outside");
             });
 
             r.Run("skirting the edge of a bubble is a real play", delegate
@@ -54,10 +55,10 @@ namespace KZ.Tests
                 // A basic radio drone has robustness 40. It should survive the
                 // outer third of an electronic warfare post's reach, so flying
                 // around the rim rather than through the middle is worth doing.
-                int atRim = SignalGrid.EffectiveJam(70, F(450), F(340));
-                Assert.True(atRim < 40, "a radio drone survives at 340 metres out");
-                int deeper = SignalGrid.EffectiveJam(70, F(450), F(200));
-                Assert.True(deeper > 40, "and does not at 200 metres out");
+                int atRim = SignalGrid.EffectiveJam(70, F(5400), F(4080));
+                Assert.True(atRim < 40, "a radio drone survives four kilometres out");
+                int deeper = SignalGrid.EffectiveJam(70, F(5400), F(2400));
+                Assert.True(deeper > 40, "and does not at two and a half");
             });
 
             r.Run("overlapping jammers take the strongest, never the sum", delegate
@@ -65,13 +66,13 @@ namespace KZ.Tests
                 // Two weak jammers must not quietly add up to a strong one. Nothing
                 // on screen would show it and the player would be learning a rule
                 // the game never told them.
-                SignalGrid g = new SignalGrid(1024, 1024);
-                g.AddEmitter(new JamEmitter { Position = P(500, 500), Strength = 55, RadiusMetres = F(350), Team = 1 });
-                g.AddEmitter(new JamEmitter { Position = P(520, 500), Strength = 55, RadiusMetres = F(350), Team = 1 });
+                SignalGrid g = new SignalGrid(12288, 12288);
+                g.AddEmitter(new JamEmitter { Position = P(6000, 6000), Strength = 55, RadiusMetres = F(4200), Team = 1 });
+                g.AddEmitter(new JamEmitter { Position = P(6240, 6000), Strength = 55, RadiusMetres = F(4200), Team = 1 });
                 g.Rebuild();
 
-                int sampled = g.SampleFor(P(510, 500), 40);
-                int oneAlone = SignalGrid.EffectiveJam(55, F(350), F(10));
+                int sampled = g.SampleFor(P(6120, 6000), 40);
+                int oneAlone = SignalGrid.EffectiveJam(55, F(4200), F(120));
                 Assert.True(sampled <= oneAlone + 2, "overlap does not stack (got " + sampled + ")");
             });
 
@@ -80,15 +81,15 @@ namespace KZ.Tests
                 // Near a drone's own threshold the coarse grid is not trusted,
                 // because across one cell the field changes by several points and a
                 // drone on the boundary would blink in and out of having a pilot.
-                SignalGrid g = new SignalGrid(1024, 1024);
-                g.AddEmitter(new JamEmitter { Position = P(512, 512), Strength = 70, RadiusMetres = F(450), Team = 1 });
+                SignalGrid g = new SignalGrid(12288, 12288);
+                g.AddEmitter(new JamEmitter { Position = P(6144, 6144), Strength = 70, RadiusMetres = F(5400), Team = 1 });
                 g.Rebuild();
 
                 int prev = -1;
                 bool monotonic = true;
-                for (int d = 0; d < 440; d += 8)
+                for (int d = 0; d < 5280; d += 96)
                 {
-                    int v = g.SampleFor(P(512 + d, 512), 40);
+                    int v = g.SampleFor(P(6144 + d, 6144), 40);
                     if (prev >= 0 && v > prev + 1) monotonic = false;
                     prev = v;
                 }
@@ -106,9 +107,9 @@ namespace KZ.Tests
             {
                 World w = MakeWorld(1);
                 // An anchor so the drone starts with a control path at all.
-                w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 500));
-                EntityHandle jammer = w.Spawn(Catalog.IdOf("EW Post"), 2, P(1000, 500));
-                EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(500, 500));
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(4800, 6000));
+                EntityHandle jammer = w.Spawn(Catalog.IdOf("EW Post"), 2, P(12000, 6000));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(6000, 6000));
 
                 for (int i = 0; i < 8; i++) w.Step();
                 Assert.True(w.Entities.Link[drone.Index].Pip == LinkPip.Green,
@@ -117,7 +118,7 @@ namespace KZ.Tests
                 // Move it well inside the bubble, but not on top of the jammer -
                 // a one-way drone parked on an enemy structure quite correctly
                 // dives on it, which would end the test early.
-                w.Entities.Position[drone.Index] = P(1150, 500);
+                w.Entities.Position[drone.Index] = P(13800, 6000);
                 w.Step(); w.Step(); w.Step(); w.Step();
                 Assert.True(w.Entities.Link[drone.Index].Pip == LinkPip.Amber,
                             "amber inside the bubble");
@@ -132,9 +133,9 @@ namespace KZ.Tests
             r.Run("amber costs you fine control before it costs you the aircraft", delegate
             {
                 World w = MakeWorld(2);
-                w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 500));
-                w.Spawn(Catalog.IdOf("EW Post"), 2, P(1000, 500));
-                EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(1150, 500));
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(4800, 6000));
+                w.Spawn(Catalog.IdOf("EW Post"), 2, P(12000, 6000));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(13800, 6000));
 
                 for (int i = 0; i < 6; i++) w.Step();
                 Assert.True(w.Entities.Link[drone.Index].Pip == LinkPip.Amber, "amber");
@@ -148,15 +149,15 @@ namespace KZ.Tests
             {
                 // This is the whole point of the rung: there is no radio to jam.
                 World w = MakeWorld(3);
-                w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 500));
-                w.Spawn(Catalog.IdOf("EW Post"), 2, P(1000, 500));
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(4800, 6000));
+                w.Spawn(Catalog.IdOf("EW Post"), 2, P(12000, 6000));
 
                 EntityHandle spawned;
                 LaunchResult res = SortieSystem.Launch(w, 1, Catalog.IdOf("Fiber FPV Team"),
-                                                       P(900, 500), EntityHandle.None, 0, out spawned);
+                                                       P(10800, 6000), EntityHandle.None, 0, out spawned);
                 Assert.Equal((long)LaunchResult.Launched, (long)res, "launched");
 
-                w.Entities.Position[spawned.Index] = P(1150, 500);
+                w.Entities.Position[spawned.Index] = P(13800, 6000);
                 for (int i = 0; i < 20; i++) w.Step();
 
                 Assert.True(w.Entities.IsAlive(spawned), "still flying");
@@ -177,16 +178,21 @@ namespace KZ.Tests
                 // their link, which is the exact opposite of what terminal
                 // guidance is for.
                 World w = MakeWorld(801);
-                w.Spawn(Catalog.IdOf("Command Post"), 1, P(500, 500));
-                EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(600, 500));
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(6000, 6000));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(7200, 6000));
 
                 // Designate a point while the link is still good - a human making
                 // the decision in time is precisely what the upgrade buys.
-                w.Entities.Sortie[drone.Index].DesignatedPoint = P(900, 500);
+                w.Entities.Sortie[drone.Index].DesignatedPoint = P(10800, 6000);
                 w.Entities.Sortie[drone.Index].HasDesignatedPoint = true;
 
                 // Now take the link away for longer than it takes to go black.
-                EntityHandle jammer = w.Spawn(Catalog.IdOf("EW Post"), 2, P(620, 500));
+                // Beside the lane rather than on it: a one-way drone that flies
+                // straight over an enemy structure quite correctly dives on it,
+                // which would end the test early and prove nothing about the
+                // link. 600 m off the track is still deep inside the post's
+                // 5,400 m bubble and well outside the drone's own 96 m reach.
+                EntityHandle jammer = w.Spawn(Catalog.IdOf("EW Post"), 2, P(7440, 6600));
                 for (int i = 0; i < SimConstants.AmberToBlackTicks
                                   + SimConstants.BlackToLostTicks + 32; i++)
                     w.Step();
@@ -202,7 +208,7 @@ namespace KZ.Tests
             {
                 World w = MakeWorld(4);
                 // No command post, no relay: nothing to talk to.
-                EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(500, 500));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(6000, 6000));
 
                 for (int i = 0; i < SimConstants.AmberToBlackTicks
                                   + SimConstants.BlackToLostTicks + 16; i++)
@@ -216,12 +222,12 @@ namespace KZ.Tests
             r.Run("losing a drone costs materiel and a crew's time, never the crew", delegate
             {
                 World w = MakeWorld(5);
-                w.Spawn(Catalog.IdOf("Command Post"), 1, P(500, 500));
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(6000, 6000));
                 PlayerState p = w.Player(1);
                 int before = p.Crews.ReadyCount;
 
                 EntityHandle spawned;
-                SortieSystem.Launch(w, 1, Catalog.IdOf("FPV Team"), P(500, 500),
+                SortieSystem.Launch(w, 1, Catalog.IdOf("FPV Team"), P(6000, 6000),
                                     EntityHandle.None, 0, out spawned);
                 w.Step();
                 Assert.Equal(before - 1, p.Crews.ReadyCount, "a crew is now flying");
@@ -245,25 +251,25 @@ namespace KZ.Tests
             {
                 MeshGraph g = new MeshGraph();
                 g.Add(new MeshNode { Handle = new EntityHandle(1, 1), Position = P(0, 0), Team = 1, IsAnchor = true });
-                g.Add(new MeshNode { Handle = new EntityHandle(2, 1), Position = P(600, 0), Team = 1, IsRepeater = true });
-                g.Add(new MeshNode { Handle = new EntityHandle(3, 1), Position = P(1200, 0), Team = 1, IsRepeater = true });
-                g.Add(new MeshNode { Handle = new EntityHandle(4, 1), Position = P(1800, 0), Team = 1, IsRepeater = true });
+                g.Add(new MeshNode { Handle = new EntityHandle(2, 1), Position = P(7200, 0), Team = 1, IsRepeater = true });
+                g.Add(new MeshNode { Handle = new EntityHandle(3, 1), Position = P(14400, 0), Team = 1, IsRepeater = true });
+                g.Add(new MeshNode { Handle = new EntityHandle(4, 1), Position = P(21600, 0), Team = 1, IsRepeater = true });
 
                 g.Rebuild(1, Fix.FromInt(SimConstants.MeshRangePerHopMetres), SimConstants.MeshMaxHops);
 
                 Assert.Equal(0, g.HopsAt(0), "the anchor is at depth zero");
                 Assert.Equal(1, g.HopsAt(1), "one hop out");
                 Assert.Equal(2, g.HopsAt(2), "two hops out");
-                Assert.Equal(3, g.HopsAt(3), "three hops out, 1800 metres from home");
+                Assert.Equal(3, g.HopsAt(3), "three hops out, 21.6 km from home");
             });
 
             r.Run("a node beyond the last hop is not reached", delegate
             {
                 MeshGraph g = new MeshGraph();
                 g.Add(new MeshNode { Handle = new EntityHandle(1, 1), Position = P(0, 0), Team = 1, IsAnchor = true });
-                g.Add(new MeshNode { Handle = new EntityHandle(2, 1), Position = P(1500, 0), Team = 1, IsRepeater = true });
+                g.Add(new MeshNode { Handle = new EntityHandle(2, 1), Position = P(18000, 0), Team = 1, IsRepeater = true });
                 g.Rebuild(1, Fix.FromInt(SimConstants.MeshRangePerHopMetres), SimConstants.MeshMaxHops);
-                Assert.False(g.IsConnected(1), "1500 metres is too far for one 700 metre hop");
+                Assert.False(g.IsConnected(1), "18 km is too far for one 8.4 km hop");
             });
 
             r.Run("parent choice is fully ordered, so two machines agree", delegate
@@ -277,8 +283,8 @@ namespace KZ.Tests
                 {
                     MeshGraph g = pass == 0 ? a : b;
                     g.Add(new MeshNode { Handle = new EntityHandle(10, 1), Position = P(0, 0), Team = 1, IsAnchor = true });
-                    g.Add(new MeshNode { Handle = new EntityHandle(11, 1), Position = P(0, 600), Team = 1, IsAnchor = true });
-                    g.Add(new MeshNode { Handle = new EntityHandle(12, 1), Position = P(300, 300), Team = 1, IsRepeater = true });
+                    g.Add(new MeshNode { Handle = new EntityHandle(11, 1), Position = P(0, 7200), Team = 1, IsAnchor = true });
+                    g.Add(new MeshNode { Handle = new EntityHandle(12, 1), Position = P(3600, 3600), Team = 1, IsRepeater = true });
                     g.Rebuild(1, Fix.FromInt(SimConstants.MeshRangePerHopMetres), SimConstants.MeshMaxHops);
                 }
                 Assert.Equal((long)a.ParentOf(2).Value, (long)b.ParentOf(2).Value,
@@ -302,33 +308,33 @@ namespace KZ.Tests
 
             r.Run("the spool tracks the path flown, not the straight line home", delegate
             {
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 TetherSystem ts = new TetherSystem(8, t, new DetRandom(1));
-                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(100, 100), F(1400), 1, 0);
+                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(1200, 1200), F(16800), 1, 0);
 
                 // Fly out, then turn the corner and fly across.
                 bool cut;
-                for (int x = 100; x <= 400; x += 10) ts.Update(id, P(x, 100), 0, out cut);
-                for (int y = 100; y <= 400; y += 10) ts.Update(id, P(400, y), 0, out cut);
+                for (int x = 1200; x <= 4800; x += 120) ts.Update(id, P(x, 1200), 0, out cut);
+                for (int y = 1200; y <= 4800; y += 120) ts.Update(id, P(4800, y), 0, out cut);
 
                 TetherSystem.Tether te = ts.Get(id);
-                // Roughly 600 metres of line paid out to reach a point 424 away.
-                Assert.InRange(560, 640, te.Spooled.ToDoubleForDisplay(), "line paid out");
+                // Roughly 7.2 km of line paid out to reach a point 5.1 km away.
+                Assert.InRange(6720, 7680, te.Spooled.ToDoubleForDisplay(), "line paid out");
                 Assert.True(te.NodeCount > 20, "the thread has real geometry, not two endpoints");
             });
 
             r.Run("the leash is hard, and over-extending eventually parts the line", delegate
             {
-                Terrain t = new Terrain(4096, 4096);
+                Terrain t = new Terrain(49152, 49152);
                 t.Fill(TileClass.Open);
                 TetherSystem ts = new TetherSystem(8, t, new DetRandom(1));
-                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(100, 100), F(300), 1, 0);
+                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(1200, 1200), F(3600), 1, 0);
 
                 bool cut = false;
                 int tick = 0;
-                for (int x = 100; x <= 800 && !cut; x += 10)
-                    ts.Update(id, P(x, 100), tick++, out cut);
+                for (int x = 1200; x <= 9600 && !cut; x += 120)
+                    ts.Update(id, P(x, 1200), tick++, out cut);
 
                 Assert.True(ts.Get(id).State == TetherState.Taut
                             || ts.Get(id).State == TetherState.Cut, "at full stretch");
@@ -337,26 +343,26 @@ namespace KZ.Tests
                 // preventing the drone from going further would be safer and far
                 // less interesting.
                 for (int i = 0; i < SimConstants.TetherTautGraceTicks + 4 && !cut; i++)
-                    ts.Update(id, P(800, 100), tick++, out cut);
+                    ts.Update(id, P(9600, 1200), tick++, out cut);
                 Assert.True(cut, "the line parts after three seconds at the leash");
             });
 
             r.Run("at full stretch a drone can fly back but not further out", delegate
             {
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 TetherSystem ts = new TetherSystem(8, t, new DetRandom(1));
-                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(100, 100), F(200), 1, 0);
+                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(1200, 1200), F(2400), 1, 0);
 
                 bool cut;
                 int tick = 0;
-                for (int x = 100; x <= 340; x += 10) ts.Update(id, P(x, 100), tick++, out cut);
+                for (int x = 1200; x <= 4080; x += 120) ts.Update(id, P(x, 1200), tick++, out cut);
                 if (ts.Get(id).State != TetherState.Taut) return; // nothing to assert
 
-                Fix2 outward = ts.ConstrainVelocity(id, P(340, 100), new Fix2(F(10), Fix.Zero));
+                Fix2 outward = ts.ConstrainVelocity(id, P(4080, 1200), new Fix2(F(10), Fix.Zero));
                 Assert.True(outward.X <= F(0.01), "cannot pull further away");
 
-                Fix2 inward = ts.ConstrainVelocity(id, P(340, 100), new Fix2(F(-10), Fix.Zero));
+                Fix2 inward = ts.ConstrainVelocity(id, P(4080, 1200), new Fix2(F(-10), Fix.Zero));
                 Assert.Near(-10.0, inward.X.ToDoubleForDisplay(), 0.01, "can fly home freely");
             });
 
@@ -383,24 +389,24 @@ namespace KZ.Tests
 
             r.Run("a cut thread still lies on the map and still leads home", delegate
             {
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 TetherSystem ts = new TetherSystem(8, t, new DetRandom(1));
-                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(100, 100), F(1400), 1, 0);
+                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(1200, 1200), F(16800), 1, 0);
 
                 bool cut;
                 int tick = 0;
-                for (int x = 100; x <= 400; x += 10) ts.Update(id, P(x, 100), tick++, out cut);
+                for (int x = 1200; x <= 4800; x += 120) ts.Update(id, P(x, 1200), tick++, out cut);
 
                 ts.Cut(id, tick);
-                ts.Update(id, P(400, 100), ++tick, out cut);
+                ts.Update(id, P(4800, 1200), ++tick, out cut);
                 Assert.True(ts.Get(id).State == TetherState.Lingering, "the line remains");
-                Assert.True(ts.AnySegmentNear(id, P(250, 100), F(20)),
+                Assert.True(ts.AnySegmentNear(id, P(3000, 1200), F(240)),
                             "an enemy walking over it would find it");
 
                 // And it fades after half a minute rather than cluttering the map.
                 for (int i = 0; i < SimConstants.TetherLingerTicks + 4; i++)
-                    ts.Update(id, P(400, 100), ++tick, out cut);
+                    ts.Update(id, P(4800, 1200), ++tick, out cut);
                 Assert.True(ts.Get(id).State == TetherState.Free, "gone after thirty seconds");
             });
         }
@@ -410,15 +416,15 @@ namespace KZ.Tests
             int cuts = 0;
             for (int trial = 0; trial < trials; trial++)
             {
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(tile);
                 TetherSystem ts = new TetherSystem(4, t, new DetRandom((ulong)(trial + 1)));
-                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(100, 100), F(2000), 1, 0);
+                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(1200, 1200), F(24000), 1, 0);
 
                 bool cut = false;
                 int tick = 0;
-                for (int x = 100; x <= 700 && !cut; x += 5)
-                    ts.Update(id, P(x, 100), tick++, out cut);
+                for (int x = 1200; x <= 8400 && !cut; x += 60)
+                    ts.Update(id, P(x, 1200), tick++, out cut);
                 if (cut) cuts++;
             }
             return cuts;
@@ -433,7 +439,7 @@ namespace KZ.Tests
             r.Run("decoys drag a classifier's confidence down", delegate
             {
                 World w = MakeWorld(10);
-                EntityHandle m = w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(1000, 1000));
+                EntityHandle m = w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(12000, 12000));
 
                 Assert.Equal(55, AutonomyClassifier.EffectiveQuality(w, m.Index, 0),
                              "clear field");
@@ -452,8 +458,8 @@ namespace KZ.Tests
                 for (int i = 0; i < trials; i++)
                 {
                     World w = MakeWorld((ulong)(1000 + i));
-                    EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1000, 1000));
-                    EntityHandle m = w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(1030, 1000));
+                    EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 12000));
+                    EntityHandle m = w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(12360, 12000));
 
                     bool mis;
                     EntityHandle chosen = AutonomyClassifier.SelectTarget(w, m.Index, out mis);
@@ -472,12 +478,12 @@ namespace KZ.Tests
                 for (int i = 0; i < trials; i++)
                 {
                     World w = MakeWorld((ulong)(2000 + i));
-                    EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1000, 1000));
+                    EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 12000));
                     for (int d = 0; d < 9; d++)
-                        w.SpawnDecoy(2, P(1000 + (d % 3) * 20 - 20, 1000 + (d / 3) * 20 - 20),
+                        w.SpawnDecoy(2, P(12000 + (d % 3) * 240 - 240, 12000 + (d / 3) * 240 - 240),
                                      TargetKind.HighValue, 10000);
 
-                    EntityHandle m = w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(1040, 1000));
+                    EntityHandle m = w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(12480, 12000));
                     bool mis;
                     EntityHandle chosen = AutonomyClassifier.SelectTarget(w, m.Index, out mis);
                     if (chosen == tank) hits++;
@@ -494,19 +500,19 @@ namespace KZ.Tests
                 // This is a hard branch in the code rather than a very high
                 // confidence value, because it is a rule and not a tuning number.
                 World w = MakeWorld(11);
-                w.Spawn(Catalog.IdOf("Command Post"), 1, P(950, 1000));
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(11400, 12000));
 
                 EntityHandle drone;
-                SortieSystem.Launch(w, 1, Catalog.IdOf("FPV Team"), P(1000, 1000),
+                SortieSystem.Launch(w, 1, Catalog.IdOf("FPV Team"), P(12000, 12000),
                                     EntityHandle.None, 0, out drone);
                 w.Step();
 
-                Assert.True(AutonomyClassifier.IsPilotedWithClearFeed(w, drone.Index, P(1050, 1000)),
+                Assert.True(AutonomyClassifier.IsPilotedWithClearFeed(w, drone.Index, P(12600, 12000)),
                             "a piloted drone with a live link close to the target");
 
                 // The same drone once its link has gone.
                 w.Entities.Link[drone.Index].Pip = LinkPip.Black;
-                Assert.False(AutonomyClassifier.IsPilotedWithClearFeed(w, drone.Index, P(1050, 1000)),
+                Assert.False(AutonomyClassifier.IsPilotedWithClearFeed(w, drone.Index, P(12600, 12000)),
                              "not once the pilot has lost the picture");
             });
 
@@ -516,10 +522,10 @@ namespace KZ.Tests
                 for (int i = 0; i < 200 && !sawReport; i++)
                 {
                     World w = MakeWorld((ulong)(3000 + i));
-                    w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1000, 1000));
+                    w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 12000));
                     for (int d = 0; d < 9; d++)
-                        w.SpawnDecoy(2, P(1000 + d * 8 - 32, 1010), TargetKind.HighValue, 10000);
-                    EntityHandle m = w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(1040, 1000));
+                        w.SpawnDecoy(2, P(12000 + d * 96 - 384, 12120), TargetKind.HighValue, 10000);
+                    EntityHandle m = w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(12480, 12000));
 
                     bool mis;
                     AutonomyClassifier.SelectTarget(w, m.Index, out mis);
@@ -538,14 +544,14 @@ namespace KZ.Tests
             r.Run("crews cap how many sorties are up at once, not how many drones you own", delegate
             {
                 World w = MakeWorld(20);
-                w.Spawn(Catalog.IdOf("Command Post"), 1, P(500, 500));
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(6000, 6000));
                 w.Player(1).Materiel = Fix.FromInt(100000);
 
                 int launched = 0;
                 for (int i = 0; i < 20; i++)
                 {
                     EntityHandle h;
-                    if (SortieSystem.Launch(w, 1, Catalog.IdOf("FPV Team"), P(500, 500),
+                    if (SortieSystem.Launch(w, 1, Catalog.IdOf("FPV Team"), P(6000, 6000),
                                             EntityHandle.None, i, out h) == LaunchResult.Launched)
                         launched++;
                 }
@@ -558,17 +564,17 @@ namespace KZ.Tests
             r.Run("a launch with no crew free is refused and says why", delegate
             {
                 World w = MakeWorld(21);
-                w.Spawn(Catalog.IdOf("Command Post"), 1, P(500, 500));
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(6000, 6000));
                 w.Player(1).Materiel = Fix.FromInt(100000);
 
                 for (int i = 0; i < SimConstants.StartingCrews; i++)
                 {
                     EntityHandle h;
-                    SortieSystem.Launch(w, 1, Catalog.IdOf("FPV Team"), P(500, 500),
+                    SortieSystem.Launch(w, 1, Catalog.IdOf("FPV Team"), P(6000, 6000),
                                         EntityHandle.None, i, out h);
                 }
                 EntityHandle extra;
-                LaunchResult res = SortieSystem.Launch(w, 1, Catalog.IdOf("FPV Team"), P(500, 500),
+                LaunchResult res = SortieSystem.Launch(w, 1, Catalog.IdOf("FPV Team"), P(6000, 6000),
                                                        EntityHandle.None, 0, out extra);
                 Assert.Equal((long)LaunchResult.NoCrew, (long)res, "refused for want of a crew");
             });
@@ -663,10 +669,10 @@ namespace KZ.Tests
             r.Run("a mine waits, then goes off under whatever drives over it", delegate
             {
                 World w = MakeWorld(60);
-                w.Spawn(Catalog.IdOf("Command Post"), 2, P(900, 900));
-                EntityHandle truck = w.Spawn(Catalog.IdOf("Supply Truck"), 2, P(900, 1000));
-                w.SpawnMine(1, P(1100, 1000), F(600));
-                w.Enqueue(Command.MoveTo(2, truck, P(1300, 1000)));
+                w.Spawn(Catalog.IdOf("Command Post"), 2, P(10800, 10800));
+                EntityHandle truck = w.Spawn(Catalog.IdOf("Supply Truck"), 2, P(10800, 12000));
+                w.SpawnMine(1, P(13200, 12000), F(600));
+                w.Enqueue(Command.MoveTo(2, truck, P(15600, 12000)));
 
                 for (int i = 0; i < 60 * SimConstants.TicksPerSecond; i++)
                 {
@@ -681,10 +687,10 @@ namespace KZ.Tests
                 // Laid by team one, triggered by a team one vehicle. This is not a
                 // gameplay punishment, it is what a mine is.
                 World w = MakeWorld(61);
-                w.Spawn(Catalog.IdOf("Command Post"), 1, P(900, 900));
-                EntityHandle friendly = w.Spawn(Catalog.IdOf("Supply Truck"), 1, P(900, 1000));
-                w.SpawnMine(1, P(1100, 1000), F(600));
-                w.Enqueue(Command.MoveTo(1, friendly, P(1300, 1000)));
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(10800, 10800));
+                EntityHandle friendly = w.Spawn(Catalog.IdOf("Supply Truck"), 1, P(10800, 12000));
+                w.SpawnMine(1, P(13200, 12000), F(600));
+                w.Enqueue(Command.MoveTo(1, friendly, P(15600, 12000)));
 
                 for (int i = 0; i < 60 * SimConstants.TicksPerSecond; i++)
                 {
@@ -697,9 +703,9 @@ namespace KZ.Tests
             r.Run("a mine ignores aircraft", delegate
             {
                 World w = MakeWorld(62);
-                w.Spawn(Catalog.IdOf("Command Post"), 1, P(1000, 1000));
-                EntityHandle drone = w.Spawn(Catalog.IdOf("Scout Quad"), 1, P(1100, 1000));
-                w.SpawnMine(2, P(1100, 1000), F(600));
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(12000, 12000));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("Scout Quad"), 1, P(13200, 12000));
+                w.SpawnMine(2, P(13200, 12000), F(600));
                 for (int i = 0; i < 200; i++) w.Step();
                 Assert.True(w.Entities.IsAlive(drone), "a drone flies over a minefield");
             });
@@ -707,9 +713,9 @@ namespace KZ.Tests
             r.Run("a mine needs a moment to arm", delegate
             {
                 World w = MakeWorld(63);
-                w.Spawn(Catalog.IdOf("Command Post"), 2, P(900, 900));
-                EntityHandle truck = w.Spawn(Catalog.IdOf("Supply Truck"), 2, P(1100, 1000));
-                w.SpawnMine(1, P(1100, 1000), F(600));
+                w.Spawn(Catalog.IdOf("Command Post"), 2, P(10800, 10800));
+                EntityHandle truck = w.Spawn(Catalog.IdOf("Supply Truck"), 2, P(13200, 12000));
+                w.SpawnMine(1, P(13200, 12000), F(600));
 
                 w.Step();
                 Assert.True(w.Entities.IsAlive(truck), "not instantly");
@@ -724,37 +730,37 @@ namespace KZ.Tests
 
             r.Run("a heavy drone will not fly in daylight", delegate
             {
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
 
                 World day = new World(t, 256, 16, 64, 2, 0);
-                day.Spawn(Catalog.IdOf("Command Post"), 1, P(1000, 1000));
+                day.Spawn(Catalog.IdOf("Command Post"), 1, P(12000, 12000));
                 day.Player(1).Materiel = Fix.FromInt(20000);
                 EntityHandle h;
                 Assert.Equal((long)LaunchResult.DaylightRefused,
                              (long)SortieSystem.Launch(day, 1, Catalog.IdOf("Night Bomber"),
-                                                       P(1000, 1000), EntityHandle.None, 0, out h),
+                                                       P(12000, 12000), EntityHandle.None, 0, out h),
                              "refused by day");
 
                 World night = new World(t, 256, 16, 64, 2, 8000);
-                night.Spawn(Catalog.IdOf("Command Post"), 1, P(1000, 1000));
+                night.Spawn(Catalog.IdOf("Command Post"), 1, P(12000, 12000));
                 night.Player(1).Materiel = Fix.FromInt(20000);
                 Assert.Equal((long)LaunchResult.Launched,
                              (long)SortieSystem.Launch(night, 1, Catalog.IdOf("Night Bomber"),
-                                                       P(1000, 1000), EntityHandle.None, 0, out h),
+                                                       P(12000, 12000), EntityHandle.None, 0, out h),
                              "flies after dark");
             });
 
             r.Run("a small drone is found far closer than a tank", delegate
             {
                 // Detection reach scales with what the target is giving off, so the
-                // same camera that picks a tank out at half a kilometre struggles
-                // to find a quadcopter at two hundred metres. This is the fact the
+                // same camera that picks a tank out at seven kilometres struggles
+                // to find a quadcopter inside two. This is the fact the
                 // whole subject rests on and the model had no way to express.
                 World w = MakeWorld(65);
-                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle drone = w.Spawn(Catalog.IdOf("Scout Quad"), 2, P(1200, 1000));
-                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1400, 1000));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("Scout Quad"), 2, P(14400, 12000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(16800, 12000));
                 w.Step();
 
                 Fix vsDrone = w.DetectionRangeFor(gun.Index, drone.Index, SensorChannel.Optical);
@@ -788,17 +794,17 @@ namespace KZ.Tests
                 // sun goes down, and even that reaches far less than the daytime
                 // camera did - so darkness is a real advantage, and against
                 // anything with an engine the microphone wins outright.
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
 
                 World day = new World(t, 256, 16, 65, 2, 0);
-                EntityHandle gunDay = day.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle droneDay = day.Spawn(Catalog.IdOf("FPV Team"), 2, P(1200, 1000));
+                EntityHandle gunDay = day.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
+                EntityHandle droneDay = day.Spawn(Catalog.IdOf("FPV Team"), 2, P(14400, 12000));
                 day.Step();
 
                 World night = new World(t, 256, 16, 65, 2, 8000);
-                EntityHandle gunNight = night.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle droneNight = night.Spawn(Catalog.IdOf("FPV Team"), 2, P(1200, 1000));
+                EntityHandle gunNight = night.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
+                EntityHandle droneNight = night.Spawn(Catalog.IdOf("FPV Team"), 2, P(14400, 12000));
                 night.Step();
 
                 Assert.True(night.IsNight, "the second world is actually after dark");
@@ -828,9 +834,9 @@ namespace KZ.Tests
                 // up close and is heard across kilometres, which is why acoustic
                 // nets are built against engines and not against quads.
                 World w = MakeWorld(165);
-                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle quad = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1200, 1000));
-                EntityHandle engine = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 2, P(1200, 1000));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
+                EntityHandle quad = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(14400, 12000));
+                EntityHandle engine = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 2, P(14400, 12000));
                 w.Step();
 
                 Fix vsQuad = w.DetectionRangeFor(gun.Index, quad.Index, SensorChannel.Acoustic);
@@ -846,15 +852,15 @@ namespace KZ.Tests
                 // was a literal return true - and nothing in the suite noticed when
                 // that changed, because nothing in the suite flew a satellite drone
                 // at all. It does now.
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 World w = new World(t, 256, 16, 301, 2);
 
                 // Team 1 owns the west, team 2 the east, with a neutral strip.
-                w.Territory.SetVerticalBorder(1024, 1, 2, 64);
+                w.Territory.SetVerticalBorder(12288, 1, 2, 768);
 
-                EntityHandle home = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(400, 1000));
-                EntityHandle across = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(1600, 1000));
+                EntityHandle home = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(4800, 12000));
+                EntityHandle across = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(19200, 12000));
                 w.Step();
 
                 Assert.True(LinkResolver.InSatelliteCoverage(w, home.Index),
@@ -875,18 +881,18 @@ namespace KZ.Tests
                 // character of the rung: there is no warning and nothing the pilot
                 // can do, because the drone did not fly out of range of anything -
                 // it flew across a line on a map.
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 World w = new World(t, 256, 16, 302, 2);
-                w.Territory.SetVerticalBorder(1024, 1, 2, 0);
+                w.Territory.SetVerticalBorder(12288, 1, 2, 0);
 
-                EntityHandle d = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(900, 1000));
+                EntityHandle d = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(10800, 12000));
                 w.Step();
                 Assert.Equal((int)LinkPip.Green, (int)w.Entities.Link[d.Index].Pip,
                              "green to begin with");
 
                 // One step across. Not a long flight - one tick.
-                w.Entities.Position[d.Index] = P(1100, 1000);
+                w.Entities.Position[d.Index] = P(13200, 12000);
                 w.Step();
                 Assert.Equal((int)LinkPip.Black, (int)w.Entities.Link[d.Index].Pip,
                              "black on the very next evaluation, with no amber in between");
@@ -900,15 +906,15 @@ namespace KZ.Tests
                 // satellite link over it, because the service is not watching the
                 // war - it is reading a map. The top rung of the ladder is the one
                 // that punishes success.
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 World w = new World(t, 256, 16, 303, 2);
-                w.Territory.SetVerticalBorder(1024, 1, 2, 0);
+                w.Territory.SetVerticalBorder(12288, 1, 2, 0);
 
                 // Team 1 has pushed its front well east of its own border and is
                 // sitting on ground it controls by every military measure.
-                EntityHandle held = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(1400, 1000));
-                w.Spawn(Catalog.IdOf("Command Post"), 1, P(1300, 1000));
+                EntityHandle held = w.Spawn(Catalog.IdOf("Designator Team"), 1, P(16800, 12000));
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(15600, 12000));
                 w.Step();
 
                 Assert.True(!LinkResolver.InSatelliteCoverage(w, held.Index),
@@ -924,21 +930,21 @@ namespace KZ.Tests
                 // tax. Two drones cross the same line. The cheap one is lost; the
                 // one carrying a map knows exactly where it is and has only lost
                 // the human who was going to pick the target.
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Forest);      // matchable ground
                 World w = new World(t, 256, 16, 401, 2);
-                w.Territory.SetVerticalBorder(600, 1, 2, 0);
-                w.Imagery.GrantAround(1, P(1200, 1000), Fix.FromInt(600));
+                w.Territory.SetVerticalBorder(7200, 1, 2, 0);
+                w.Imagery.GrantAround(1, P(14400, 12000), Fix.FromInt(7200));
 
-                EntityHandle cheap = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(1000, 1000));
-                EntityHandle withMap = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(1000, 1000));
+                EntityHandle cheap = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(12000, 12000));
+                EntityHandle withMap = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(12000, 12000));
 
                 // A long run, because drift is a fraction of distance flown and a
                 // few seconds of it proves nothing either way.
                 for (int k = 0; k < 1500; k++)
                 {
-                    MovementSystem.OrderMoveTo(w, cheap, P(1950, 1000));
-                    MovementSystem.OrderMoveTo(w, withMap, P(1950, 1000));
+                    MovementSystem.OrderMoveTo(w, cheap, P(23400, 12000));
+                    MovementSystem.OrderMoveTo(w, withMap, P(23400, 12000));
                     w.Step();
                 }
 
@@ -960,24 +966,24 @@ namespace KZ.Tests
                 // this game is set on the East European plain. So the robust
                 // technique is the weaker one across most of the map, and open
                 // steppe is the hazard rather than the safe crossing.
-                Terrain flat = new Terrain(2048, 2048);
+                Terrain flat = new Terrain(24576, 24576);
                 flat.Fill(TileClass.Open);
                 World w1 = new World(flat, 256, 16, 402, 2);
-                w1.Territory.SetVerticalBorder(600, 1, 2, 0);
-                w1.Imagery.GrantAround(1, P(1200, 1000), Fix.FromInt(600));
+                w1.Territory.SetVerticalBorder(7200, 1, 2, 0);
+                w1.Imagery.GrantAround(1, P(14400, 12000), Fix.FromInt(7200));
 
-                Terrain broken = new Terrain(2048, 2048);
+                Terrain broken = new Terrain(24576, 24576);
                 broken.Fill(TileClass.Forest);
                 World w2 = new World(broken, 256, 16, 402, 2);
-                w2.Territory.SetVerticalBorder(600, 1, 2, 0);
-                w2.Imagery.GrantAround(1, P(1200, 1000), Fix.FromInt(600));
+                w2.Territory.SetVerticalBorder(7200, 1, 2, 0);
+                w2.Imagery.GrantAround(1, P(14400, 12000), Fix.FromInt(7200));
 
-                EntityHandle a = w1.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(1000, 1000));
-                EntityHandle b = w2.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(1000, 1000));
+                EntityHandle a = w1.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(12000, 12000));
+                EntityHandle b = w2.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(12000, 12000));
                 for (int k = 0; k < 200; k++)
                 {
-                    MovementSystem.OrderMoveTo(w1, a, P(1400, 1000));
-                    MovementSystem.OrderMoveTo(w2, b, P(1400, 1000));
+                    MovementSystem.OrderMoveTo(w1, a, P(16800, 12000));
+                    MovementSystem.OrderMoveTo(w2, b, P(16800, 12000));
                     w1.Step();
                     w2.Step();
                 }
@@ -1000,17 +1006,17 @@ namespace KZ.Tests
                 // nobody has ever measured. What does invalidate it is the ground
                 // being churned into something else, which is an event a player
                 // can watch happen.
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Forest);
                 World w = new World(t, 256, 16, 403, 2);
-                w.Territory.SetVerticalBorder(600, 1, 2, 0);
-                w.Imagery.GrantAround(1, P(1200, 1000), Fix.FromInt(400));
+                w.Territory.SetVerticalBorder(7200, 1, 2, 0);
+                w.Imagery.GrantAround(1, P(14400, 12000), Fix.FromInt(4800));
 
-                Assert.True(NavigationSystem.CanMatchHere(w, 1, P(1200, 1000)),
+                Assert.True(NavigationSystem.CanMatchHere(w, 1, P(14400, 12000)),
                             "imagery of this sector, so it can be matched");
 
-                w.Imagery.Invalidate(P(1200, 1000), Fix.FromInt(200));
-                Assert.True(!NavigationSystem.CanMatchHere(w, 1, P(1200, 1000)),
+                w.Imagery.Invalidate(P(14400, 12000), Fix.FromInt(2400));
+                Assert.True(!NavigationSystem.CanMatchHere(w, 1, P(14400, 12000)),
                             "and after the sector is churned, it cannot");
             });
 
@@ -1023,17 +1029,17 @@ namespace KZ.Tests
                 // deflection is thirty metres. So it bounds heading drift - which
                 // removes the fastest-growing term - and never fixes position.
                 // Modelling it as a periodic reset to zero would be wrong.
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);        // nothing to match, so both dead reckon
                 World w = new World(t, 256, 16, 404, 2);
-                w.Territory.SetVerticalBorder(600, 1, 2, 0);
+                w.Territory.SetVerticalBorder(7200, 1, 2, 0);
 
-                EntityHandle plain = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(1000, 1000));
-                EntityHandle starry = w.Spawn(Catalog.IdOf("Jet Strike Drone"), 1, P(1000, 1000));
+                EntityHandle plain = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(12000, 12000));
+                EntityHandle starry = w.Spawn(Catalog.IdOf("Jet Strike Drone"), 1, P(12000, 12000));
                 for (int k = 0; k < 200; k++)
                 {
-                    MovementSystem.OrderMoveTo(w, plain, P(1500, 1000));
-                    MovementSystem.OrderMoveTo(w, starry, P(1500, 1000));
+                    MovementSystem.OrderMoveTo(w, plain, P(18000, 12000));
+                    MovementSystem.OrderMoveTo(w, starry, P(18000, 12000));
                     w.Step();
                 }
 
@@ -1052,30 +1058,33 @@ namespace KZ.Tests
                 // dead-reckoning FPV Teams cross the same border on the same
                 // heading; one's target sits just past it, the other's target
                 // sits deep behind it. navigation-denied.md §5's own worked
-                // example - 3% of distance flown, ~50 map metres at a real deep
-                // strike - says the shallow shot should still land and the deep
+                // example - 3% of distance flown, 600 m over a 20 km run -
+                // says the shallow shot should still land and the deep
                 // one should not, and only World.Step producing that difference
                 // (not a hand-assigned NavState) is evidence it is wired.
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 World w = new World(t, 64, 8, 405, 2);
-                w.Territory.SetVerticalBorder(600, 1, 2, 0);
+                w.Territory.SetVerticalBorder(7200, 1, 2, 0);
 
-                // Two parallel lanes, 400 m apart, so the far drone's straight
+                // Two parallel lanes, 4.8 km apart, so the far drone's straight
                 // line to its own target never passes within weapon range of
                 // the near tank.
-                Fix2 nearTarget = P(700, 1000);   // ~90 m of denied ground to cross
-                Fix2 farTarget = P(1600, 1400);   // ~990 m of denied ground to cross
+                Fix2 nearTarget = P(8400, 12000);   // ~1.1 km of denied ground to cross
+                Fix2 farTarget = P(19200, 16800);   // ~11.9 km of denied ground to cross
 
                 EntityHandle nearTank = w.Spawn(Catalog.IdOf("Main Tank"), 2, nearTarget);
                 EntityHandle farTank = w.Spawn(Catalog.IdOf("Main Tank"), 2, farTarget);
                 Fix fullHp = Catalog.Get(Catalog.IdOf("Main Tank")).Hp;
 
-                EntityHandle nearDrone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(590, 1000));
-                EntityHandle farDrone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(590, 1400));
+                EntityHandle nearDrone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(7080, 12000));
+                EntityHandle farDrone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(7080, 16800));
 
+                // Long enough for the far drone to actually arrive: 12.1 km of
+                // denied ground at 33 m/s is 2,940 ticks of world, where the same
+                // geometry in compressed units took 2,200.
                 int misses = 0;
-                for (int k = 0; k < 2200; k++)
+                for (int k = 0; k < 3400; k++)
                 {
                     if (w.Entities.IsAlive(nearDrone)) MovementSystem.OrderMoveTo(w, nearDrone, nearTarget);
                     if (w.Entities.IsAlive(farDrone)) MovementSystem.OrderMoveTo(w, farDrone, farTarget);
@@ -1084,9 +1093,9 @@ namespace KZ.Tests
                 }
 
                 Assert.True(w.Entities.Hp[nearTank.Index] < fullHp,
-                            "90 m of dead reckoning rounds to nothing - the near shot lands");
+                            "1.1 km of dead reckoning rounds to nothing - the near shot lands");
                 Assert.True(w.Entities.Hp[farTank.Index] == fullHp,
-                            "990 m of it does not - the far shot goes off on empty ground");
+                            "11.9 km of it does not - the far shot goes off on empty ground");
                 Assert.True(misses > 0,
                             "and the simulation says so, rather than silently doing no damage");
             });
@@ -1098,15 +1107,15 @@ namespace KZ.Tests
                 // spawned and flown - nothing more - should light up the ground
                 // it passes over on its own, through World.Step, not because the
                 // test told the imagery resource to appear.
-                Terrain t = new Terrain(2560, 2048);
+                Terrain t = new Terrain(30720, 24576);
                 t.Fill(TileClass.Open);
                 World w = new World(t, 64, 8, 406, 2);
 
-                Fix2 farGround = P(2100, 1000);
+                Fix2 farGround = P(25200, 12000);
                 Assert.False(w.Imagery.HasCoverage(1, farGround),
                              "nothing has flown near this ground yet");
 
-                EntityHandle scout = w.Spawn(Catalog.IdOf("Recon Wing"), 1, P(1000, 1000));
+                EntityHandle scout = w.Spawn(Catalog.IdOf("Recon Wing"), 1, P(12000, 12000));
                 for (int k = 0; k < 700; k++)
                 {
                     MovementSystem.OrderMoveTo(w, scout, farGround);
@@ -1128,17 +1137,17 @@ namespace KZ.Tests
                 // routine) and a Heavy Strike Drone's (520, the kind of hit the
                 // research calls "bombardment"). Only the second should churn
                 // the sector.
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 World w = new World(t, 64, 8, 407, 2);
                 w.Territory.Fill(1);   // both attackers are on their own ground throughout - isolates the damage threshold from F5's aimpoint error
 
-                Fix2 spot = P(1000, 1000);
-                w.Imagery.GrantAround(1, spot, Fix.FromInt(50));
+                Fix2 spot = P(12000, 12000);
+                w.Imagery.GrantAround(1, spot, Fix.FromInt(600));
                 Assert.True(w.Imagery.HasCoverage(1, spot), "test setup: covered to start");
 
                 EntityHandle target1 = w.Spawn(Catalog.IdOf("Main Tank"), 2, spot);
-                EntityHandle fpv = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(990, 1000));
+                EntityHandle fpv = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(11880, 12000));
                 for (int k = 0; k < 60 && w.Entities.IsAlive(fpv); k++)
                 {
                     MovementSystem.OrderAttack(w, fpv, target1);
@@ -1156,7 +1165,7 @@ namespace KZ.Tests
                 // nothing for a terminal-guidance airframe by design (FINDINGS
                 // 28) - a human already picked the target, which is what this
                 // order represents.
-                EntityHandle heavy = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(990, 1000));
+                EntityHandle heavy = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(11880, 12000));
                 for (int k = 0; k < 60 && w.Entities.IsAlive(heavy); k++)
                 {
                     MovementSystem.OrderAttack(w, heavy, target1);
@@ -1177,9 +1186,9 @@ namespace KZ.Tests
                 // eyes, and fog becomes a window to attack through rather than a
                 // misfortune to sit out.
                 World w = MakeWorld(501);
-                EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(1000, 1000));
-                EntityHandle bomber = w.Spawn(Catalog.IdOf("Night Bomber"), 1, P(1000, 1000));
-                EntityHandle target = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 2, P(1300, 1000));
+                EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(12000, 12000));
+                EntityHandle bomber = w.Spawn(Catalog.IdOf("Night Bomber"), 1, P(12000, 12000));
+                EntityHandle target = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 2, P(15600, 12000));
                 w.Step();
 
                 Fix clearOptical = w.DetectionRangeFor(bomber.Index, target.Index, SensorChannel.Optical);
@@ -1228,13 +1237,14 @@ namespace KZ.Tests
                 // road in the rain is still a road; what changes is that it becomes
                 // the only road, and every vehicle on the map ends up on the same
                 // few hard surfaces - the ones already under the most observation.
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 for (int tx = 0; tx < t.WidthTiles; tx++) t.Set(tx, 60, TileClass.Road);
                 World w = new World(t, 256, 16, 502, 2);
 
-                EntityHandle onRoad = w.Spawn(Catalog.IdOf("Supply Truck"), 1, P(500, 60 * 8 + 4));
-                EntityHandle offRoad = w.Spawn(Catalog.IdOf("Supply Truck"), 1, P(500, 900));
+                EntityHandle onRoad = w.Spawn(Catalog.IdOf("Supply Truck"), 1,
+                                              P(6000, 60 * SimConstants.BuildTileMetres + 48));
+                EntityHandle offRoad = w.Spawn(Catalog.IdOf("Supply Truck"), 1, P(6000, 10800));
                 w.Step();
 
                 w.Ground = GroundState.Mud;
@@ -1268,12 +1278,12 @@ namespace KZ.Tests
                 // first. The decision was made by someone who could see; deceiving
                 // the camera afterwards is too late.
                 World w = MakeWorld(601);
-                w.SpawnDecoy(2, P(1200, 1000), TargetKind.HighValue, 6000);
-                w.SpawnDecoy(2, P(1210, 1010), TargetKind.HighValue, 6000);
-                w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1220, 1020));
+                w.SpawnDecoy(2, P(14400, 12000), TargetKind.HighValue, 6000);
+                w.SpawnDecoy(2, P(14520, 12120), TargetKind.HighValue, 6000);
+                w.Spawn(Catalog.IdOf("Main Tank"), 2, P(14640, 12240));
 
-                EntityHandle guided = w.Spawn(Catalog.IdOf("Loitering Munition"), 1, P(1150, 1000));
-                EntityHandle choosing = w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(1150, 1000));
+                EntityHandle guided = w.Spawn(Catalog.IdOf("Loitering Munition"), 1, P(13800, 12000));
+                EntityHandle choosing = w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(13800, 12000));
                 w.Step();
 
                 Assert.Equal((int)AutonomyTier.TerminalGuidance,
@@ -1308,26 +1318,26 @@ namespace KZ.Tests
                 //
                 // A ceiling meant as immunity for one attacker was therefore also a
                 // jammer protecting every other attacker in the sky.
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 World w = new World(t, 256, 16, 901, 2);
-                w.Territory.SetVerticalBorder(1024, 1, 2, 0);
+                w.Territory.SetVerticalBorder(12288, 1, 2, 0);
 
                 // The high one must be the *better* shot, or the scorer picks the
                 // reachable target anyway and the bug hides. A 55-point FPV is a
                 // larger fraction of a kill per shot than a 110-point quad, so put
                 // the FPV out of reach and the quad within it - which is also the
                 // tactically sensible way to fly the pair.
-                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle low = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(1050, 1000));
-                EntityHandle high = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1048, 1000));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
+                EntityHandle low = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(12600, 12000));
+                EntityHandle high = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(12576, 12000));
                 w.Entities.EntityLayer[high.Index] = Layer.High;
 
                 Fix startHp = w.Entities.Hp[low.Index];
                 for (int k = 0; k < 400; k++)
                 {
-                    MovementSystem.OrderMoveTo(w, low, P(1000, 1000));
-                    MovementSystem.OrderMoveTo(w, high, P(1000, 1000));
+                    MovementSystem.OrderMoveTo(w, low, P(12000, 12000));
+                    MovementSystem.OrderMoveTo(w, high, P(12000, 12000));
                     w.Step();
                     if (!w.Entities.IsAlive(low)) break;
                 }
@@ -1351,10 +1361,10 @@ namespace KZ.Tests
                 // interceptor rams it. That is what "the counter to any rung sits
                 // one rung back" was always supposed to mean.
                 World w = MakeWorld(701);
-                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(1000, 1000));
-                EntityHandle bomber = w.Spawn(Catalog.IdOf("Night Bomber"), 1, P(1000, 1000));
-                EntityHandle fiber = w.Spawn(Catalog.IdOf("Fiber FPV Team"), 2, P(1040, 1000));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
+                EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(12000, 12000));
+                EntityHandle bomber = w.Spawn(Catalog.IdOf("Night Bomber"), 1, P(12000, 12000));
+                EntityHandle fiber = w.Spawn(Catalog.IdOf("Fiber FPV Team"), 2, P(12480, 12000));
                 w.Step();
 
                 Assert.Equal(0, w.DetectionRangeFor(mast.Index, fiber.Index, SensorChannel.Esm).Raw,
@@ -1383,9 +1393,9 @@ namespace KZ.Tests
                 // The property that makes fiber worth its leash, and one the old
                 // model could not represent: there is no transmission to find.
                 World w = MakeWorld(67);
-                EntityHandle post = w.Spawn(Catalog.IdOf("Command Post"), 1, P(1000, 1000));
-                EntityHandle radio = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1300, 1000));
-                EntityHandle fiber = w.Spawn(Catalog.IdOf("Fiber FPV Team"), 2, P(1300, 1000));
+                EntityHandle post = w.Spawn(Catalog.IdOf("Command Post"), 1, P(12000, 12000));
+                EntityHandle radio = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(15600, 12000));
+                EntityHandle fiber = w.Spawn(Catalog.IdOf("Fiber FPV Team"), 2, P(15600, 12000));
                 w.Step();
 
                 Assert.True(w.DetectionRangeFor(post.Index, radio.Index, SensorChannel.Esm) > Fix.Zero,
@@ -1397,8 +1407,8 @@ namespace KZ.Tests
             r.Run("a jammer that is switched on is the easiest thing on the map to find", delegate
             {
                 World w = MakeWorld(68);
-                EntityHandle post = w.Spawn(Catalog.IdOf("Command Post"), 1, P(1000, 1000));
-                EntityHandle jammer = w.Spawn(Catalog.IdOf("EW Post"), 2, P(1400, 1000));
+                EntityHandle post = w.Spawn(Catalog.IdOf("Command Post"), 1, P(12000, 12000));
+                EntityHandle jammer = w.Spawn(Catalog.IdOf("EW Post"), 2, P(16800, 12000));
                 w.Step();
 
                 Fix emitting = w.DetectionRangeFor(post.Index, jammer.Index, SensorChannel.Esm);
@@ -1421,10 +1431,10 @@ namespace KZ.Tests
                 // and so measured two things at once; it passed for a reason that
                 // had nothing to do with altitude.
                 World w = MakeWorld(69);
-                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle radar = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(1000, 1000));
-                EntityHandle low = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(1200, 1000));
-                EntityHandle high = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(1200, 1000));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
+                EntityHandle radar = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(12000, 12000));
+                EntityHandle low = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(14400, 12000));
+                EntityHandle high = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(14400, 12000));
                 w.Entities.EntityLayer[high.Index] = Layer.High;
                 w.Step();
 
@@ -1447,9 +1457,9 @@ namespace KZ.Tests
                 // the same pair is roughly three to one, which is the figure the
                 // reporting supports for a reflector-equipped airframe.
                 World w = MakeWorld(166);
-                EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(1000, 1000));
-                EntityHandle decoy = w.Spawn(Catalog.IdOf("Decoy Drone"), 2, P(1400, 1000));
-                EntityHandle strike = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 2, P(1400, 1000));
+                EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(12000, 12000));
+                EntityHandle decoy = w.Spawn(Catalog.IdOf("Decoy Drone"), 2, P(16800, 12000));
+                EntityHandle strike = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 2, P(16800, 12000));
                 w.Step();
 
                 Fix vsDecoy = w.DetectionRangeFor(mast.Index, decoy.Index, SensorChannel.Radar);
@@ -1460,7 +1470,7 @@ namespace KZ.Tests
 
                 // And the other end of the scale still works: a plastic quadcopter
                 // is most of an order of magnitude below the decoy.
-                EntityHandle quad = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1400, 1000));
+                EntityHandle quad = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(16800, 12000));
                 w.Step();
                 Fix vsQuad = w.DetectionRangeFor(mast.Index, quad.Index, SensorChannel.Radar);
                 Assert.True(vsDecoy > vsQuad * Fix.FromInt(5),
@@ -1470,8 +1480,8 @@ namespace KZ.Tests
             r.Run("a thermal blanket is real masking, not just a trick on machines", delegate
             {
                 World w = MakeWorld(70);
-                EntityHandle bomber = w.Spawn(Catalog.IdOf("Night Bomber"), 1, P(1000, 1000));
-                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1300, 1000));
+                EntityHandle bomber = w.Spawn(Catalog.IdOf("Night Bomber"), 1, P(12000, 12000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(15600, 12000));
                 w.Step();
 
                 Fix bare = w.DetectionRangeFor(bomber.Index, tank.Index, SensorChannel.Thermal);
@@ -1485,14 +1495,14 @@ namespace KZ.Tests
             {
                 // The third pillar, enforced rather than assumed. Without it the
                 // reconnaissance layer is decoration and night means nothing.
-                Terrain t = new Terrain(2048, 2048);
+                Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 World w = new World(t, 256, 16, 66, 2, 8000);
 
-                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle drone = w.Spawn(Catalog.IdOf("Scout Quad"), 2, P(1400, 1000));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("Scout Quad"), 2, P(16800, 12000));
 
-                // Inside the gun's 550 m reach, outside its 210 m night vision.
+                // Inside the gun's optical reach by day, well outside it after dark.
                 for (int i = 0; i < 200; i++) w.Step();
                 Assert.True(w.Entities.IsAlive(drone), "unseen and therefore unshot");
             });
@@ -1506,8 +1516,8 @@ namespace KZ.Tests
                 // end: spawn, Step(), and watch IsDetectedBy - the same call
                 // CombatSystem.CanEngage makes - through the loss and the hold.
                 World w = MakeWorld(2100);
-                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1050, 1000));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12600, 12000));
                 w.Step();
                 Assert.True(w.IsDetectedBy(1, tank), "close and large - solidly detected");
 
@@ -1516,7 +1526,7 @@ namespace KZ.Tests
                 // RebuildDetection() a target with zero raw reach on every channel,
                 // starting on a known tick, not to hand-write the track state
                 // itself. Squared, this stays well inside Q31.32 range.
-                w.Entities.Position[tank.Index] = P(1000, 1000 + 20000);
+                w.Entities.Position[tank.Index] = P(12000, 252000);
 
                 for (int i = 0; i < SimConstants.TrackHoldTicks; i++)
                 {
@@ -1539,8 +1549,8 @@ namespace KZ.Tests
                 // for - a marginal contact should still flicker while it is being
                 // acquired.
                 World w = MakeWorld(2101);
-                w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1000, 1000 + 20000));
+                w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 252000));
 
                 for (int i = 0; i < SimConstants.TrackHoldTicks * 2; i++) w.Step();
                 Assert.True(!w.IsDetectedBy(1, tank),
@@ -1597,7 +1607,7 @@ namespace KZ.Tests
             r.Run("everything that dies leaves wreckage worth about a third of it", delegate
             {
                 World w = MakeWorld(30);
-                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1000, 1000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 12000));
                 w.Kill(tank, EntityHandle.None);
                 w.Step();
 
@@ -1615,7 +1625,7 @@ namespace KZ.Tests
             r.Run("wreckage rots, so the richest ground is only rich for a moment", delegate
             {
                 World w = MakeWorld(31);
-                EntityHandle pile = w.SpawnSalvage(P(1000, 1000), Fix.FromInt(1000));
+                EntityHandle pile = w.SpawnSalvage(P(12000, 12000), Fix.FromInt(1000));
                 for (int i = 0; i < SimConstants.SalvageDecayTicks + 8; i++)
                 {
                     w.Step();
@@ -1628,7 +1638,7 @@ namespace KZ.Tests
         static bool TankSurvives(int droneHits)
         {
             World w = MakeWorld(40);
-            EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1000, 1000));
+            EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 12000));
             Fix damage = Catalog.Get(Catalog.IdOf("FPV Team")).WeaponDamage;
             for (int i = 0; i < droneHits; i++)
                 w.ApplyDamage(tank, damage, DamageType.Shaped, true, EntityHandle.None);
@@ -1638,7 +1648,7 @@ namespace KZ.Tests
         static bool TankSurvivesWithCage(int droneHits)
         {
             World w = MakeWorld(41);
-            EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1000, 1000));
+            EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 12000));
             w.Entities.CageHp[tank.Index] = Fix.FromInt(600);
             Fix damage = Catalog.Get(Catalog.IdOf("FPV Team")).WeaponDamage;
             for (int i = 0; i < droneHits; i++)
@@ -1667,13 +1677,13 @@ namespace KZ.Tests
                 // deterministic: ResolveDirectFire only rolls dice against an
                 // airborne target, so a ground target's damage is exact.
                 World w = MakeWorld(900);
-                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
 
                 // Heavy armour: fragmentation does 0.20x, so this is a poor
                 // shot (a low fraction of its health) and stays that way for
                 // a long time - the mount has every incentive, on a fresh
                 // rescore, to abandon it for something better.
-                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1030, 1000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12360, 12000));
                 Fix tankStart = w.Entities.Hp[tank.Index];
 
                 int firstHitTick = -1;
@@ -1689,7 +1699,7 @@ namespace KZ.Tests
                 // exactly the measure BestTargetInRange uses - but it is not
                 // a one-shot kill, so it is not the one case that is allowed
                 // to break a live commitment.
-                EntityHandle soft = w.Spawn(Catalog.IdOf("Motorcycle Squad"), 2, P(1030, 1000));
+                EntityHandle soft = w.Spawn(Catalog.IdOf("Motorcycle Squad"), 2, P(12360, 12000));
                 Fix softStart = w.Entities.Hp[soft.Index];
                 Fix tankAfterFirstHit = w.Entities.Hp[tank.Index];
 
@@ -1707,8 +1717,8 @@ namespace KZ.Tests
                 // and the cost it pays for it: re-laying through the normal
                 // Acquiring/SlewTicks path, not a second penalty on top.
                 World w = MakeWorld(901);
-                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1030, 1000));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12360, 12000));
                 Fix tankStart = w.Entities.Hp[tank.Index];
 
                 int firstHitTick = -1;
@@ -1723,7 +1733,7 @@ namespace KZ.Tests
                 // fragmentation round at 1.60x is 112, so one connecting shot
                 // removes all of it. ShotValue reports that as a fraction
                 // capped at one - a shot the tank, at 0.20x, can never match.
-                EntityHandle weak = w.Spawn(Catalog.IdOf("Net Engineer"), 2, P(1030, 1000));
+                EntityHandle weak = w.Spawn(Catalog.IdOf("Net Engineer"), 2, P(12360, 12000));
                 w.Entities.Hp[weak.Index] = Fix.FromInt(90);
 
                 for (int t = 0; t < 100; t++) w.Step();
@@ -1738,19 +1748,19 @@ namespace KZ.Tests
                 // class point defence is finished" (Gun Mount: CanReachHigh =
                 // false) against the Autocannon Mount's own §"Suggested
                 // replacement units" ceiling of "mid band" (CanReachHigh =
-                // true). Both mounts can see this target fine - it is 60 map
-                // metres out and the Gun Mount's own optical reach is 600 -
+                // true). Both mounts can see this target fine - it is 720
+                // metres out and the Gun Mount's own optical reach is 7,200 -
                 // the difference the sensor buys is whether the mount is ever
                 // mechanically allowed to fire, which EngagementsRemaining
                 // reports without needing a hit to land (that part still
                 // rolls dice - see AirHitChance - so it is not what this test
                 // is about).
                 World w = MakeWorld(902);
-                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                EntityHandle auto = w.Spawn(Catalog.IdOf("Autocannon Mount"), 1, P(2000, 1000));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
+                EntityHandle auto = w.Spawn(Catalog.IdOf("Autocannon Mount"), 1, P(24000, 12000));
 
-                EntityHandle gunTarget = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(1060, 1000));
-                EntityHandle autoTarget = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(2060, 1000));
+                EntityHandle gunTarget = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(12720, 12000));
+                EntityHandle autoTarget = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(24720, 12000));
                 w.Entities.EntityLayer[gunTarget.Index] = Layer.High;
                 w.Entities.EntityLayer[autoTarget.Index] = Layer.High;
 
@@ -1788,8 +1798,8 @@ namespace KZ.Tests
                 // between two bursts is the cooldown and nothing else. Before the
                 // fix it was the cooldown plus WeaponAcquisitionTicks.
                 World w = MakeWorld(903);
-                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-                w.Spawn(Catalog.IdOf("Main Tank"), 2, P(1030, 1000));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
+                w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12360, 12000));
 
                 UnitDef def = Catalog.Get(Catalog.IdOf("Gun Mount"));
                 int belt = def.EngagementsPerBelt;
@@ -1824,10 +1834,10 @@ namespace KZ.Tests
                 // took exactly 1.00 shots per attempt at every drone count
                 // before this fix and never once got a second.
                 World w = MakeWorld(904);
-                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
                 for (int d = 0; d < 3; d++)
                 {
-                    EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1150, 986 + d * 14));
+                    EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(13800, 11832 + d * 168));
                     w.Enqueue(Command.Attack(2, drone, gun));
                 }
 
