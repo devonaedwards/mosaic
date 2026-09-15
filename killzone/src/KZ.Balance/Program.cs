@@ -522,132 +522,254 @@ namespace KZ.Balance
         /// A minefield laid across a supply road, against the traffic that has to
         /// use it.
         ///
-        /// Mines are the least interesting weapon in the game to operate and the
-        /// hardest to argue with. They need no crew, no link and no pilot, cannot
-        /// be jammed or shot down, and are still there an hour later. They are also
-        /// indiscriminate: the field below is armed against whoever drives into it
-        /// first, and the experiment reports both.
+        /// <para>Mines are the least interesting weapon in the game to operate and
+        /// the hardest to argue with. They need no crew, no link and no pilot,
+        /// cannot be jammed or shot down, and are still there an hour later. They
+        /// are also indiscriminate, and the last row below is that claim measured
+        /// rather than asserted.</para>
+        ///
+        /// <para><b>On this experiment being flat.</b> The drift guard lists this
+        /// among seven suspected inert, and it is the one of the seven that is
+        /// simply correct. A mine involves no sensor, no hit roll, no magazine,
+        /// no traverse and no arrival order, so none of the faults that killed
+        /// the other six can reach it, and there is no stochastic term for a
+        /// trial count to average over: one run is the answer. FINDINGS 10
+        /// already records it as the only table that came through the honest
+        /// re-run untouched.</para>
+        ///
+        /// <para>Two things did need fixing, and neither was inertia. The
+        /// "per mine" column was computed in this harness by calling
+        /// <c>Catalog.DamageMultiplier</c> and multiplying - so it re-derived the
+        /// simulation's arithmetic instead of observing it, and would have agreed
+        /// with a broken <c>World.ApplyDamage</c> exactly as readily as with a
+        /// working one. It is now read off the vehicle's health in a running
+        /// world. And the indiscriminate rule, which is the entry's whole moral
+        /// argument, had no row at all.</para>
         /// </summary>
         static void MineExperiment()
         {
             Console.WriteLine();
             Console.WriteLine("MINES - a field laid across a supply road");
             Console.WriteLine("four mines from one heavy drone, 600 damage each, into the underside");
+            Console.WriteLine("every number below is read off a vehicle driving through a live field,");
+            Console.WriteLine("not computed from the damage table; a + means the first mine killed it");
+            Console.WriteLine("outright, so the observed bite is a lower bound on the warhead");
             PrintWorldConfig(900, 2, 1); // the convoy's own rear (west) vs. the ambush ground it drives into (east)
             Console.WriteLine();
-            Console.WriteLine("  vehicle             per mine   survives a mine   field stops");
+            Console.WriteLine("  vehicle             health off   survives a mine   field stops");
             Console.WriteLine("  " + new string('-', 60));
 
             string[] vehicles = { "Supply Truck", "Logistics UGV", "IFV", "Main Tank" };
             for (int v = 0; v < vehicles.Length; v++)
             {
-                UnitDef def = Catalog.ByName(vehicles[v]);
-                Fix mult = Catalog.DamageMultiplier(DamageType.Shaped, def.Armour, true);
-                Fix perMine = F(600) * mult;
-                int survives = 0;
-                Fix hp = def.Hp;
-                while (hp.Raw > 0) { hp -= perMine; survives++; }
+                int perMine, triggered; bool atLeast;
+                bool died = RunMineField(vehicles[v], 2, out perMine, out triggered, out atLeast);
 
-                int killed = RunMineField(vehicles[v]);
+                UnitDef def = Catalog.ByName(vehicles[v]);
+                int eats = atLeast ? 1 : (def.Hp.RoundToInt() + perMine - 1) / perMine;
 
                 Console.WriteLine(string.Format("  {0,-18}  {1,8}   {2,15}   {3}",
                     vehicles[v],
-                    perMine.RoundToInt(),
-                    (survives - 1) + " of 4",
-                    killed > 0 ? "yes, after " + killed + " mine(s)" : "no"));
+                    perMine + (atLeast ? "+" : " "),
+                    (eats > 1 ? (eats - 1).ToString() : "0") + " of 4",
+                    died ? "yes, after " + triggered + " mine(s)" : "no"));
             }
+
+            Console.WriteLine();
+            Console.WriteLine("  And the same field, driven into by the side that laid it:");
+            Console.WriteLine();
+            {
+                int perMine, triggered; bool atLeast;
+                bool died = RunMineField("Supply Truck", 1, out perMine, out triggered, out atLeast);
+                Console.WriteLine(string.Format("  {0,-18}  {1,8}   {2,15}   {3}",
+                    "Supply Truck (own)",
+                    perMine + (atLeast ? "+" : " "),
+                    "0 of 4",
+                    died ? "yes, after " + triggered + " mine(s)" : "no"));
+            }
+
             Console.WriteLine();
             Console.WriteLine("  A mine costs nothing to keep there. The heavy drone that laid it");
-            Console.WriteLine("  flew home and can do it again tomorrow night.");
+            Console.WriteLine("  flew home and can do it again tomorrow night. It also does not ask");
+            Console.WriteLine("  whose vehicle arrives first, which is not a gameplay penalty - it is");
+            Console.WriteLine("  what a mine is, and a game about this subject should not pretend");
+            Console.WriteLine("  otherwise.");
         }
 
-        /// <summary>Drive one vehicle down a road through a four-mine field.</summary>
-        static int RunMineField(string vehicleName)
+        /// <summary>
+        /// Drive one vehicle of the given team down a road through a four-mine
+        /// field laid by team 1, and report what the field did to it: how much
+        /// one mine actually took off, how many went off, and whether it stopped.
+        /// </summary>
+        static bool RunMineField(string vehicleName, byte vehicleTeam,
+                                 out int damagePerMine, out int minesTriggered,
+                                 out bool damageWasClamped)
         {
+            damageWasClamped = false;
             World w = MakeRealisticWorld(2400, 1600, 128, 8, 4242, 2, 8000, 900, 2, 1);
 
             // The robot in this list is radio-controlled, so without something to
             // talk to it stops of its own accord and the experiment measures the
-            // wrong thing entirely.
+            // wrong thing entirely. One post per side, so a team-1 vehicle is no
+            // worse connected than a team-2 one and the two rows differ only in
+            // whose field it is.
             w.Spawn(Catalog.IdOf("Command Post"), 2, P(700, 900));
+            w.Spawn(Catalog.IdOf("Command Post"), 1, P(700, 660));
 
-            EntityHandle vehicle = w.Spawn(Catalog.IdOf(vehicleName), 2, P(600, 780));
+            EntityHandle vehicle = w.Spawn(Catalog.IdOf(vehicleName), vehicleTeam, P(600, 780));
             for (int m = 0; m < 4; m++)
                 w.SpawnMine(1, P(1000 + m * SimConstants.MineSpacingMetres, 780), F(600));
 
-            w.Enqueue(Command.MoveTo(2, vehicle, P(1800, 780)));
+            w.Enqueue(Command.MoveTo(vehicleTeam, vehicle, P(1800, 780)));
 
-            int minesTriggered = 0;
+            Fix lastHp = w.Entities.Hp[vehicle.Index];
+            Fix biggestBite = Fix.Zero;
+            minesTriggered = 0;
+
             for (int tick = 0; tick < 300 * SimConstants.TicksPerSecond; tick++)
             {
                 w.Step();
                 for (int e = 0; e < w.Events.Count; e++)
                     if (w.Events[e].Kind == SimEventKind.MineDetonated) minesTriggered++;
-                if (!w.Entities.IsAlive(vehicle)) return minesTriggered;
-                if (w.Entities.Position[vehicle.Index].X > F(1700)) return 0;
+
+                if (w.Entities.IsSlotAlive(vehicle.Index))
+                {
+                    Fix hp = w.Entities.Hp[vehicle.Index];
+                    if (hp < lastHp && lastHp - hp > biggestBite) biggestBite = lastHp - hp;
+                    lastHp = hp;
+                }
+
+                if (!w.Entities.IsAlive(vehicle))
+                {
+                    // A killing bite is clamped by whatever health was left, so it
+                    // understates the warhead rather than reporting it. When the
+                    // first mine kills outright there is no unclamped observation
+                    // to use, and the honest thing to print is the vehicle's own
+                    // starting health marked as a lower bound - not a figure
+                    // recomputed from the damage table, which is what this
+                    // experiment was doing for every row.
+                    if (biggestBite.Raw == 0 || minesTriggered <= 1)
+                    {
+                        biggestBite = Catalog.ByName(vehicleName).Hp;
+                        damageWasClamped = true;
+                    }
+                    damagePerMine = biggestBite.RoundToInt();
+                    return true;
+                }
+                if (w.Entities.Position[vehicle.Index].X > F(1700)) break;
             }
-            return 0;
+
+            damagePerMine = biggestBite.RoundToInt();
+            return false;
         }
 
         /// <summary>
-        /// The same turret with different sensors fitted, by day and by night.
+        /// The same turret with different sensors fitted, by day and by night -
+        /// and what the difference is worth when something attacks it.
         ///
-        /// A gun's reach is set by its gun. Its *envelope* is set by whichever
-        /// sensor finds the target first, and against a small drone that is a much
-        /// shorter distance than the barrel can throw a round. Which sensors are
-        /// fitted therefore matters more than the gun does.
+        /// <para><b>What it used to measure, and why it could not move.</b> It
+        /// spawned a real Gun Mount, overwrote <c>EntityTable.Sensor</c> with a
+        /// hypothetical suite, stepped the world once and printed
+        /// <c>BestDetectionRange</c>. That is a lookup of the detection formula
+        /// printed as a table: it moves when a signature number or a channel
+        /// constant moves and at no other time, it is the hand-assignment
+        /// WIRING-SPEC rules out as evidence, and it can never answer the
+        /// question the experiment's own summary asks - whether which sensors
+        /// are fitted matters more than the gun does. Nothing in it was a
+        /// measurement of the game.</para>
+        ///
+        /// <para>Its commentary had also gone quietly wrong underneath it, which
+        /// is the cheapest possible demonstration of the cost: it asserted that
+        /// against a quadcopter microphones are "the best sensor on the list at
+        /// any hour" while the numbers printed directly above it read 73 m for
+        /// optics and 48 m for acoustic by day. The corrected signature table
+        /// moved the numbers and nobody re-read the paragraph.</para>
+        ///
+        /// <para><b>What it measures now.</b> Four test-only catalogue mounts
+        /// (Defs.cs, "Test Mount ...") identical to the shipped Gun Mount apart
+        /// from what they can see with, spawned through <c>World.Spawn</c> and
+        /// made to fight the same assault by day and after dark. The reach
+        /// columns are kept, because a reach is a useful thing to be able to read
+        /// off - but they are now read off a spawned unit rather than an
+        /// assembled struct, and they are no longer the whole experiment.</para>
         /// </summary>
         static void SensorMixExperiment()
         {
             Console.WriteLine();
-            Console.WriteLine("SENSORS - what a turret can find, and from how far");
-            Console.WriteLine("the gun's own kill range is 85 m (FINDINGS 2); these are how far its");
-            Console.WriteLine("sensors could find a target if the barrel could reach that far too -");
-            Console.WriteLine("the sensor suites below are hypothetical fits, not the shipped Gun Mount's");
-            PrintWorldConfig(1100, 1, 2);
+            Console.WriteLine("SENSORS - what a turret can find, and what finding it is worth");
+            Console.WriteLine("four test-only mounts, identical to the Gun Mount except for the sensor");
+            Console.WriteLine("fit; all four carry the real 85 m barrel (FINDINGS 2)");
+            Console.WriteLine("the assault is three FPV Teams arriving one every 3 s from 1,200 m");
+            PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
-            Console.WriteLine("  fitted with              vs quad (day)  vs quad (night)  vs tank (day)");
-            Console.WriteLine("  " + new string('-', 74));
+            Console.WriteLine("                             finds a quad at     vs tank    mount survives");
+            Console.WriteLine("  fitted with                 day     night        day      day     night");
+            Console.WriteLine("  " + new string('-', 76));
 
             string[] names = { "optics only", "acoustic only", "optics + acoustic",
-                               "optics + thermal", "optics + acoustic + thermal" };
-            Fix[][] suites = {
-                new Fix[] { F(600), Fix.Zero, Fix.Zero },
-                new Fix[] { Fix.Zero, Fix.Zero, F(400) },
-                new Fix[] { F(600), Fix.Zero, F(400) },
-                new Fix[] { F(600), F(450), Fix.Zero },
-                new Fix[] { F(600), F(450), F(400) },
-            };
+                               "optics + acoustic + thermal" };
+            string[] defs = { "Test Mount Optics", "Test Mount Acoustic",
+                              "Test Mount Optics Acoustic", "Test Mount Optics Acoustic Thermal" };
 
             for (int i = 0; i < names.Length; i++)
             {
-                Console.WriteLine(string.Format("  {0,-24}  {1,12}  {2,15}  {3,13}",
+                Console.WriteLine(string.Format("  {0,-27} {1,6}  {2,8}  {3,9}  {4,7}  {5,8}",
                     names[i],
-                    Reach(suites[i], "FPV Team", false).RoundToInt() + " m",
-                    Reach(suites[i], "FPV Team", true).RoundToInt() + " m",
-                    Reach(suites[i], "Main Tank", false).RoundToInt() + " m"));
+                    MountReach(defs[i], "FPV Team", false).RoundToInt() + " m",
+                    MountReach(defs[i], "FPV Team", true).RoundToInt() + " m",
+                    MountReach(defs[i], "Main Tank", false).RoundToInt() + " m",
+                    MountSurvival(defs[i], false) + "%",
+                    MountSurvival(defs[i], true) + "%"));
             }
+
             Console.WriteLine();
-            Console.WriteLine("  Cameras alone leave a turret nearly blind after dark. Microphones");
-            Console.WriteLine("  do not care about the time, and against a quadcopter they are the");
-            Console.WriteLine("  best sensor on the list at any hour. Thermal buys back the night");
-            Console.WriteLine("  against vehicles, and rather little against a small drone, because");
-            Console.WriteLine("  a small drone is not very hot.");
+            Console.WriteLine("  A mount's reach is set by its gun and its envelope by whichever sensor");
+            Console.WriteLine("  finds the target first, and against a small electric quadcopter that");
+            Console.WriteLine("  is far shorter than the barrel can throw a round - which is why the");
+            Console.WriteLine("  survival columns move at all when the barrel never changes, and why");
+            Console.WriteLine("  they move so much less by day than after dark: in daylight every fit");
+            Console.WriteLine("  on this list finds the drone before the barrel can use the fact.");
+            Console.WriteLine();
+            Console.WriteLine("  Read the day and night reach columns together rather than separately.");
+            Console.WriteLine("  A camera beats a microphone against a quadcopter in daylight and");
+            Console.WriteLine("  collapses after dark; the microphone does not care what time it is");
+            Console.WriteLine("  and becomes the better of the two. Thermal buys back the night");
+            Console.WriteLine("  against a vehicle and very little against a small drone, because a");
+            Console.WriteLine("  small electric drone is not very hot.");
         }
 
-        static Fix Reach(Fix[] suite, string targetName, bool night)
+        /// <summary>The best channel one spawned mount has against one target.</summary>
+        static Fix MountReach(string mountDefName, string targetName, bool night)
         {
             World w = MakeRealisticWorld(2048, 2048, 64, 4, 1, 2, night ? 8000 : 0, 1100, 1, 2);
-
-            EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
-            w.Entities.Sensor[gun.Index] = new SensorSuite
-            {
-                Optical = suite[0], Thermal = suite[1], Acoustic = suite[2],
-                Radar = Fix.Zero, Esm = Fix.Zero, Quality = 60
-            };
+            EntityHandle gun = w.Spawn(Catalog.IdOf(mountDefName), 1, P(1000, 1000));
             EntityHandle target = w.Spawn(Catalog.IdOf(targetName), 2, P(1200, 1000));
             w.Step();
             return w.BestDetectionRange(gun.Index, target.Index);
+        }
+
+        /// <summary>
+        /// How often that same mount is still standing after three drones have
+        /// come at it three seconds apart.
+        /// </summary>
+        static int MountSurvival(string mountDefName, bool night)
+        {
+            // 100 trials rather than the 40 the other experiments use: the
+            // differences this table is reporting are ten or fifteen points and
+            // at 40 trials that is inside the noise, which would make it a table
+            // that moves without meaning anything - the opposite failure to the
+            // one being fixed, and just as useless.
+            const int trials = 100;
+            int survived = 0;
+            for (int trial = 0; trial < trials; trial++)
+            {
+                World w = MakeRealisticWorld(2400, 1600, 256, 32, (ulong)(trial + 1), 2,
+                    night ? 8000 : 0, StandardBorderMetres, 1, 2);
+                int arrived;
+                if (!RunAssaultScenario(w, mountDefName, MountTweak.None, 3, F(1200), Sec(3), out arrived))
+                    survived++;
+            }
+            return survived * 100 / trials;
         }
 
         /// <summary>
@@ -1186,19 +1308,47 @@ namespace KZ.Balance
         }
 
         /// <summary>
-        /// The aperture trade, and what it costs to see all the way round.
+        /// The aperture trade, and what each position on it is worth in a fight.
         ///
-        /// A camera has a fixed number of pixels. Spend them on a narrow slice and
-        /// you see a long way into very little; spread them over everything and you
-        /// see a short way into all of it. A mount therefore chooses between a
-        /// blind side, a short reach, a sweep that is looking elsewhere most of the
-        /// time, or paying several times over for several heads.
+        /// <para><b>What it used to measure, and why it could not move.</b> A
+        /// spawned Gun Mount with <c>DirectionalArcDegrees</c> overwritten to
+        /// each of six values in turn, one <c>World.Step</c>, and
+        /// <c>DetectionRangeFor</c> printed. That is the square-root-of-arc law
+        /// evaluated at six points - correct, useful to have written down, and
+        /// not an experiment: it can only move when a signature number or an
+        /// optical constant moves, and it says nothing about whether the choice
+        /// it describes is worth making. The second table under it was worse
+        /// still: "blind over 11/12 of the sky" and "looking away 2/3 of the
+        /// time" are assertions with a reach number typed beside them, not
+        /// measurements of anything.</para>
+        ///
+        /// <para><b>What it measures now.</b> The law is kept, labelled as a law.
+        /// Under it, four spawnable mounts - a 30-degree staring head, a
+        /// 120-degree staring head, the shipped Gun Mount's 120-degree head
+        /// sweeping at 70 deg/s, and a 360-degree head - fight the same assault,
+        /// and the table reports how often each survives it.</para>
+        ///
+        /// <para><b>And one thing the rebuild found rather than measured.</b> A
+        /// staring head has to be pointed at something, and nothing in this game
+        /// can point one. <c>SensorSuite.Facing</c> is initialised to zero (due
+        /// east) by <c>World.Spawn</c> and the only thing that ever writes it
+        /// again is <c>World.SweepSensors</c>, which does nothing for a head with
+        /// no scan rate. There is no command, no order and no structure
+        /// orientation. So the narrow end of FINDINGS 22's slider is not a
+        /// purchase a player can make: a 30-degree mount faces east for the
+        /// whole match. The row below that sets the facing by hand is marked as
+        /// doing so, and it is measuring a unit the game cannot currently
+        /// produce.</para>
         /// </summary>
         static void ApertureExperiment()
         {
             Console.WriteLine();
             Console.WriteLine("APERTURE - the same 600 m camera, spread over different arcs");
             PrintWorldConfig(1100, 1, 2);
+            Console.WriteLine();
+            Console.WriteLine("  The law. Reach scales as the square root of how narrow the arc is;");
+            Console.WriteLine("  this is the formula evaluated, not a fight, and it moves only when a");
+            Console.WriteLine("  signature or an optical constant moves.");
             Console.WriteLine();
             Console.WriteLine("  arc      reach vs a quad   covered at once   heads for 360   total cost");
             Console.WriteLine("  " + new string('-', 74));
@@ -1217,34 +1367,72 @@ namespace KZ.Balance
             }
 
             Console.WriteLine();
-            Console.WriteLine("  Buying 360 degrees at long reach costs twelve heads. Buying it with");
-            Console.WriteLine("  one head costs more than half the reach. Both are worse deals than");
-            Console.WriteLine("  a cheap short-range sensor line, which is the next table.");
+            Console.WriteLine("  What it is worth. Four mounts differing only in their head, against");
+            Console.WriteLine("  three FPV Teams arriving one every 3 s from the west.");
             Console.WriteLine();
-            Console.WriteLine("  COVERAGE - one good head against several poor ones, same money");
-            Console.WriteLine();
-            Console.WriteLine("  arrangement                          drone seen at   gaps");
-            Console.WriteLine("  " + new string('-', 62));
+            Console.WriteLine("  head                                         reach on axis   mount survives");
+            Console.WriteLine("  " + new string('-', 76));
 
-            Console.WriteLine(string.Format("  {0,-36}  {1,13}   {2}",
-                "one 30-deg staring head", ApertureReach(30).RoundToInt() + " m",
-                "blind over 11/12 of the sky"));
-            Console.WriteLine(string.Format("  {0,-36}  {1,13}   {2}",
-                "one 120-deg head sweeping at 70 deg/s", ApertureReach(120).RoundToInt() + " m",
-                "covered, but looking away 2/3 of the time"));
-            Console.WriteLine(string.Format("  {0,-36}  {1,13}   {2}",
-                "one 360-deg head", ApertureReach(360).RoundToInt() + " m",
-                "none, and half the reach"));
-            Console.WriteLine(string.Format("  {0,-36}  {1,13}   {2}",
-                "three 120-deg heads, no sweep", ApertureReach(120).RoundToInt() + " m",
-                "none, at three times the price"));
+            string[] labels = {
+                "30 deg staring, facing east (default)",
+                "30 deg staring, turned to face the threat",
+                "120 deg staring, facing east (default)",
+                "120 deg sweeping at 70 deg/s (shipped)",
+                "360 deg, no blind side"
+            };
+            string[] defs = {
+                "Test Mount Arc 30", "Test Mount Arc 30", "Test Mount Arc 120 Staring",
+                "Gun Mount", "Test Mount Arc 360"
+            };
+            bool[] aimed = { false, true, false, false, false };
+
+            for (int i = 0; i < labels.Length; i++)
+            {
+                Console.WriteLine(string.Format("  {0,-42}  {1,13}   {2,14}",
+                    labels[i],
+                    ApertureMountReach(defs[i], aimed[i]).RoundToInt() + " m",
+                    ApertureSurvival(defs[i], aimed[i]) + "%"));
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("  \"Reach on axis\" is what the head finds when it happens to be pointed");
+            Console.WriteLine("  the right way - DetectionRangeFor answers the range question and not");
+            Console.WriteLine("  the bearing one - so rows one and two share a number and not an");
+            Console.WriteLine("  outcome. That is the whole content of an arc.");
+            Console.WriteLine();
+            Console.WriteLine("  The second row is the only one that turns its head, and it does so by");
+            Console.WriteLine("  a direct write to SensorSuite.Facing from this harness, because the");
+            Console.WriteLine("  simulation has no way to aim a staring sensor: World.Spawn sets the");
+            Console.WriteLine("  facing due east and only SweepSensors ever moves it. Every other row");
+            Console.WriteLine("  is a unit a player could actually buy. The gap between rows one and");
+            Console.WriteLine("  two is therefore not a balance figure, it is the size of a missing");
+            Console.WriteLine("  mechanic.");
             Console.WriteLine();
             Console.WriteLine("  Microphones and radio listening are exempt from all of this, because");
             Console.WriteLine("  they are omnidirectional by nature - which is exactly why they are");
             Console.WriteLine("  the cheap way to know something is out there and the useless way to");
-            Console.WriteLine("  know where it is.");
+            Console.WriteLine("  know where it is. It is also why the narrow heads below are not as");
+            Console.WriteLine("  blind as their arc suggests: these mounts carry the Gun Mount's");
+            Console.WriteLine("  200 m array as well, and it does not care which way the camera is");
+            Console.WriteLine("  pointed.");
+            Console.WriteLine();
+            Console.WriteLine("  Worth reading against the law above it: the 30-degree head sees three");
+            Console.WriteLine("  and a half times as far as the 360-degree one, costs twelve times as");
+            Console.WriteLine("  much to cover the same sky, and - when it is pointed the right way,");
+            Console.WriteLine("  which nothing can currently arrange - survives exactly as often. Above");
+            Console.WriteLine("  about 70 m the extra reach buys a mount nothing, because 70 m is where");
+            Console.WriteLine("  it first holds a track and 3.2 s is all it has after that (FINDINGS");
+            Console.WriteLine("  31). The panoramic head is not the compromise position on this slider;");
+            Console.WriteLine("  on these numbers it is the only one worth buying.");
         }
 
+        /// <summary>
+        /// The optical law at one arc. This is the one place in this file that
+        /// still writes a sensor field on a spawned unit, and it is deliberate:
+        /// the table above is the formula, and spawning six near-identical
+        /// catalogue entries to evaluate a formula would be six dead units in
+        /// Defs.cs to avoid a comment.
+        /// </summary>
         static Fix ApertureReach(int arcDegrees)
         {
             World w = MakeRealisticWorld(2048, 2048, 64, 4, 1, 2, 0, 1100, 1, 2);
@@ -1261,7 +1449,45 @@ namespace KZ.Balance
             return w.DetectionRangeFor(gun.Index, drone.Index, SensorChannel.Optical);
         }
 
-        // ------------------------------------------------------------------
+        /// <summary>Optical reach of one spawned mount against a quadcopter to its west.</summary>
+        static Fix ApertureMountReach(string mountDefName, bool aimWest)
+        {
+            World w = MakeRealisticWorld(2048, 2048, 64, 4, 1, 2, 0, 1100, 1, 2);
+            EntityHandle gun = w.Spawn(Catalog.IdOf(mountDefName), 1, P(1000, 1000));
+            if (aimWest) AimWest(w, gun);
+            EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(800, 1000));
+            w.Step();
+            return w.DetectionRangeFor(gun.Index, drone.Index, SensorChannel.Optical);
+        }
+
+        /// <summary>
+        /// Point a staring head at the threat axis. Half a turn of bearing, done
+        /// from outside the simulation because the simulation offers no way to do
+        /// it from inside - see the note printed by ApertureExperiment.
+        /// </summary>
+        static void AimWest(World w, EntityHandle mount)
+        {
+            SensorSuite s = w.Entities.Sensor[mount.Index];
+            s.Facing = 32768;   // 180 degrees in the 16-bit bearing units Trig uses
+            w.Entities.Sensor[mount.Index] = s;
+        }
+
+        /// <summary>How often that head is still standing after three drones.</summary>
+        static int ApertureSurvival(string mountDefName, bool aimWest)
+        {
+            const int trials = 100;
+            int survived = 0;
+            for (int trial = 0; trial < trials; trial++)
+            {
+                World w = MakeRealisticWorld(2400, 1600, 256, 32, (ulong)(trial + 1), 2, 0,
+                    StandardBorderMetres, 1, 2);
+                int arrived;
+                if (!RunAssaultScenario(w, mountDefName,
+                        aimWest ? MountTweak.Aimed() : MountTweak.None, 3, F(1200), Sec(3), out arrived))
+                    survived++;
+            }
+            return survived * 100 / trials;
+        }
 
         // ------------------------------------------------------------------
         // Arrival scheduling, and why half the experiments below needed it.
@@ -1356,6 +1582,8 @@ namespace KZ.Balance
             w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1000, 780));
             w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1450, 1150));
         }
+
+        // ------------------------------------------------------------------
 
         static bool RunAssault(int droneCount, Fix padX, ulong seed, out int arrived)
         {
@@ -1487,18 +1715,6 @@ namespace KZ.Balance
 
             arrived = reached;
             return !w.Entities.IsAlive(gun);
-        }
-
-        /// <summary>
-        /// Point a staring head at the threat axis. Half a turn of bearing, done
-        /// from outside the simulation because the simulation offers no way to do
-        /// it from inside - see the note printed by ApertureExperiment.
-        /// </summary>
-        static void AimWest(World w, EntityHandle mount)
-        {
-            SensorSuite s = w.Entities.Sensor[mount.Index];
-            s.Facing = 32768;   // 180 degrees in the 16-bit bearing units Trig uses
-            w.Entities.Sensor[mount.Index] = s;
         }
 
         static int CountFriendlyDronesAirborne(World w)
