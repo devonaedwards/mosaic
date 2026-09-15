@@ -1592,6 +1592,53 @@ namespace KZ.Sim
             return best;
         }
 
+        /// <summary>
+        /// What kind of track this side is holding on that target right now.
+        ///
+        /// Lifted out of CombatSystem's CueMultiplier, which has always computed
+        /// exactly this and thrown away everything but a number. Two things need
+        /// the answer and they must agree: the terminal roll an interceptor makes
+        /// when it arrives, and - the reason this exists - the vector it is given to
+        /// get there. An interceptor guided by a radar track flies to a computed
+        /// meeting point; one guided by an eyeball flies at the target, and against
+        /// anything faster than itself that is a chase it cannot win.
+        ///
+        /// Cost: two passes over the entity table per asking, the same shape the
+        /// multiplier already had. Interceptors are a handful of entities and both
+        /// callers ask once each per airframe per tick, so this does not touch the
+        /// detection inner loop.
+        /// </summary>
+        public TrackQuality TrackQualityOf(byte team, EntityHandle target)
+        {
+            if (!Entities.IsAlive(target)) return TrackQuality.None;
+            Fix2 targetPos = Entities.Position[target.Index];
+
+            for (int j = 1; j < Entities.HighWater; j++)
+            {
+                if (!Entities.IsSlotAlive(j)) continue;
+                if (Entities.Team[j] != team) continue;
+                if (!Entities.Has(j, ComponentMask.Sensor)) continue;
+                if (Entities.Sensor[j].Radar.Raw <= 0) continue;
+
+                Fix r = DetectionRangeFor(j, target.Index, SensorChannel.Radar);
+                if (r.Raw > 0 && Fix2.SqrDistance(Entities.Position[j], targetPos) <= r * r)
+                    return TrackQuality.Radar;
+            }
+
+            for (int j = 1; j < Entities.HighWater; j++)
+            {
+                if (!Entities.IsSlotAlive(j)) continue;
+                if (Entities.Team[j] != team) continue;
+                if (!Entities.Has(j, ComponentMask.Sensor)) continue;
+
+                Fix r = BestDetectionRange(j, target.Index);
+                if (r.Raw > 0 && Fix2.SqrDistance(Entities.Position[j], targetPos) <= r * r)
+                    return TrackQuality.Optical;
+            }
+
+            return TrackQuality.None;
+        }
+
         void FlushDeaths()
         {
             for (int i = 0; i < pendingDeaths.Count; i++)

@@ -55,12 +55,12 @@ namespace KZ.Sim
             // because a crew comes back only by landing or by dying, and a drone
             // frozen in mid-air does neither, it takes a crew with it.
             //
-            // That is not a cosmetic leak. The scenario's opposition throws a
-            // one-way FPV at whatever it can see, and the only thing it could ever
-            // see was the player's own one-way drones, which kill themselves on
-            // impact - so every airframe it launched stalled over a dead handle and
-            // its six crews were gone inside a minute. A defender with no crews
-            // launches nothing, which is the mechanism behind "you cannot lose".
+            // That is not a cosmetic leak. The playable scenario's opposition
+            // throws a one-way FPV at whatever it can see, and most of what it can
+            // see is the player's own one-way drones, which kill themselves on
+            // impact. Every airframe it launched at one stalled over a dead handle
+            // holding a crew, and a side with six crews and no way to get them back
+            // stops launching anything after six sorties.
             if (!mover.OrderTarget.IsNone && !w.Entities.IsAlive(mover.OrderTarget))
             {
                 mover.OrderTarget = EntityHandle.None;
@@ -69,7 +69,13 @@ namespace KZ.Sim
 
             Fix2 destination = mover.OrderPoint;
             if (w.Entities.IsAlive(mover.OrderTarget))
+            {
                 destination = w.Entities.Position[mover.OrderTarget.Index];
+
+                // An interceptor does not chase. It is vectored.
+                if (w.Entities.Has(i, ComponentMask.Weapon) && w.Entities.Weapon[i].IsInterceptor)
+                    destination = InterceptPoint(w, i, mover.OrderTarget, mover);
+            }
 
             Fix2 toTarget = destination - pos;
             Fix distance = toTarget.Magnitude();
@@ -146,6 +152,118 @@ namespace KZ.Sim
             w.Entities.Position[i] = next;
             w.Entities.Velocity[i] = velocity;
             w.Entities.Mover[i] = mover;
+        }
+
+        /// <summary>
+        /// Where to send an interceptor, which is not where its target is.
+        ///
+        /// This is the mechanism FINDINGS 35 asked for and the one thing in the
+        /// interception path that was never built. IsInterceptor, InterceptBase
+        /// Chance, ResolveInterception, CueMultiplier and SpeedRatio all existed and
+        /// all describe the *terminal* moment - what happens once the interceptor is
+        /// already there. Nothing ever got it there. An interceptor flew the same
+        /// order every other airframe flies: at the target's current position, every
+        /// tick, which is a curve of pursuit. Against something slower that is merely
+        /// wasteful; against anything faster - and point-defence.md §5's whole
+        /// argument is that the threat has moved to 500-600 km/h against a 300 km/h
+        /// propeller interceptor - it is a stern chase that never closes, and the
+        /// airframe follows its target off the far side of the map until it is shot
+        /// down or the match ends.
+        ///
+        /// Real interception is a cue, a solution, and a vector: hold the track,
+        /// measure the velocity, compute where the two will meet, fly there, and let
+        /// the seeker take the last two hundred metres. So the question a slower
+        /// interceptor faces is not "can it catch up" - it never catches up - but
+        /// "is the track good enough to compute the meeting point", and that is a
+        /// far better mechanic because it makes detection quality pay.
+        ///
+        /// The solution is iterated a fixed three times rather than solved in closed
+        /// form. The quadratic is exact but squares a term of order (range x speed),
+        /// which at 20 km and 500 play-metres a second overflows a Q31.32; three
+        /// passes of "where will it be when I could get to where I last thought it
+        /// would be" converge to within a metre or two over any geometry this game
+        /// produces, and a fixed iteration count is what the determinism rules allow.
+        ///
+        /// How much of that lead is actually flown is decided by World.TrackQuality
+        /// Of - see SimConstants.InterceptLeadRadarTrack - and what is left over is
+        /// the part a second interceptor is worth buying.
+        /// </summary>
+        static Fix2 InterceptPoint(World w, int i, EntityHandle target, MoverState mover)
+        {
+            int ti = target.Index;
+            Fix2 targetPos = w.Entities.Position[ti];
+            Fix2 targetVel = w.Entities.Velocity[ti];
+            if (targetVel.SqrMagnitude().Raw == 0) return targetPos;
+
+            Fix mySpeed = mover.SpeedMetresPerSecond * mover.SpeedMultiplier;
+            if (mySpeed.Raw <= 0) return targetPos;
+
+            Fix2 pos = w.Entities.Position[i];
+            Fix t = Fix2.Distance(pos, targetPos) / mySpeed;
+            for (int pass = 0; pass < 2; pass++)
+            {
+                if (t > SimConstants.InterceptMaxLeadSeconds) t = SimConstants.InterceptMaxLeadSeconds;
+                t = Fix2.Distance(pos, targetPos + targetVel * t) / mySpeed;
+            }
+            if (t > SimConstants.InterceptMaxLeadSeconds) t = SimConstants.InterceptMaxLeadSeconds;
+
+            Fix2 fullLead = targetVel * t;
+
+            Fix flown;
+            switch (w.TrackQualityOf(w.Entities.Team[i], target))
+            {
+                case TrackQuality.Radar: flown = SimConstants.InterceptLeadRadarTrack; break;
+                case TrackQuality.Optical: flown = SimConstants.InterceptLeadOpticalTrack; break;
+                // Nobody is holding it. There is no solution to fly, so the
+                // interceptor is pointed at the contact and does what it did before
+                // any of this existed.
+                default: return targetPos;
+            }
+
+            Fix2 aim = targetPos + fullLead * flown;
+
+            // Two airframes on one track are not two rolls of the same dice. They
+            // straddle the part of the lead the track could not resolve, which is
+            // how a pair of optically-cued interceptors buys back most of what a
+            // radar would have given one of them - and why the answer to a fast
+            // inbound is a second crew, not a second belt of ammunition. Ordinal by
+            // entity index so that two machines bracket the same way round; a lone
+            // interceptor gets ordinal 0 of 1 and no offset at all.
+            int ordinal, flight;
+            CoIntercept(w, i, target, out ordinal, out flight);
+            if (flight > 1)
+            {
+                Fix2 residual = fullLead * (Fix.One - flown) * SimConstants.InterceptBracketSpread;
+                // -1 at the near end of the bracket, +1 at the far end.
+                Fix across = Fix.FromInt(2 * ordinal) / Fix.FromInt(flight - 1) - Fix.One;
+                aim = aim + residual * across;
+            }
+
+            return aim;
+        }
+
+        /// <summary>
+        /// This interceptor's place in the flight vectored onto one target: how many
+        /// friendly interceptors currently hold it as their order target, and which
+        /// of them this one is by index. Both are pure functions of the entity table
+        /// so neither needs storing or hashing.
+        /// </summary>
+        static void CoIntercept(World w, int i, EntityHandle target, out int ordinal, out int flight)
+        {
+            ordinal = 0;
+            flight = 0;
+            byte team = w.Entities.Team[i];
+            for (int j = 1; j < w.Entities.HighWater; j++)
+            {
+                if (!w.Entities.IsSlotAlive(j)) continue;
+                if (w.Entities.Team[j] != team) continue;
+                if (!w.Entities.Has(j, ComponentMask.Weapon)) continue;
+                if (!w.Entities.Weapon[j].IsInterceptor) continue;
+                if (!w.Entities.Has(j, ComponentMask.Mover)) continue;
+                if (w.Entities.Mover[j].OrderTarget != target) continue;
+                if (j < i) ordinal++;
+                flight++;
+            }
         }
 
         /// <summary>

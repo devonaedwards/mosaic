@@ -151,6 +151,33 @@ namespace KZ.Sim
         Esm = 4
     }
 
+    /// <summary>
+    /// How well a side holds a track, and therefore how good a firing or intercept
+    /// solution it can compute from it.
+    ///
+    /// This is not the same question as "can it see it". Detection is binary and
+    /// IsDetectedBy answers it. This asks what the track is made of, and the answer
+    /// decides whether an interceptor can be vectored at where a target is going to
+    /// be or only pointed at where it is - which, against anything faster than the
+    /// interceptor, is the difference between an interception and a stern chase.
+    ///
+    /// point-defence.md's effector table is explicit about the split and it is a
+    /// property of the sensor, not of the shooter: the AI machine-gun turret is
+    /// "passive EO/IR only... no velocity measurement" and infers range and closing
+    /// rate from image scale, while the autocannon carries "organic AESA
+    /// search/track + EO/IR; measured velocity". The same document says a firing
+    /// solution is most sensitive to exactly that measurement.
+    /// </summary>
+    public enum TrackQuality : byte
+    {
+        /// <summary>Nobody holds it. Whatever is shooting is doing so on memory.</summary>
+        None = 0,
+        /// <summary>Somebody has eyes on it, and no measured velocity.</summary>
+        Optical = 1,
+        /// <summary>A radar holds it: range and closing rate are measured.</summary>
+        Radar = 2
+    }
+
     public enum DayPhase : byte
     {
         Day = 0,

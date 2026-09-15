@@ -573,35 +573,20 @@ namespace KZ.Sim
             if (weapon.Type == DamageType.Ram) w.Kill(me, EntityHandle.None);
         }
 
+        /// <summary>
+        /// The same three cases this function always computed, now asked of
+        /// World.TrackQualityOf so that the vector an interceptor is flying and the
+        /// roll it makes at the end are reading one answer rather than two copies
+        /// of the same loop. The numbers are unchanged.
+        /// </summary>
         static Fix CueMultiplier(World w, int i, EntityHandle target)
         {
-            byte team = w.Entities.Team[i];
-            Fix2 targetPos = w.Entities.Position[target.Index];
-
-            for (int j = 1; j < w.Entities.HighWater; j++)
+            switch (w.TrackQualityOf(w.Entities.Team[i], target))
             {
-                if (!w.Entities.IsSlotAlive(j)) continue;
-                if (w.Entities.Team[j] != team) continue;
-                if (!w.Entities.Has(j, ComponentMask.Sensor)) continue;
-                if (w.Entities.Sensor[j].Radar.Raw <= 0) continue;
-
-                Fix r = w.DetectionRangeFor(j, target.Index, SensorChannel.Radar);
-                if (r.Raw > 0 && Fix2.SqrDistance(w.Entities.Position[j], targetPos) <= r * r)
-                    return Fix.One;  // radar-cued
+                case TrackQuality.Radar: return Fix.One;
+                case TrackQuality.Optical: return Fix.FromDoubleContentOnly(0.60);
+                default: return Fix.FromDoubleContentOnly(0.30);  // firing blind
             }
-
-            for (int j = 1; j < w.Entities.HighWater; j++)
-            {
-                if (!w.Entities.IsSlotAlive(j)) continue;
-                if (w.Entities.Team[j] != team) continue;
-                if (!w.Entities.Has(j, ComponentMask.Sensor)) continue;
-
-                Fix r = w.BestDetectionRange(j, target.Index);
-                if (r.Raw > 0 && Fix2.SqrDistance(w.Entities.Position[j], targetPos) <= r * r)
-                    return Fix.FromDoubleContentOnly(0.60);  // somebody has eyes on it
-            }
-
-            return Fix.FromDoubleContentOnly(0.30);  // firing blind
         }
 
         static Fix SpeedRatio(World w, int i, EntityHandle target)

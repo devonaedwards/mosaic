@@ -246,6 +246,54 @@ namespace KZ.Sim
         public const int CrewsPerQuarters = 4;
         public const int MaxCrews = 30;
 
+        // ---- interception ---------------------------------------------------
+        //
+        // How much of a computed lead an interceptor is actually flown to, by what
+        // the side vectoring it is holding the target on. This is the whole of the
+        // cue-and-vector chain: a radar track measures closing rate and the
+        // interceptor is sent to the meeting point; an optical track infers it from
+        // image scale and sends the interceptor somewhere short of it; no track at
+        // all leaves it pointed at where the target is, which against anything
+        // faster than the interceptor is a chase it cannot win.
+
+        /// <summary>
+        /// point-defence.md's effector table gives the autocannon "organic AESA
+        /// search/track + EO/IR; measured velocity". A measured velocity is a
+        /// solution, so a radar-cued interceptor flies the whole computed lead.
+        /// </summary>
+        public static readonly Fix InterceptLeadRadarTrack = Fix.FromDoubleContentOnly(1.00);
+
+        /// <summary>
+        /// Designer estimate. The same table gives the AI machine-gun turret
+        /// "passive EO/IR only... no velocity measurement" - it reads closing rate
+        /// off image scale - and the document says a firing solution is most
+        /// sensitive to exactly that measurement, but gives no figure for how far
+        /// short the estimate falls. 0.55 is chosen so that an optically-cued pair
+        /// bracketing the residual is worth about what one radar-cued interceptor
+        /// is, which is the trade the mechanic exists to offer.
+        /// </summary>
+        public static readonly Fix InterceptLeadOpticalTrack = Fix.FromDoubleContentOnly(0.55);
+
+        /// <summary>
+        /// How much of the lead a track could not resolve that a pair of
+        /// interceptors straddles. Designer estimate: no source prices bracketing,
+        /// and the point of it being under one is that two airframes cover the
+        /// error rather than guaranteeing one of them sits exactly on the truth.
+        /// A radar track leaves no residual, so a bracket over one buys nothing -
+        /// which is the correct answer and is why this is a fraction of the
+        /// residual rather than a fixed offset.
+        /// </summary>
+        public static readonly Fix InterceptBracketSpread = Fix.FromDoubleContentOnly(0.60);
+
+        /// <summary>
+        /// The longest flight time an intercept solution is computed over. Beyond
+        /// this the extrapolation is fantasy - a target twenty seconds out will have
+        /// manoeuvred - and the solution is recomputed every tick anyway, so the cap
+        /// costs nothing and stops an aimpoint being thrown off the map by a
+        /// near-parallel geometry.
+        /// </summary>
+        public static readonly Fix InterceptMaxLeadSeconds = Fix.FromInt(20);
+
         /// <summary>Drones leave the pad a few ticks apart so a flight does not spawn stacked.</summary>
         public const int SortiePadEgressBaseTicks = 8;
         public const int SortiePadEgressPerIndexTicks = 4;

@@ -178,32 +178,40 @@ namespace KZ.Play
             }
 
             // The defender buys its own information, and this is the order that
-            // makes it an opponent rather than a target range.
+            // turns it from a target range into an opponent.
             //
             // The raid below was already here and already correct, and it fired
-            // exactly never: it is gated on IsDetectedBy, and the defender's
-            // forward-most eye is a tank with 4.3 km of optics inside a 90 degree
-            // arc, sitting 5.8 km from the nearest thing the player owns. So in a
-            // whole match it saw nothing but the player's own one-way drones
-            // arriving over its head - which kill themselves on impact - and the
-            // FPVs it threw at those were left holding a dead handle. Zero enemy
-            // airframes ever crossed west. FINDINGS 35's "you cannot lose" and "you
-            // cannot intercept the FPVs the defender sends" are the same defect
-            // seen from two sides: there were no FPVs to intercept.
+            // exactly never, for two reasons that had nothing to do with it.
             //
-            // The answer is not to let the defender read the entity table. It is to
-            // let it do what the player does - put something up and go and look.
-            // A Recon Wing at High with 10.8 km of optics sweeping west finds the
-            // player's rear, and everything downstream of that already worked. It
-            // also hands the player the single best decision in the game in the
-            // other direction: shoot the scout down and the raids stop, which is
-            // the same "push eyes forward, watch four kilometres appear" moment
-            // FINDINGS 35 called the most game-like thing in it.
+            // The first is one character wide and is fixed below: it passed `tick`
+            // where SortieSystem.Launch wants a *launch index* within a flight, and
+            // EgressUntilTick is SortiePadEgressBaseTicks + index x 4. At forty
+            // play-seconds in, that is a five-thousand-tick hold on the pad, and it
+            // grows for the rest of the match. Every airframe the defender ever
+            // launched sat on its pad until the match ended. Nothing was ever
+            // inbound, which is the whole of FINDINGS 35's "you cannot intercept the
+            // FPVs the defender sends": there were none to intercept.
+            //
+            // The second is that the raid is gated on IsDetectedBy, and the
+            // defender's forward-most eye is a tank with 4.3 km of optics inside a
+            // 90 degree arc, sitting 5.8 km from the nearest thing the player owns.
+            // Left passive it sees nothing of the player's at all - measured, over
+            // three hundred play-seconds - so it has nothing to launch at either.
+            //
+            // The answer to that second one is not to let the defender read the
+            // entity table. It is to let it do what the player does: put something
+            // up and go and look. A Recon Wing at High with 10.8 km of optics
+            // sweeping west finds the player's rear, and everything downstream of it
+            // already worked. It also hands the player the best decision in the
+            // game running the other way - shoot the scout down and the raids stop -
+            // which is the same "push eyes forward, watch four kilometres of the
+            // enemy rear appear" moment FINDINGS 35 called the most game-like thing
+            // in the whole build, now available to both sides.
             if (tick > 0 && tick % SimConstants.PlaySeconds(45) == 0
                 && CountAloft(w, 2, "Recon Wing") == 0)
             {
                 w.Enqueue(Command.LaunchSortie(2, Catalog.IdOf("Recon Wing"),
-                                               P(24000, 9360), EntityHandle.None, tick));
+                                               P(24000, 9360), EntityHandle.None, 0));
             }
 
             // A sortie with nothing to do gets told where to go. LaunchSortie can
@@ -220,12 +228,39 @@ namespace KZ.Play
             // the player does, so a player who keeps their sensors back is not
             // shot at, and a player who pushes a designator forward has bought
             // their information with a target.
+            //
+            // The launch index rotates 0-3 rather than carrying the tick: it is
+            // spacing within a flight, worth at most a dozen ticks, and it is not a
+            // clock.
             if (tick > 0 && tick % SimConstants.PlaySeconds(4) == 0)
             {
                 EntityHandle prey = NearestSeen(w, 2, P(25200, 9360));
                 if (!prey.IsNone)
                     w.Enqueue(Command.LaunchSortie(2, Catalog.IdOf("FPV Team"),
-                                                   P(24000, 9360), prey, tick));
+                                                   P(24000, 9360), prey,
+                                                   (tick / SimConstants.PlaySeconds(4)) % 4));
+            }
+
+            // And every hundred play-seconds, the thing the interceptor exists for.
+            //
+            // A Jet Strike Drone is 140 m/s against an interceptor's 85, carries no
+            // crew, and flies on autonomy, so it is neither jammable nor stoppable by
+            // chasing it - point-defence.md §5 is that the threat moved to 500-600
+            // km/h while the propeller interceptor stayed at 300. It is aimed at the
+            // player's radar mast on purpose. That mast is the only thing on the map
+            // that produces a radar track, a radar track is what lets an interceptor
+            // be vectored onto a meeting point rather than pointed at a contact, and
+            // so losing it is what makes the *next* one unstoppable. ResolveIntercep
+            // tion's own doc comment has claimed for months that "killing the radar
+            // is how you open the sky"; until the vector existed, that sentence was
+            // about nothing.
+            if (tick > 0 && tick % SimConstants.PlaySeconds(100) == 0)
+            {
+                EntityHandle mast = FindFirst(w, 1, "Radar Mast");
+                if (mast.IsNone) mast = FindFirst(w, 1, "Command Post");
+                if (!mast.IsNone)
+                    w.Enqueue(Command.LaunchSortie(2, Catalog.IdOf("Jet Strike Drone"),
+                                                   P(26400, 11400), mast, 0));
             }
 
             // The tank walks its patrol between two points rather than standing
