@@ -8,7 +8,9 @@
 //
 // AUDIT-UNWIRED.md F33/F34 (previous pass, kept because the reasoning is the
 // reason the file is shaped this way): three experiments used to overwrite the
-// Gun Mount's range back to 550 m after FINDINGS 2 corrected it to 85, and
+// Gun Mount's range back to 550 compressed metres after FINDINGS 2 corrected
+// it to 85 (the ring is 1,000 real metres now, and every figure in this file
+// is real metres since the catalogue rescale - docs/SCALE.md), and
 // every experiment ran on Fill(Open) with clear weather, firm ground, an
 // ownerless map and no imagery. Both are fixed: a mount that needs different
 // numbers is a "Test ..." catalogue entry rather than a shipped unit written
@@ -48,6 +50,33 @@
 // quantity that only matters across engagements - a magazine, a second turret,
 // a band change, a longer barrel - could not be measured at all. See the
 // "Arrival scheduling" section below.
+//
+// docs/SCALE.md's rescale: every distance in this file is now a real metre.
+// The catalogue moved to real metres and one global 4x time multiplier and this
+// harness did not move with it, so for one session every experiment here was
+// fought on a 2,400 x 1,600 *metre* map by a mount whose kill ring is 1,000 m
+// against a mast that reaches 16.8 km - a box in which every weapon and every
+// sensor was effectively unlimited. Nine of the ten drifted and none of the
+// drift meant anything. Three things came out of putting it right, none of them
+// a multiplication:
+//
+//   THE BORDER MOVED BEHIND THE OBJECTIVE, because twelve times the old
+//   geometry puts 1,968 m of denied ground in front of the gun and an FPV
+//   Team's dead reckoning throws the warhead away after 1,333. See
+//   StandardBorderMetres.
+//
+//   TWO SWEEPS WERE RETUNED rather than converted, because twelve times their
+//   old rungs no longer spans anything: APPROACH's pads (FINDINGS 31 already
+//   said they bracketed the wrong edge) and REACH's barrel ladder, five of
+//   whose rungs are now above what the mount can see.
+//
+//   PAD EGRESS IS WIRED NOW and compounds with the launch spacing below, so
+//   "launched together" means "tapped together". See "Arrival scheduling".
+//
+// Every map size this file builds is checked against the ~32 km ceiling the
+// squared-distance comparison imposes (CheckMapFitsTheComparableRange). The two
+// in use, 28,800 x 19,200 and 24,576 x 24,576, have diagonals of 34.6 and
+// 34.8 km against a 45 km limit.
 
 using System;
 using System.Collections.Generic;
@@ -474,7 +503,7 @@ namespace KZ.Balance
                     (survived * 100 / trials) + "%"));
             }
             Console.WriteLine();
-            Console.WriteLine("  That row is the same 550 m mount as the top of (a), on the world every");
+            Console.WriteLine("  That row is the same 6,600 m mount as the top of (a), on the world every");
             Console.WriteLine("  experiment ran on before AUDIT F34 was fixed. FINDINGS 33 recorded the");
             Console.WriteLine("  two worlds as identical in every cell. They are not any more: the flat");
             Console.WriteLine("  world has no territory owner, so every square metre of it is denied");
@@ -496,12 +525,23 @@ namespace KZ.Balance
             Console.WriteLine("  keeps arriving. 'Barrel length barely matters' is true of a wave and");
             Console.WriteLine("  false of a stream.");
             Console.WriteLine();
-            Console.WriteLine("  The optics column is not monotonic and that is the more interesting");
-            Console.WriteLine("  half. A mount that finds the drone at 64 m does better than one that");
-            Console.WriteLine("  finds it at 127, because a five-round belt spent at the rim of the");
-            Console.WriteLine("  envelope is a belt spent at the worst hit chance the falloff offers.");
-            Console.WriteLine("  Seeing further is only an advantage to a mount that can afford to");
-            Console.WriteLine("  wait, and this one cannot.");
+            Console.WriteLine("  Both columns now run the same way, which they did not in compressed");
+            Console.WriteLine("  units: more barrel is better and more camera is better, and the two");
+            Console.WriteLine("  meet in the middle of the table. The old sweep read a *shorter*");
+            Console.WriteLine("  camera as the better buy - a belt spent at the rim of the envelope");
+            Console.WriteLine("  being a belt spent at the worst hit chance the falloff offers - and");
+            Console.WriteLine("  that inversion is gone. At real speeds an FPV Team covers the");
+            Console.WriteLine("  mount's kill ring in thirty real seconds rather than four, which is");
+            Console.WriteLine("  enough time for a second and a third engagement, so a mount that");
+            Console.WriteLine("  sees early can now afford to open early. The inversion was a");
+            Console.WriteLine("  property of a three-second engagement, not of the falloff.");
+            Console.WriteLine();
+            Console.WriteLine("  Read (a) and (b) against each other and the binding number is the");
+            Console.WriteLine("  seeing, not the barrel: the whole of (b) is fought with a 6,600 m");
+            Console.WriteLine("  barrel and still falls by thirty points, while the top half of (a)");
+            Console.WriteLine("  is fought with 7,200 m of camera and barely moves until the barrel");
+            Console.WriteLine("  drops below what the camera finds. That is FINDINGS 31 general");
+            Console.WriteLine("  claim surviving the rescale even though its arithmetic did not.");
         }
 
         /// <summary>
@@ -591,12 +631,23 @@ namespace KZ.Balance
                     (gunKilled * 100 / trials) + "%"));
             }
             Console.WriteLine();
-            Console.WriteLine("  * the row that straddles the 1,000 m kill ring. Above it the flight");
-            Console.WriteLine("  crosses the whole envelope; below it the drones are inside the ring");
-            Console.WriteLine("  from the tick they exist, under fire from the start but for far less");
-            Console.WriteLine("  of it. That transition is what a forward pad buys, and it is the");
-            Console.WriteLine("  thing the old pad set - chosen around the mount's long-since-corrected");
-            Console.WriteLine("  550 m reach - could not show at all.");
+            Console.WriteLine("  * the row that straddles the 1,000 m kill ring.");
+            Console.WriteLine();
+            Console.WriteLine("  A forward pad is worth something, and it is worth less than the map");
+            Console.WriteLine("  makes it look. Three kilometres of standoff buys the defence about");
+            Console.WriteLine("  fifteen points; the sharp row is the last one, at 300 m, where the");
+            Console.WriteLine("  flight is inside the ring before the head has swept onto it and the");
+            Console.WriteLine("  mount never gets a first engagement at all. Between 2,400 m and");
+            Console.WriteLine("  600 m the column is nearly flat, because what the mount spends is");
+            Console.WriteLine("  not the crossing time - it has thirty real seconds of that at every");
+            Console.WriteLine("  row above the last - but the seconds between latching a track and");
+            Console.WriteLine("  the drone arriving, and those do not scale with the pad.");
+            Console.WriteLine();
+            Console.WriteLine("  The arrived column is flat across the whole sweep and that is the");
+            Console.WriteLine("  more useful half: a forward pad does not get more drones through, it");
+            Console.WriteLine("  gets the same drones through against a mount that has had less");
+            Console.WriteLine("  warning. The old pad set - chosen around the mount's long-since-");
+            Console.WriteLine("  corrected 550-compressed-metre reach - could show neither.");
         }
 
         /// <summary>
@@ -1000,13 +1051,27 @@ namespace KZ.Balance
             }
 
             Console.WriteLine();
-            Console.WriteLine("  A mount is bought to service an engagement. A flight that arrives in");
-            Console.WriteLine("  one instant offers exactly one, and the rounds column says what that");
-            Console.WriteLine("  costs: against a wave the third and fourth mounts in a cluster fire");
-            Console.WriteLine("  nothing at all, because by the time a drone is 70 m from them it is");
-            Console.WriteLine("  already on top of the mount it was sent at. Against a stream the same");
-            Console.WriteLine("  four mounts all shoot, the lead one empties its five-round belt in");
-            Console.WriteLine("  nearly every trial, and the stack starts to be worth its money.");
+            Console.WriteLine("  A mount is bought to service an engagement, and the rounds column");
+            Console.WriteLine("  is where the money goes. Two things changed with the rescale and");
+            Console.WriteLine("  they are worth separating.");
+            Console.WriteLine();
+            Console.WriteLine("  The supporting mounts now shoot in both arms. In compressed units");
+            Console.WriteLine("  the third and fourth mounts of a cluster fired 0.00 rounds against a");
+            Console.WriteLine("  wave; here they fire about one each. Two causes, and only one of");
+            Console.WriteLine("  them is the scale: a 1,000 m kill ring covers the whole cluster");
+            Console.WriteLine("  where an 85 m one covered only the mount being attacked, and pad");
+            Console.WriteLine("  egress - now wired, four ticks per airframe - means a tap is no");
+            Console.WriteLine("  longer one instant. 'Launched together' is a tap, not a wave.");
+            Console.WriteLine();
+            Console.WriteLine("  And the stack still does not pay. Adding the second, third and");
+            Console.WriteLine("  fourth mount moves the attack win rate by a few points at most and");
+            Console.WriteLine("  by nothing at all in several cells, for 450 Materiel each, while the");
+            Console.WriteLine("  lead mount fires five rounds against a tap and eight against a");
+            Console.WriteLine("  stream and does nearly all the work either way. The rounds column");
+            Console.WriteLine("  says why: a supporting mount gets about one round per trial because");
+            Console.WriteLine("  it commits to a target that is already being engaged. At 40 trials a");
+            Console.WriteLine("  cell a few points either way is noise, and the honest reading of");
+            Console.WriteLine("  this table is that the differences are inside it.");
         }
 
         /// <summary>
@@ -1025,14 +1090,14 @@ namespace KZ.Balance
             // A fixed cluster, so the lead mount - the one the attack is aimed at
             // and the one a win is measured on - sits at the same place whatever
             // the stack size, and every mount added to it has the defended point
-            // inside its own 85 m envelope. The old layout spread mounts along a
-            // line centred on the stack, which moved the lead as the count changed
-            // and put the third mount 120 m from the engagement, out of reach - so
-            // two turrets and three turrets measured identically to the digit for
-            // a reason that had nothing to do with stacking.
+            // inside its own 1,000 m envelope. The old layout spread mounts along
+            // a line centred on the stack, which moved the lead as the count
+            // changed and put the third mount 1,440 m from the engagement, out of
+            // reach - so two turrets and three turrets measured identically to
+            // the digit for a reason that had nothing to do with stacking.
             //
             // Every supporting mount is beside or behind the lead, never in front
-            // of it. A mount 40 m forward of the one being defended measured as
+            // of it. A mount 480 m forward of the one being defended measured as
             // worth more than two mounts beside it, because it opens fire first.
             // That is a real and interesting fact about siting, and a confound in
             // a table whose one variable is supposed to be how many mounts there
@@ -1279,8 +1344,9 @@ namespace KZ.Balance
         /// (<c>CombatSystem.CanEngage</c>) and how well an interceptor is cued
         /// (<c>CueMultiplier</c>) - and both of those are asked only about a
         /// target already inside a weapon envelope, which in this game is at most
-        /// 320 m. Every sensor in the roster finds every airframe in the roster at
-        /// 320 m. So a decoy that is detected at 2,373 m instead of 750 m cannot
+        /// 3,840 m - the Interceptor Battery's, the longest in the roster. Every
+        /// sensor in the roster finds every airframe in the roster at 3,840 m. So
+        /// a decoy detected at 28 km instead of 9 cannot
         /// change any outcome, at any package mix, against any defence that can be
         /// assembled from the current catalogue - not as an empirical result but
         /// as a property of where the number is read. FINDINGS 25 reached that
@@ -1378,7 +1444,8 @@ namespace KZ.Balance
             // experiment measures the escort and not navigation denial. Without
             // it the answer is a different one entirely: a Heavy Strike Drone is
             // one-way and scene-matching, its NavState error crosses
-            // SimConstants.MunitionMissRadiusMetres about 270 m past the border,
+            // SimConstants.MunitionMissRadiusMetres after 1,333 m of denied
+            // flight - three percent of distance flown against a 40 m radius -
             // and World.ApplyDamage then puts the warhead on empty ground - so
             // every package delivers nothing whatever the escort does, and the
             // table returns to being a constant for a reason that has nothing to
@@ -1564,10 +1631,11 @@ namespace KZ.Balance
             Console.WriteLine("  Worth reading against the law above it: the 30-degree head sees three");
             Console.WriteLine("  and a half times as far as the 360-degree one, costs twelve times as");
             Console.WriteLine("  much to cover the same sky, and - when it is pointed the right way,");
-            Console.WriteLine("  which nothing can currently arrange - survives exactly as often. Above");
-            Console.WriteLine("  about 70 m the extra reach buys a mount nothing, because 70 m is where");
-            Console.WriteLine("  it first holds a track and 3.2 s is all it has after that (FINDINGS");
-            Console.WriteLine("  31). The panoramic head is not the compromise position on this slider;");
+            Console.WriteLine("  which nothing can currently arrange - survives no more often; on");
+            Console.WriteLine("  these numbers it survives slightly less. Above");
+            Console.WriteLine("  about 840 m the extra reach buys a mount nothing, because 840 m is");
+            Console.WriteLine("  where it first holds a track and about 25 real seconds is all it has");
+            Console.WriteLine("  after that (FINDINGS 31, in real metres). The panoramic head is not the compromise position on this slider;");
             Console.WriteLine("  on these numbers it is the only one worth buying.");
         }
 
@@ -1747,7 +1815,15 @@ namespace KZ.Balance
             while (next < plan.Count && plan[next].Tick <= tick) { w.Enqueue(plan[next].Cmd); next++; }
         }
 
-        /// <summary>Seconds expressed in ticks, for readability at the call sites.</summary>
+        /// <summary>
+        /// Seconds of play expressed in ticks, for readability at the call sites.
+        /// Seconds of play and not real seconds, deliberately: what this converts
+        /// is a launch schedule, and a launch schedule is the player's hands on
+        /// the cards rather than a physical duration - the same split
+        /// SimConstants makes between PlaySeconds() and Seconds(). At the 4x
+        /// multiplier Sec(3) is twelve real seconds, which is three of the Gun
+        /// Mount's four-second cooldowns.
+        /// </summary>
         static int Sec(int seconds) { return seconds * SimConstants.TicksPerSecond; }
 
         /// <summary>
@@ -1776,7 +1852,7 @@ namespace KZ.Balance
         /// One attempt: launch the drones together and let it play out until either
         /// the gun is destroyed or every drone is gone. Runs the real, shipped Gun
         /// Mount on the realistic default world - see AUDIT-UNWIRED.md F33/F34.
-        /// This used to overwrite the gun's range back to 550 m on every call;
+        /// This used to overwrite the gun's range back to 550 compressed metres on every call;
         /// it no longer touches the gun at all.
         /// </summary>
         static bool RunAssault(int droneCount, Fix padX, ulong seed, out int arrived, int startTick)
