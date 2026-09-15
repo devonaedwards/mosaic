@@ -597,6 +597,27 @@ namespace KZ.Sim
             Fix mult = Catalog.DamageMultiplier(type, Entities.Armour[i], topAttack);
             if (mult.Raw == 0) return;
 
+            // AUDIT-UNWIRED.md F5 / navigation-denied.md §5: a one-way airframe
+            // that does not know where it is detonates where it thinks the
+            // target is, not where the target actually is. ErrorMetres is the
+            // aimpoint error NavigationSystem accumulated over the flight, and
+            // "at the moment of arrival" is exactly this call for a munition
+            // that does not come home. A drone holding a scene-matching lock
+            // never reaches MunitionMissRadiusMetres (its error rounds to
+            // nothing); unescorted dead reckoning over a deep denied
+            // penetration does. This gates on the airframe, not on whether it
+            // still has an operator - the autonomy penalty is a separate
+            // system, and §5 is explicit that the two should stay separable.
+            if (Entities.IsAlive(attacker) && Entities.Has(attacker.Index, ComponentMask.Sortie)
+                && Entities.Sortie[attacker.Index].OneWay
+                && Entities.Has(attacker.Index, ComponentMask.Nav)
+                && Entities.Nav[attacker.Index].ErrorMetres > SimConstants.MunitionMissRadiusMetres)
+            {
+                Events.Push(SimEventKind.NavMissedAimpoint, Tick, target, attacker,
+                            Entities.Team[attacker.Index], 0);
+                return;
+            }
+
             Fix damage = baseDamage * mult;
 
             if (type == DamageType.Shaped && Entities.CageHp[i].Raw > 0)

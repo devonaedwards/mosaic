@@ -44,7 +44,11 @@ namespace KZ.Headless
         public static int Main(string[] args)
         {
             ulong seed = 20260914UL;
-            int seconds = 60;
+            // 75 rather than 60: long enough for the early deep strike Script()
+            // launches at the supply truck (18 m/s, ~1 km, most of it denied) to
+            // actually arrive and either connect or miss on navigation error,
+            // instead of the match ending mid-flight.
+            int seconds = 75;
             bool verbose = true;
 
             for (int i = 0; i < args.Length; i++)
@@ -161,19 +165,45 @@ namespace KZ.Headless
             if (tick == SimConstants.Seconds(10))
                 MovementSystem.OrderMoveTo(w, designatorHandle, P(1450, 700));
 
-            // One sortie a second, alternating between the cheap radio airframe -
-            // which the jammer will eat before it arrives - and the fiber airframe,
-            // which it cannot touch.
+            // One extra, early strike straight at the supply truck - deep
+            // enough behind the border that a scene-matching drone with no
+            // imagery of that ground dead-reckons the whole way. Scripted
+            // separately from the rotation below so it fires while there is
+            // still Materiel for it, rather than waiting on the tank to fall
+            // and the treasury to be nearly spent.
+            if (tick == SimConstants.Seconds(6))
+            {
+                EntityHandle truck = FindFirst(w, 2, "Supply Truck");
+                if (w.Entities.IsAlive(truck))
+                    w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Heavy Strike Drone"),
+                                                    P(860, 780), truck, 1000));
+            }
+
+            // One sortie a second, rotating the cheap radio airframe - which the
+            // jammer will eat before it arrives - the fiber airframe, which it
+            // cannot touch, and every third wave a scene-matching strike drone
+            // whose navigation, not its link, is what the border now taxes.
             //
             // The lesson the run should show: the radio airframes lose their
-            // pilots inside the jamming bubble and fall out of the sky short of the
-            // target, while the fiber airframes fly through it untouched and only
-            // have to survive the thread itself.
+            // pilots inside the jamming bubble and fall out of the sky short of
+            // the target; the fiber airframes fly through it untouched and only
+            // have to survive the thread itself; and the strike drone keeps
+            // both, but AUDIT-UNWIRED.md F5's aimpoint error grows the moment it
+            // crosses the border with no imagery of the far side to match
+            // against, and a deep enough shot goes off on empty ground instead
+            // of the target - see World.ApplyDamage and SimEventKind.
+            // NavMissedAimpoint below.
             if (tick % (SimConstants.TicksPerSecond * 2) != 0) return;
             int wave = tick / (SimConstants.TicksPerSecond * 2);
             if (wave == 0) return;
 
-            string airframe = (wave % 2 == 0) ? "FPV Team" : "Fiber FPV Team";
+            string airframe;
+            switch (wave % 3)
+            {
+                case 1: airframe = "FPV Team"; break;
+                case 2: airframe = "Fiber FPV Team"; break;
+                default: airframe = "Heavy Strike Drone"; break;
+            }
 
             // Launched forward, beside the relay mast. A fiber thread is exposed
             // for every second it is in the air, so a drone launched a kilometre
@@ -217,9 +247,11 @@ namespace KZ.Headless
             Console.WriteLine("kills, verified       " + n.VerifiedKills);
             Console.WriteLine("kills, unverified     " + n.UnverifiedKills);
             Console.WriteLine();
-            Console.WriteLine("AUDIT-UNWIRED.md F6, wired this pass:");
+            Console.WriteLine("AUDIT-UNWIRED.md F5/F6, wired this pass:");
             Console.WriteLine("  satellite lost/regained crossing the border  "
                               + n.SatelliteLost + " / " + n.SatelliteRegained);
+            Console.WriteLine("  strike drones that missed on navigation error"
+                              + Pad(n.MissedByNavError));
             Console.WriteLine();
 
             for (byte team = 1; team <= 2; team++)
@@ -269,6 +301,7 @@ namespace KZ.Headless
         public int SortiesLaunched, RefusedNoCrew, LinksAmber, LinksBlack;
         public int LostToJamming, TethersCut, VerifiedKills, UnverifiedKills;
         public int SatelliteLost, SatelliteRegained;
+        public int MissedByNavError;
 
         public Narrator(World w, bool verbose) { world = w; this.verbose = verbose; }
 
@@ -326,6 +359,12 @@ namespace KZ.Headless
                     case SimEventKind.SatelliteCoverageRegained:
                         SatelliteRegained++;
                         Say(e.Tick, "the designator team is back over its own ground");
+                        break;
+                    // AUDIT-UNWIRED.md F5: fired only inside KZ.Tests before
+                    // this pass.
+                    case SimEventKind.NavMissedAimpoint:
+                        MissedByNavError++;
+                        Say(e.Tick, "a strike drone's warhead went off on empty ground - it did not know where it was");
                         break;
                 }
             }

@@ -38,6 +38,7 @@ namespace KZ.Sim
         MinesLaid,
         NavLockLost,               // scene matching had nothing to match against
         NavLockRegained,
+        NavMissedAimpoint,         // a one-way munition's navigation error put it wide of the target
         SatelliteCoverageLost,     // crossed a border out of the constellation's licensed ground
         SatelliteCoverageRegained,
         SortieRefusedDaylight,

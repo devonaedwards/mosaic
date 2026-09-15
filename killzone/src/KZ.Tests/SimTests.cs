@@ -1045,6 +1045,52 @@ namespace KZ.Tests
                             "but it is still drifting - it never got a position fix");
             });
 
+            r.Run("navigation error displaces a one-way munition's aimpoint", delegate
+            {
+                // AUDIT-UNWIRED.md F5: NavState.ErrorMetres was computed by the
+                // whole navigation system and read by nothing but tests. Two
+                // dead-reckoning FPV Teams cross the same border on the same
+                // heading; one's target sits just past it, the other's target
+                // sits deep behind it. navigation-denied.md §5's own worked
+                // example - 3% of distance flown, ~50 map metres at a real deep
+                // strike - says the shallow shot should still land and the deep
+                // one should not, and only World.Step producing that difference
+                // (not a hand-assigned NavState) is evidence it is wired.
+                Terrain t = new Terrain(2048, 2048);
+                t.Fill(TileClass.Open);
+                World w = new World(t, 64, 8, 405, 2);
+                w.Territory.SetVerticalBorder(600, 1, 2, 0);
+
+                // Two parallel lanes, 400 m apart, so the far drone's straight
+                // line to its own target never passes within weapon range of
+                // the near tank.
+                Fix2 nearTarget = P(700, 1000);   // ~90 m of denied ground to cross
+                Fix2 farTarget = P(1600, 1400);   // ~990 m of denied ground to cross
+
+                EntityHandle nearTank = w.Spawn(Catalog.IdOf("Main Tank"), 2, nearTarget);
+                EntityHandle farTank = w.Spawn(Catalog.IdOf("Main Tank"), 2, farTarget);
+                Fix fullHp = Catalog.Get(Catalog.IdOf("Main Tank")).Hp;
+
+                EntityHandle nearDrone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(590, 1000));
+                EntityHandle farDrone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(590, 1400));
+
+                int misses = 0;
+                for (int k = 0; k < 2200; k++)
+                {
+                    if (w.Entities.IsAlive(nearDrone)) MovementSystem.OrderMoveTo(w, nearDrone, nearTarget);
+                    if (w.Entities.IsAlive(farDrone)) MovementSystem.OrderMoveTo(w, farDrone, farTarget);
+                    w.Step();
+                    misses += w.Events.CountOf(SimEventKind.NavMissedAimpoint);
+                }
+
+                Assert.True(w.Entities.Hp[nearTank.Index] < fullHp,
+                            "90 m of dead reckoning rounds to nothing - the near shot lands");
+                Assert.True(w.Entities.Hp[farTank.Index] == fullHp,
+                            "990 m of it does not - the far shot goes off on empty ground");
+                Assert.True(misses > 0,
+                            "and the simulation says so, rather than silently doing no damage");
+            });
+
             r.Run("fog grounds nothing and blinds everything", delegate
             {
                 // The weather state a designer is most likely to get wrong, by

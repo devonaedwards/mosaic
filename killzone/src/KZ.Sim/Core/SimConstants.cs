@@ -314,6 +314,25 @@ namespace KZ.Sim
         /// </summary>
         public static readonly Fix NavReacquireMetres = Fix.FromDoubleContentOnly(80.0);
 
+        /// <summary>
+        /// How far NavState.ErrorMetres can displace a one-way munition's
+        /// aimpoint before the warhead goes off on empty ground instead of the
+        /// target - see World.ApplyDamage. AUDIT-UNWIRED.md F5: the whole
+        /// navigation system computed this number and nothing consumed it.
+        ///
+        /// navigation-denied.md §5 sources the error itself (scene matching's
+        /// 1-3 map metres "rounds to nothing"; dead reckoning over a deep
+        /// denied penetration reaches tens of map metres - the worked example
+        /// is 50 at 20 real km). It does not say how much displacement a given
+        /// warhead can tolerate and still land on something the size of a
+        /// vehicle, so this radius is a designer estimate: comfortably above
+        /// SceneMatchErrorMetres, so a drone that brought a map never misses on
+        /// navigation grounds, and reachable by NavDriftRateInertial well
+        /// inside a plausible flight (8 / 0.03 ~= 270 m of unescorted denied
+        /// flight), so the mount that makes the geofence hurt actually does.
+        /// </summary>
+        public static readonly Fix MunitionMissRadiusMetres = Fix.FromDoubleContentOnly(8.0);
+
         // ---- how reliable any of this is ------------------------------------
 
         /// <summary>
