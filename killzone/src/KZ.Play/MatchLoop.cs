@@ -83,11 +83,22 @@ namespace KZ.Play
                 Paused = true;
                 Speed = 1;
                 Outcome = "playing";
+                // Three objectives, one per rung of the ladder the scenario
+                // wants the player to climb. The jammer is shallow and inside a
+                // fiber lane. The tank is inside the relay's radio range once
+                // the jammer is down. The truck is deep, behind the power line
+                // and outside radio, so it can only be reached by something
+                // that flies on what it brought.
+                //
+                // Not the defender's command post, which was the first choice
+                // and the wrong one: 5,000 structure hit points against a
+                // 520-damage shaped warhead is ten sorties of grinding, which
+                // teaches nothing the first three did not.
                 Objectives = new Objective[]
                 {
                     Named("EW Post", 2),
                     Named("Main Tank", 2),
-                    Named("Command Post", 2)
+                    Named("Supply Truck", 2)
                 };
                 clock.Restart();
             }
@@ -282,9 +293,29 @@ namespace KZ.Play
                 case SimEventKind.TetherFound: return "somebody found one of our threads";
                 case SimEventKind.CrewKilled: return "a crew was lost with its quarters";
                 case SimEventKind.CrewPromoted: return "a crew was promoted";
-                case SimEventKind.KillVerified: return "kill confirmed, " + e.Param + " tasking points";
-                case SimEventKind.KillUnverified: return "something died out there - nobody saw it";
-                case SimEventKind.StructureDestroyed: return NameOf(e.Param) + " destroyed";
+                // A kill event belongs to whoever made the kill. The defender
+                // scoring one on your drone is not "kill confirmed" on your
+                // side of the screen, and the first draft of this log said it
+                // was - which read as though you were winning while you lost
+                // five airframes.
+                case SimEventKind.KillVerified:
+                    return e.Team == Scenario.PlayerTeam
+                         ? "kill confirmed, " + e.Param + " tasking points" : null;
+                case SimEventKind.KillUnverified:
+                    return e.Team == Scenario.PlayerTeam
+                         ? "something died out there - nobody saw it, no points" : null;
+                // The one the player most needs and the one a renderer most
+                // easily forgets: your own losses. Without this the log says
+                // "sortie away" five times and then goes quiet, and a quiet log
+                // reads as nothing having happened.
+                case SimEventKind.UnitDied:
+                    return e.Team == Scenario.PlayerTeam
+                         ? "lost: " + NameOf(e.Param)
+                         : "down: " + NameOf(e.Param);
+                case SimEventKind.StructureDestroyed:
+                    return e.Team == Scenario.PlayerTeam
+                         ? "we lost the " + NameOf(e.Param)
+                         : NameOf(e.Param) + " destroyed";
                 case SimEventKind.AutonomyMisidentified: return "an autonomous munition picked the wrong target";
                 case SimEventKind.NavLockLost: return "a drone lost its scene-matching lock";
                 case SimEventKind.NavLockRegained: return "a drone got its lock back";

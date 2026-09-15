@@ -51,7 +51,9 @@
   button:hover { background: #232c34; }
   button.on { background: #2b4657; border-color: var(--own); color: #eaf7ff; }
 
-  #middle { flex: 1; display: flex; min-height: 0; }
+  /* positioned so the phone's slide-over panel stays inside the map area
+     rather than covering the top bar's own toggle button */
+  #middle { flex: 1; display: flex; min-height: 0; position: relative; }
   #mapwrap { position: relative; flex: 1; min-width: 0; }
   canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
@@ -103,6 +105,11 @@
   }
 
   @media (max-width: 720px) {
+    /* A phone gets the map, not the chrome. The top bar loses a row by
+       shrinking rather than by hiding anything the player needs mid-match. */
+    #top { gap: 5px; padding: 4px 6px; font-size: 11px; }
+    button { padding: 3px 6px; min-height: 26px; }
+    #obj { display: none; }
     #side {
       position: absolute; right: 0; top: 0; bottom: 0; width: 82%; max-width: 320px;
       z-index: 5; display: none;
@@ -141,6 +148,8 @@
       <div id="banner"></div>
     </div>
     <div id="side">
+      <h3>objectives</h3>
+      <div id="objlist"></div>
       <h3>contacts</h3>
       <div id="contacts"></div>
       <h3>your sorties</h3>

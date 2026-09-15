@@ -65,15 +65,39 @@ namespace KZ.Play
         {
             Terrain t = new Terrain(MapWidthMetres, MapHeightMetres);
             t.Fill(TileClass.Open);
-            // A treeline across the middle and power lines beside the road, so
-            // there is a fast route and a safe route and they are not the same.
-            // Tile indices, unchanged from the headless map: the build tile grew
-            // with the map when the catalogue went to real metres.
-            t.FillRect(120, 60, 190, 90, TileClass.Forest);
-            t.FillRect(140, 100, 145, 199, TileClass.PowerLine);
-            t.FillRect(0, 95, 299, 98, TileClass.Road);
-            t.FillRect(205, 120, 240, 150, TileClass.Forest);
-            t.FillRect(250, 40, 275, 70, TileClass.Rubble);
+
+            // The ground is laid out to make one question worth asking: where a
+            // fiber thread can be dragged and where it cannot. Terrain.SnagRate
+            // PerSecond is free over open ground, 0.015 on a road, 0.040 in
+            // forest and 0.090 under power lines, so these rectangles are not
+            // scenery - they are the map's only statement about which rung of
+            // the link ladder reaches which target.
+            //
+            // Tile indices; a build tile is 96 real metres.
+
+            // Two treelines, north and south, boxing in a clean lane across the
+            // middle. Sightlines collapse inside them and threads part.
+            t.FillRect(118, 26, 176, 60, TileClass.Forest);
+            t.FillRect(150, 132, 205, 168, TileClass.Forest);
+
+            // The lateral supply road, just south of the lane. The defender's
+            // truck sits on it, which is what roads are for and why they are
+            // watched.
+            t.FillRect(0, 106, 299, 108, TileClass.Road);
+
+            // The curtain: a power line running the full height of the map in
+            // front of the defender's rear area. Everything shallow of it is
+            // fiber country. Nothing deep of it is, which is the whole reason
+            // the deep target needs a different answer rather than more of the
+            // same one.
+            t.FillRect(206, 0, 209, 199, TileClass.PowerLine);
+            // A second, shorter line on the player's own side, south only, so
+            // that the clean lane is a lane rather than the whole west.
+            t.FillRect(128, 112, 130, 199, TileClass.PowerLine);
+
+            // Rubble around the defender's command post. Short everything,
+            // matchable ground, acoustically hostile.
+            t.FillRect(252, 84, 276, 104, TileClass.Rubble);
 
             World w = new World(t, 1024, 128, seed, 2, startTick);
 
@@ -88,28 +112,32 @@ namespace KZ.Play
             GrantHomeImagery(w, 1, true, BorderMetres - NeutralMetres);
             GrantHomeImagery(w, 2, false, BorderMetres + NeutralMetres);
 
-            // The player's side. Everything here is either a launch pad, a pair of
-            // eyes, or crews.
+            // The player's side. Everything here is either a launch pad, a pair
+            // of eyes, or crews. Nothing of the player's shoots.
             w.Spawn(Catalog.IdOf("Command Post"), 1, P(3600, 9360));
             w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(4560, 10320));
             w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(3600, 10800));
             w.Spawn(Catalog.IdOf("Drone Workshop"), 1, P(4560, 8400));
             w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(5400, 9360));
+            // Radio control reaches 12 km from a mast, so this one is what puts
+            // the defender's forward positions inside a live radio link and
+            // leaves their rear outside it.
             w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(9360, 9360));
-            // Two things the player can actually drive, so that pushing sensors
-            // forward is a decision made with the mouse rather than a setting.
-            w.Spawn(Catalog.IdOf("Designator Team"), 1, P(11000, 8400));
+            // Two things the player can drive. Pushing eyes forward is the only
+            // way to see anything, and it is done with the mouse.
+            w.Spawn(Catalog.IdOf("Designator Team"), 1, P(11000, 8600));
             w.Spawn(Catalog.IdOf("Motorcycle Squad"), 1, P(11000, 10800));
 
-            // The defence. Ranged so that the tank and the jammer are inside the
-            // player's reach from the forward pad and the command post is not.
-            w.Spawn(Catalog.IdOf("Command Post"), 2, P(25200, 9360));
-            w.Spawn(Catalog.IdOf("EW Post"), 2, P(18000, 9360));
+            // The defence, in three belts. The jammer and the tank sit shallow,
+            // inside fiber's reach and inside the relay's radio range. The
+            // command post sits deep, behind the power line and outside both.
+            w.Spawn(Catalog.IdOf("EW Post"), 2, P(18000, 9200));
+            w.Spawn(Catalog.IdOf("Main Tank"), 2, P(16800, 9600));
+            w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(19000, 8400));
+            w.Spawn(Catalog.IdOf("IFV"), 2, P(20600, 11000));
+            w.Spawn(Catalog.IdOf("Supply Truck"), 2, P(22800, 10300));
             w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(24600, 9360));
-            w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(19200, 8600));
-            w.Spawn(Catalog.IdOf("Main Tank"), 2, P(17400, 9360));
-            w.Spawn(Catalog.IdOf("IFV"), 2, P(20400, 11400));
-            w.Spawn(Catalog.IdOf("Supply Truck"), 2, P(22800, 10320));
+            w.Spawn(Catalog.IdOf("Command Post"), 2, P(25200, 9360));
 
             return w;
         }
@@ -174,7 +202,7 @@ namespace KZ.Play
                 if (w.Entities.IsAlive(tank))
                 {
                     bool north = (tick / leg) % 2 == 0;
-                    w.Enqueue(Command.MoveTo(2, tank, north ? P(17400, 6200) : P(17400, 12400)));
+                    w.Enqueue(Command.MoveTo(2, tank, north ? P(16800, 7600) : P(16800, 11600)));
                 }
             }
         }

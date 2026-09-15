@@ -51,6 +51,9 @@ killzone/
       Sortie/           crew pool and sortie lifecycle
       Systems/          movement, combat, economy
     KZ.Headless/        runs a match with no renderer and prints a state hash
+    KZ.Balance/         balance experiments, run in bulk
+    KZ.Play/            the playable interface: a local host and a canvas
+      web/              the page, served from disk rather than compiled
     KZ.Tests/           simulation unit tests and determinism checks
   build.sh
 ```
@@ -79,6 +82,7 @@ Requires either the .NET SDK or Mono.
 ```sh
 ./build.sh          # compile and run the test suite
 ./build.sh headless # compile and run a scripted match, print the state hash
+./build.sh play     # compile and serve the playable interface on :8080
 ```
 
 ## What works today
@@ -110,8 +114,34 @@ points because a radar mast was watching when it happened.
 It runs about 360 times faster than real time, which is what makes overnight
 balance testing practical.
 
+## Playing it
+
+```sh
+./build.sh play        # then open http://localhost:8080/
+```
+
+`src/KZ.Play` is the first thing in this repository that draws. It serves a
+canvas to a browser and pushes one team's view of the world as JSON: the map,
+your own units, and **enemy contacts only where your sensors reach them**. You
+select, order, and launch sorties; you pause, single-step, and run at 1x, 2x or
+4x. Crude on purpose - coloured shapes and one-pixel lines - because the point
+is to find out whether the game is worth anything before spending on art.
+
+The renderer is a pure view transform: real metres in, pixels out, with real
+zoom from the first frame. `docs/SCALE.md`'s correction is that compression is a
+view parameter rather than a content one, so the same build serves a phone, a
+tablet and a desktop at different zoom defaults rather than at different map
+sizes.
+
+`src/KZ.Play/Host.cs` is a swappable shim - the only file that knows the game is
+being played over HTTP, and the only one that touches Mono. On a machine with
+the .NET SDK it is replaced by a thirty-line ASP.NET host and nothing else
+changes; the page, the canvas and the input handling do not know what is on the
+other end of `/api/state`.
+
 ## Not built yet
 
-No renderer, no interface, no networking, no pathfinding beyond direct steering,
-no AI opponent, no economy buildings or build queues. `docs/spec-technical.md`
-has the full plan; this is the first milestone of six.
+No networking, no pathfinding beyond direct steering, no AI opponent worth the
+name (the scenario's defender executes fixed standing orders), no economy
+buildings or build queues, and no way to build anything during a match.
+`docs/spec-technical.md` has the full plan; this is the first milestone of six.

@@ -55,7 +55,11 @@ namespace KZ.Play
             // survive the flight - "where you launch from is a real decision".
             j.Object("pad");
             j.Field("x", 10320);
-            j.Field("y", 9360);
+            // In the clean lane between the northern treeline and the road. A
+            // fiber thread dragged over either of those parts, so where the pad
+            // sits is the first decision the scenario makes for the player and
+            // the first one they should take back.
+            j.Field("y", 9000);
             j.EndObject();
 
             // One digit per build tile, one string per row. 300 x 200 of them is
@@ -357,7 +361,8 @@ namespace KZ.Play
 
             j.BeginObject();
             j.Field("h", (long)e.HandleAt(ti).Value);
-            j.Field("name", def != null ? def.Name : "contact");
+            j.Field("name", def != null ? def.Name
+                                       : (e.Has(ti, ComponentMask.Salvage) ? "salvage" : "contact"));
             j.Field("x", e.Position[ti].X.RoundToInt());
             j.Field("y", e.Position[ti].Y.RoundToInt());
             j.Field("hp", e.Hp[ti].RoundToInt());

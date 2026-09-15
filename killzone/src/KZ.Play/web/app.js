@@ -325,7 +325,10 @@ function drawUnits() {
       ctx.fillStyle = frac > 0.5 ? '#46d17a' : '#ffb02e';
       ctx.fillRect(px - 8, py + 8, 16 * frac, 2);
     }
-    if (cam.ppm > 0.02) {
+    // Semantic zoom: far out, a structure is worth naming and a drone is not,
+    // because a dozen overlapping "Fiber FPV Team" labels is less information
+    // than none. Close in, everything is named.
+    if (cam.ppm > (u.structure ? 0.02 : 0.09) || (sel && sel.h === u.h)) {
       ctx.fillStyle = 'rgba(190,215,230,0.75)';
       ctx.fillText(u.name, px + 8, py + 4);
     }
@@ -365,7 +368,17 @@ function drawContacts() {
     }
     ctx.fillStyle = 'rgba(255,140,130,0.9)';
     ctx.fillText(CHANNEL_LETTER[c.channel] || '?', px - 3, py - 8);
-    if (cam.ppm > 0.02) {
+
+    // Damage on a contact is the only confirmation the player gets that a
+    // strike landed at all: there is no hit event in the simulation, only a
+    // kill one, and four drones into a tank that is still alive has to look
+    // different from four drones into empty ground.
+    if (c.hp < c.hpMax) {
+      var cf = Math.max(0, c.hp / c.hpMax);
+      ctx.fillStyle = '#382a28'; ctx.fillRect(px - 8, py + 8, 16, 2);
+      ctx.fillStyle = '#ff5a4f'; ctx.fillRect(px - 8, py + 8, 16 * cf, 2);
+    }
+    if (cam.ppm > (c.structure ? 0.02 : 0.09) || (sel && sel.h === c.h)) {
       ctx.fillStyle = 'rgba(255,170,160,0.8)';
       ctx.fillText(c.name, px + 8, py + 4);
     }
@@ -430,6 +443,9 @@ function updatePanels() {
       : 'SECTOR LOST — your command post is gone';
   } else banner.style.display = 'none';
 
+  setHtml('objlist', obj.map(function (o) {
+    return '<div class="row" style="cursor:default"><span>' + o + '</span></div>';
+  }).join(''));
   setHtml('contacts', contactsHtml());
   setHtml('sorties', sortiesHtml());
   setHtml('log', logHtml());
