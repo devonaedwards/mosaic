@@ -1696,3 +1696,72 @@ What remains undefended is recorded in the constant rather than tuned away: a
 one-way airframe with **neither** an operator nor a seeker is held to a seeker's
 tolerance, making it slightly too accurate. The honest fix is a second number, and
 a second unmeasured estimate is worse than a known conservatism.
+
+## 35. The first play-test: interesting, not yet fun, and don't buy art
+
+The simulation drew its first pixel. Seven research documents, thirty-four
+findings, two build guards and about eight thousand lines of deterministic
+fixed-point later, somebody looked at it.
+
+The verdict, from an agent that drove it with a browser for ten minutes and read
+fifteen screenshots rather than asserting it worked: **interesting, not yet fun.**
+Both halves are worth having in writing.
+
+### The fog of war is the best thing on the screen
+
+This is the surprise, and it inverts the worry in `SCALE.md` that a phone-sized
+viewport would make the game incomprehensible.
+
+It is comprehensible precisely *because* the interface shows you **why** you can
+see something — the sensor arc as a drawn wedge, a line back to the sensor holding
+the contact, a letter for the channel that found it. So losing a contact reads as
+"my eyes moved" rather than as a bug. Pushing a scout east, watching four
+kilometres of enemy rear appear, and watching it vanish when the scout dies is
+reportedly the most game-like moment in it.
+
+And the three-step chain the scenario produces was not designed — it falls out of
+systems that already existed. Fiber kills the jammer because fiber is unjammable
+and the lane is clean; radio only then reaches the tank; the deep target needs
+something flying on what it brought. That is the link ladder working as a
+sequence of decisions rather than as a table of stats.
+
+The log narrating `a link went black` and then `a warhead went off on empty
+ground — it did not know where it was` is the whole design thesis explaining
+itself to a player, unprompted, out of `SimEventKind`.
+
+### What is dull is a design problem, not a rendering one
+
+**The dead time.** A sortie is fifty to ninety play-seconds from pad to target.
+You launch four and then there is nothing to do for a minute and a half — no build
+queue, no defence, no mid-flight choice. `SCALE.md` argued the phone form factor
+wanted "a queue of decisions"; what exists is four decisions and then three
+minutes of watching. The tester ended up playing at 4x, which is the finding.
+
+**You cannot lose.** The defender's drones accumulate into a dozen contacts and
+never threaten a five-thousand-point command post. No pressure, therefore no
+urgency.
+
+**The map is nearly empty.** Twenty-nine kilometres holding about sixteen
+entities. Semantic zoom works; there is not enough content to zoom into.
+
+**And there is no hit event.** The simulation has a kill event and nothing for a
+strike that lands and does not kill. That is a real gap in `SimEventKind`, worked
+around in the interface with a damage bar — it is the difference between "four
+drones into a tank" and "four drones into empty ground", and the interface should
+not have to infer it.
+
+### The recommendation, which I am recording because it will be tempting to ignore
+
+**Do not spend money on art yet.** Not because it looks bad — coloured shapes and
+one-pixel lines suit a game about sensor returns better than sprites would. Because
+**the minute and a half of nothing between waves will not be fixed by art**, and
+decorating it is paying for the wrong thing.
+
+The order that would fix it, cheapest first, and none of it is renderer work:
+make incoming drones interceptable — `Interceptor FPV` and the whole interception
+path already exist and the player simply has no access to them; then shorten the
+approach or widen the crew cap so more sorties are airborne at once; then a losing
+condition that can actually fire.
+
+The renderer is now adequate to see whether any of that helped, which was the
+entire point of building it crude.

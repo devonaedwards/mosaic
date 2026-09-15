@@ -19,7 +19,6 @@ component-flag  ComponentMask.Tethered
 unitdef-field   UnitDef.BuildTicks
 unitdef-field   UnitDef.Faction
 unitdef-field   UnitDef.FootprintTiles
-unitdef-field   UnitDef.Id
 unitdef-field   UnitDef.IsFlyingDecoy
 unitdef-field   UnitDef.Tier
 unitdef-default UnitDef.SignatureWhileEmitting
@@ -55,14 +54,11 @@ enum-value      SortiePhase.Engaged
 enum-value      SortiePhase.Returning
 enum-value      SortiePhase.Terminal
 write-only      DecoyState.Mimics
-write-only      EntityTable.HpMax
 write-only      EntityTable.Velocity
-write-only      JamEmitter.Source
 write-only      MeshNode.IsRepeater
 write-only      MineState.LaidByTeam
 write-only      MoverState.RadiusClass
 write-only      SalvageState.CreatedTick
-write-only      SimEvent.A
 write-only      SimEvent.B
 write-only      SortieState.SpawnTick
 write-only      Tether.Anchor
@@ -74,8 +70,6 @@ sim-public      Fix.ToInt
 sim-public      Fix2.FromInts
 sim-public      Fix2.Perpendicular
 sim-public      MeshGraph.MaxNeighbourCandidates
-sim-public      SignalGrid.EmitterCount
-sim-public      SignalGrid.GetEmitter
 sim-public      SignalGrid.JamAtCell
 sim-public      Terrain.BlocksGroundSight
 sim-public      TetherSystem.LiveCount
