@@ -46,6 +46,18 @@ namespace KZ.Play
         public const int MapHeightMetres = 19200;
 
         /// <summary>
+        /// Where the defence launches from, and it is forward for the same reason
+        /// the player's pad is: a battalion does not fly sorties off its command
+        /// post twenty-five kilometres back. It sat at 24,000 and every raid spent
+        /// a hundred and fifty play-seconds in transit, which is most of a match
+        /// spent watching an empty sky at both ends. From here, just behind the
+        /// defence's own relay, a raid is airborne over the player's forward
+        /// positions in about seventy - the same sortie length the player flies,
+        /// which is the point.
+        /// </summary>
+        public const int DefenderPadX = 19800;
+
+        /// <summary>
         /// What the player can put in the air. A subset of the catalogue rather
         /// than all of it, because a hangar bar is a row of cards and the
         /// interface spec's one-second rule does not survive forty of them.
@@ -160,6 +172,23 @@ namespace KZ.Play
             w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(24600, 9360));
             w.Spawn(Catalog.IdOf("Command Post"), 2, P(25200, 9360));
 
+            // A reconnaissance airframe already on station when the player
+            // arrives, rather than one the defence has to go and launch.
+            //
+            // This is a pacing decision and it is worth being explicit about.
+            // Everything downstream of the defender's eyes - whether it launches
+            // at all, and therefore whether the player has anything to intercept -
+            // waits on this aircraft reaching the player's rear, and from a cold
+            // start on its own pad that is a hundred and fifty play-seconds of
+            // nothing. Measured: with the defence starting blind, the first
+            // airborne contact the player ever sees is at T+100, which is the same
+            // empty minute and a half FINDINGS 35 complained about, moved rather
+            // than removed.
+            //
+            // It is also simply true of the situation. A sector held for months
+            // has something up; the match does not begin at the start of the war.
+            w.Spawn(Catalog.IdOf("Recon Wing"), 2, P(15600, 9360));
+
             return w;
         }
 
@@ -232,7 +261,7 @@ namespace KZ.Play
                 && CountAloft(w, 2, "Recon Wing") == 0)
             {
                 w.Enqueue(Command.LaunchSortie(2, Catalog.IdOf("Recon Wing"),
-                                               P(24000, 9360), EntityHandle.None, 0));
+                                               P(DefenderPadX, 9360), EntityHandle.None, 0));
             }
 
             // A sortie with nothing to do gets told where to go. LaunchSortie can
@@ -258,7 +287,7 @@ namespace KZ.Play
                 EntityHandle prey = NearestSeen(w, 2, P(25200, 9360));
                 if (!prey.IsNone)
                     w.Enqueue(Command.LaunchSortie(2, Catalog.IdOf("FPV Team"),
-                                                   P(24000, 9360), prey,
+                                                   P(DefenderPadX, 9360), prey,
                                                    (tick / SimConstants.PlaySeconds(4)) % 4));
             }
 
