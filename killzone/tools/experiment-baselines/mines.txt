@@ -1,14 +1,24 @@
 
 MINES - a field laid across a supply road
 four mines from one heavy drone, 600 damage each, into the underside
+every number below is read off a vehicle driving through a live field,
+not computed from the damage table; a + means the first mine killed it
+outright, so the observed bite is a lower bound on the warhead
   world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 900 m (team 2 west / team 1 east), imagery granted over each side's own ground
 
-  vehicle             per mine   survives a mine   field stops
+  vehicle             health off   survives a mine   field stops
   ------------------------------------------------------------
-  Supply Truck             780            0 of 4   yes, after 1 mine(s)
-  Logistics UGV            780            0 of 4   yes, after 1 mine(s)
-  IFV                     1320            0 of 4   yes, after 1 mine(s)
-  Main Tank               1320            1 of 4   yes, after 2 mine(s)
+  Supply Truck            520+            0 of 4   yes, after 1 mine(s)
+  Logistics UGV           500+            0 of 4   yes, after 1 mine(s)
+  IFV                    1250+            0 of 4   yes, after 1 mine(s)
+  Main Tank              1320             1 of 4   yes, after 2 mine(s)
+
+  And the same field, driven into by the side that laid it:
+
+  Supply Truck (own)      520+            0 of 4   yes, after 1 mine(s)
 
   A mine costs nothing to keep there. The heavy drone that laid it
-  flew home and can do it again tomorrow night.
+  flew home and can do it again tomorrow night. It also does not ask
+  whose vehicle arrives first, which is not a gameplay penalty - it is
+  what a mine is, and a game about this subject should not pretend
+  otherwise.

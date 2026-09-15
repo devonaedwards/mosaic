@@ -1,34 +1,31 @@
 
-DECOY ESCORT - 2,600 Materiel of strike package against one turret
-heavy strike drone 800, decoy drone 130
+DECOY ESCORT - about 2,500 Materiel of strike package against one battery
+heavy strike drone 800, decoy drone 130; the battery defends the radar
+mast 100 m behind it, and the package is aimed at the mast (two warheads
+on target destroy it)
+arrivals spaced 2 s apart, so the battery's belt and its cooldown both bind
   world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
 
-  The right-hand column is a control. It re-runs the same package with
-  the decoy's radar cross-section cut to the strike drone's, leaving
-  everything else alone - so the gap between the columns is what the
-  reflector buys, as opposed to what simply being one more thing worth
-  shooting at buys.
+  The first row is the control: the same money, no decoys. The question
+  is whether any row below it puts more warheads on the target than it
+  does. There is no reflector column any more - see the comment on this
+  method for why that control could not move and was not worth keeping.
 
-  package                 through (reflector)   through (no reflector)
-  ----------------------------------------------------------------------
-  3 real + 1 decoy                  3.00 of 3                3.00 of 3
-  2 real + 6 decoy                  2.00 of 2                2.00 of 2
-  1 real + 13 decoy                 1.00 of 1                1.00 of 1
+  package                cost   warheads on target   mast killed   decoys shot   rounds
+  ------------------------------------------------------------------------------------------------
+  3 real + 0 decoy       2400            0.38 of 3           22%      0.0 of 0      6.1
+  3 real + 1 decoy       2530            0.70 of 3           37%      0.9 of 1      7.3
+  2 real + 6 decoy       2380            0.98 of 2           45%      4.0 of 6     13.6
+  1 real + 13 decoy      2490            0.48 of 1            0%    12.9 of 13     40.1
 
   Nothing special-cases a decoy here. A defence picks targets by how
-  much of one it can remove per shot, and a decoy dies to one shot
-  just as a real drone does - so it is an equally good thing to shoot
-  at, which is exactly the product being sold.
+  much of one it can remove per shot, and a decoy dies to one round
+  just as a strike drone does - so it is an equally good thing to shoot
+  at, which is exactly the product being sold. The rounds column is
+  whether the defence was made to spend it.
 
-  The reflector, though, is doing nothing - the two columns agree to
-  two decimals. It is not that the reflector is modelled wrongly: the
-  radar finds a decoy at 2373 m and a strike drone at 750, which is
-  the three-to-one the reporting describes. It is that the gun kills
-  at 85 m and the battery at 320, so early warning arrives long
-  before anything can act on it, and by the time something can, the
-  cameras have the target anyway.
-
-  A reflector decoy was never meant to fool gunnery. It is meant to
-  make a defence spend an interceptor and a crew on an inflatable.
-  Until a radar track can scramble something by itself, there is no
-  decision here for a decoy to corrupt. See FINDINGS 25.
+  The bottom row is the other end of the trade and it is not a failure
+  of the mechanic: two warheads are needed to take the mast and that
+  package only buys one, so it can saturate the battery completely and
+  still not finish the job. Spending everything on escorts is the same
+  mistake as spending nothing on them.

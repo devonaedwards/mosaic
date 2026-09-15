@@ -1,16 +1,35 @@
 
 STACKING - more turrets covering the same approach
-twelve drones launched together, 450 Materiel per turret
+a cluster of mounts all covering one defended point, 450 Materiel each
   world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
 
-  turrets   defence cost   drones needed to take one   attacker cost
-  --------------------------------------------------------------------
-        1            450                           8            1600
-        2            900                           8            1600
-        3           1350                           8            1600
-        4           1800                           8            1600
+  each cell: share of 40 trials in which the attack destroyed the lead
+  mount. FPV Teams, 200 Materiel each, from a pad at 1,200 m. The last
+  column is rounds fired per trial by each mount, lead first, averaged
+  over every trial in the row.
 
-  Each turret adds its own rate of fire over the same crossing time,
-  so the cost of attacking rises roughly in step with the number of
-  guns - but the attacker is also paying for drones that die to guns
-  they were never sent at.
+  launched together:
+
+  turrets  3 drones 4 drones 5 drones 6 drones   needed   rounds fired per trial
+  ----------------------------------------------------------------------------------------
+        1       60%     100%     100%     100%        4   1.78
+        2       60%     100%     100%     100%        4   1.78 | 0.06
+        3       60%     100%     100%     100%        4   1.78 | 0.11 | 0.00
+        4       60%     100%     100%     100%        4   1.79 | 0.16 | 0.00 | 0.00
+
+  one drone every 3 s:
+
+  turrets  3 drones 4 drones 5 drones 6 drones   needed   rounds fired per trial
+  ----------------------------------------------------------------------------------------
+        1       40%      67%      95%     100%        5   4.98
+        2       30%      65%      92%     100%        5   5.00 | 3.27
+        3       27%      62%      97%     100%        5   5.00 | 3.36 | 3.31
+        4       25%      60%      92%     100%        5   5.00 | 3.35 | 3.29 | 1.86
+
+  A mount is bought to service an engagement. A flight that arrives in
+  one instant offers exactly one, and the rounds column says what that
+  costs: against a wave the third and fourth mounts in a cluster fire
+  nothing at all, because by the time a drone is 70 m from them it is
+  already on top of the mount it was sent at. Against a stream the same
+  four mounts all shoot, the lead one empties its five-round belt in
+  nearly every trial, and the stack starts to be worth its money.

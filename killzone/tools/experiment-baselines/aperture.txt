@@ -2,6 +2,10 @@
 APERTURE - the same 600 m camera, spread over different arcs
   world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1100 m (team 1 west / team 2 east), imagery granted over each side's own ground
 
+  The law. Reach scales as the square root of how narrow the arc is;
+  this is the formula evaluated, not a fight, and it moves only when a
+  signature or an optical constant moves.
+
   arc      reach vs a quad   covered at once   heads for 360   total cost
   --------------------------------------------------------------------------
     30 deg            255 m                8%              12     5400 MAT
@@ -11,20 +15,43 @@ APERTURE - the same 600 m camera, spread over different arcs
    180 deg            104 m               50%               2      900 MAT
    360 deg             73 m              100%               1      450 MAT
 
-  Buying 360 degrees at long reach costs twelve heads. Buying it with
-  one head costs more than half the reach. Both are worse deals than
-  a cheap short-range sensor line, which is the next table.
+  What it is worth. Four mounts differing only in their head, against
+  three FPV Teams arriving one every 3 s from the west.
 
-  COVERAGE - one good head against several poor ones, same money
+  head                                         reach on axis   mount survives
+  ----------------------------------------------------------------------------
+  30 deg staring, facing east (default)               255 m              45%
+  30 deg staring, turned to face the threat           255 m              71%
+  120 deg staring, facing east (default)              127 m              45%
+  120 deg sweeping at 70 deg/s (shipped)              127 m              63%
+  360 deg, no blind side                               73 m              71%
 
-  arrangement                          drone seen at   gaps
-  --------------------------------------------------------------
-  one 30-deg staring head                       255 m   blind over 11/12 of the sky
-  one 120-deg head sweeping at 70 deg/s          127 m   covered, but looking away 2/3 of the time
-  one 360-deg head                               73 m   none, and half the reach
-  three 120-deg heads, no sweep                 127 m   none, at three times the price
+  "Reach on axis" is what the head finds when it happens to be pointed
+  the right way - DetectionRangeFor answers the range question and not
+  the bearing one - so rows one and two share a number and not an
+  outcome. That is the whole content of an arc.
+
+  The second row is the only one that turns its head, and it does so by
+  a direct write to SensorSuite.Facing from this harness, because the
+  simulation has no way to aim a staring sensor: World.Spawn sets the
+  facing due east and only SweepSensors ever moves it. Every other row
+  is a unit a player could actually buy. The gap between rows one and
+  two is therefore not a balance figure, it is the size of a missing
+  mechanic.
 
   Microphones and radio listening are exempt from all of this, because
   they are omnidirectional by nature - which is exactly why they are
   the cheap way to know something is out there and the useless way to
-  know where it is.
+  know where it is. It is also why the narrow heads below are not as
+  blind as their arc suggests: these mounts carry the Gun Mount's
+  200 m array as well, and it does not care which way the camera is
+  pointed.
+
+  Worth reading against the law above it: the 30-degree head sees three
+  and a half times as far as the 360-degree one, costs twelve times as
+  much to cover the same sky, and - when it is pointed the right way,
+  which nothing can currently arrange - survives exactly as often. Above
+  about 70 m the extra reach buys a mount nothing, because 70 m is where
+  it first holds a track and 3.2 s is all it has after that (FINDINGS
+  31). The panoramic head is not the compromise position on this slider;
+  on these numbers it is the only one worth buying.

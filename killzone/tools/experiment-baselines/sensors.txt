@@ -1,20 +1,28 @@
 
-SENSORS - what a turret can find, and from how far
-the gun's own kill range is 85 m (FINDINGS 2); these are how far its
-sensors could find a target if the barrel could reach that far too -
-the sensor suites below are hypothetical fits, not the shipped Gun Mount's
-  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1100 m (team 1 west / team 2 east), imagery granted over each side's own ground
+SENSORS - what a turret can find, and what finding it is worth
+four test-only mounts, identical to the Gun Mount except for the sensor
+fit; all four carry the real 85 m barrel (FINDINGS 2)
+the assault is three FPV Teams arriving one every 3 s from 1,200 m
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
 
-  fitted with              vs quad (day)  vs quad (night)  vs tank (day)
-  --------------------------------------------------------------------------
-  optics only                       73 m             15 m          300 m
-  acoustic only                     48 m             96 m          320 m
-  optics + acoustic                 73 m             96 m          320 m
-  optics + thermal                  73 m             73 m          300 m
-  optics + acoustic + thermal          73 m             96 m          320 m
+                             finds a quad at     vs tank    mount survives
+  fitted with                 day     night        day      day     night
+  ----------------------------------------------------------------------------
+  optics only                  127 m      25 m      520 m      63%        0%
+  acoustic only                 48 m      96 m      320 m      72%       71%
+  optics + acoustic            127 m      96 m      520 m      76%       71%
+  optics + acoustic + thermal  127 m     127 m      520 m      76%       71%
 
-  Cameras alone leave a turret nearly blind after dark. Microphones
-  do not care about the time, and against a quadcopter they are the
-  best sensor on the list at any hour. Thermal buys back the night
-  against vehicles, and rather little against a small drone, because
-  a small drone is not very hot.
+  A mount's reach is set by its gun and its envelope by whichever sensor
+  finds the target first, and against a small electric quadcopter that
+  is far shorter than the barrel can throw a round - which is why the
+  survival columns move at all when the barrel never changes, and why
+  they move so much less by day than after dark: in daylight every fit
+  on this list finds the drone before the barrel can use the fact.
+
+  Read the day and night reach columns together rather than separately.
+  A camera beats a microphone against a quadcopter in daylight and
+  collapses after dark; the microphone does not care what time it is
+  and becomes the better of the two. Thermal buys back the night
+  against a vehicle and very little against a small drone, because a
+  small electric drone is not very hot.

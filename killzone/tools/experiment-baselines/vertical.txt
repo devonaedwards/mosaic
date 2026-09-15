@@ -1,22 +1,29 @@
 
-VERTICAL - six drones against one turret, split between altitudes
+VERTICAL - three Multirole Quads, split between altitudes
+arriving one every 3 s, because a band change is only charged between
+engagements and a simultaneous wave only ever offers one
   world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
 
-  attack                  arrived   turret killed
-  ------------------------------------------------
-  all low                     6.0           100%
-  four low, two high          6.0           100%
-  three low, three high       6.0           100%
-  two low, four high          6.0           100%
-  all high                    6.0           100%
+                          Gun Mount (85 m,           Autocannon Mount
+                          cannot reach high)         (280 m, reaches high)
+  attack                  quads lost   mount killed  quads lost   mount killed
+  ------------------------------------------------------------------------------
+  all low                       0.53           100%        1.90            60%
+  two low, one high             0.00           100%        1.40            77%
+  one low, two high             0.00           100%        1.28            82%
+  all high                      0.00           100%        1.33            77%
 
-  and the same, against a turret that also has a radar:
+  The left pair is not a tactic and should not be read as one. A Gun
+  Mount cannot engage the high band at all, so a drone sent there is
+  not evading the defence, it is outside it - which is why one high
+  drone in the flight takes the mount's score to exactly zero and
+  keeps it there. Its 100% column is a ceiling and carries no
+  information; the quads-lost column beside it is the live one.
 
-  all low                     6.0           100%
-  four low, two high          6.0           100%
-  three low, three high       6.0           100%
-  two low, four high          6.0           100%
-  all high                    6.0           100%
-
-  Height is cover from a gun and exposure to a radar. Which of those
-  matters depends entirely on what the defender bought.
+  The right pair is the question FINDINGS 18 was asking. The Autocannon
+  reaches both bands, pays 20 ticks every time it re-lays across them,
+  and loses 40% of its range and 30% of its hit chance shooting
+  upward. Against it, splitting is worth something and committing
+  everything high is worth slightly less than splitting - which is the
+  shape FINDINGS 18 guessed at and could not measure, arrived at
+  against a defence that is allowed to answer.

@@ -1,18 +1,65 @@
 
-REACH - eight drones against one gun mount, varying its range
-'Test Long Mount' on the flat control world - see comment above
+REACH - what limits a mount's output, the barrel or the seeing
+'Test Long Mount' (Defs.cs, test-only), four FPV Teams one every 3 s
+from 1,200 m. Each sweep varies one of the mount's own numbers and
+holds the other fixed - see the comment on this method for why this is
+no longer run on the flat control world.
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
 
-  gun range   seconds under fire   arrived   gun killed
-  ----------------------------------------------------------
-      550 m               25.0 s       7.6         100%
-      450 m               20.5 s       7.6         100%
-      350 m               15.9 s       7.6         100%
-      250 m               11.4 s       7.7         100%
-      180 m                8.2 s       7.7         100%
-      120 m                5.5 s       7.7         100%
-       85 m                3.9 s       7.8         100%   <- the deployed range
+  (a) the barrel, with the mount's 600 m optics held fixed
 
-  The gun's acquisition-plus-cooldown cycle is roughly 1.25 seconds, so
-  'seconds under fire' divided by 1.25 is about how many drones it gets
-  to kill before the rest arrive - before its magazine runs out at five
-  rounds, which this sweep does not otherwise account for (see FINDINGS 18).
+  barrel   seconds under fire   arrived   mount survives
+  ------------------------------------------------------------
+   550 m               25.0 s       2.5              49%
+   450 m               20.5 s       2.6              46%
+   350 m               15.9 s       2.7              42%
+   250 m               11.4 s       2.8              36%
+   180 m                8.2 s       2.9              23%
+   120 m                5.5 s       3.1              12%
+    85 m                3.9 s       3.0              22%   <- the deployed barrel
+
+  (b) the optics, with the barrel held at 550 m
+
+  optics   finds a quad at      arrived   mount survives
+  ------------------------------------------------------------
+   600 m             127 m          2.5              49%   <- the deployed optics
+   450 m              95 m          2.5              52%
+   300 m              64 m          2.2              56%
+   200 m              42 m          2.6              33%
+   120 m              25 m          2.7              25%
+    60 m              13 m          3.2              26%
+
+  (c) the flat control world, kept so the old conclusions stay checkable
+
+  world                              arrived   mount survives
+  ------------------------------------------------------------
+  flat, clear, firm, ownerless           2.7             100%
+
+  That row is the same 550 m mount as the top of (a), on the world every
+  experiment ran on before AUDIT F34 was fixed. FINDINGS 33 recorded the
+  two worlds as identical in every cell. They are not any more: the flat
+  world has no territory owner, so every square metre of it is denied
+  ground, every FPV Team's dead reckoning crosses the miss radius on the
+  way in, and the warheads land on empty grass. Nothing about the mount
+  changed. The world did, and something finally reads it.
+
+  Read the two 'mount survives' columns against each other. They are the
+  same mount, the same attack and the same seeds; the only difference is
+  which of its two numbers is being spent. Whichever column moves is the
+  one that is binding, and that is the number a player's upgrade should
+  be buying.
+
+  Both of them move, which is not what the old flat sweep implied and is
+  not quite what FINDINGS 31 says either. The barrel matters a great
+  deal here and mattered not at all before, and the difference is only
+  the spacing: reach buys time, and time is worth nothing against a
+  flight that arrives in one instant and everything against one that
+  keeps arriving. 'Barrel length barely matters' is true of a wave and
+  false of a stream.
+
+  The optics column is not monotonic and that is the more interesting
+  half. A mount that finds the drone at 64 m does better than one that
+  finds it at 127, because a five-round belt spent at the rim of the
+  envelope is a belt spent at the worst hit chance the falloff offers.
+  Seeing further is only an advantage to a mount that can afford to
+  wait, and this one cannot.
