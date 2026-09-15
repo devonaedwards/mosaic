@@ -354,7 +354,7 @@ namespace KZ.Play
 
                 bool outbound = w.Entities.Position[i].X > Fix.FromInt(12000);
                 w.Enqueue(Command.MoveTo(2, w.Entities.HandleAt(i),
-                                         outbound ? P(9000, 9360) : P(24000, 9360)));
+                                         outbound ? P(9000, 9360) : P(DefenderPadX, 9360)));
             }
         }
 
