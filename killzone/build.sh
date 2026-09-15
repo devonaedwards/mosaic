@@ -5,6 +5,7 @@
 #   ./build.sh              compile, test, check dead symbols, check experiment drift
 #   ./build.sh headless     compile and run a scripted match
 #   ./build.sh balance      run balance experiments and print the results
+#   ./build.sh play         compile and serve the playable interface on :8080
 #   ./build.sh build        compile only
 #   ./build.sh deadsymbols  run only the dead-symbol guard
 #   ./build.sh driftcheck   run only the experiment-drift guard
@@ -120,6 +121,11 @@ compile() {
 
   $COMPILER -target:exe $LANGFLAG -r:"$OUT/KZ.Sim.dll" -out:"$OUT/KZ.Balance.exe" \
     $(find src/KZ.Balance -name '*.cs')
+
+  # The playable interface. Its web assets are not compiled - they are served
+  # from src/KZ.Play/web at run time, so the page can be edited without a build.
+  $COMPILER -target:exe $LANGFLAG -r:"$OUT/KZ.Sim.dll" -out:"$OUT/KZ.Play.exe" \
+    $(find src/KZ.Play -name '*.cs')
 }
 
 case "${1:-test}" in
@@ -136,6 +142,11 @@ case "${1:-test}" in
     compile
     shift || true
     $RUNNER "$OUT/KZ.Balance.exe" "$@"
+    ;;
+  play)
+    compile
+    shift || true
+    $RUNNER "$OUT/KZ.Play.exe" "$@"
     ;;
   deadsymbols)
     shift || true
