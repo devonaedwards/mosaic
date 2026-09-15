@@ -202,8 +202,10 @@ the space without repeating itself.
 ## What this means for the build
 
 1. Keep 2048 × 2048 as the standard map. It is defensible three ways.
-2. 4096 exists for a reason and should stay rare — it is two kill zones, which is
-   a different and slower game. Use it for river crossings and deep raids.
+2. ~~4096 exists for a reason and should stay rare.~~ **Withdrawn.** In real
+   metres that is 49 km, past the ~32 km ceiling the squared-distance comparison
+   imposes. A bigger map needs a different distance test first, not a bigger
+   number.
 3. Do not add a "capture territory" win condition to a match.
 4. Build the campaign as sectors and months, not as a bigger map.
 5. Build maps against the fifteen-cell grid above, not by taste.
@@ -254,9 +256,25 @@ reconciled. An FPV currently flies at 1,469 km/h.
 
 ## What robust looks like
 
-**Content in real metres and real seconds.** A 1.2 million metre front is nothing
+**Content in real metres and real seconds.** ~~A 1.2 million metre front is nothing
 to Q31.32 fixed point, which reaches two billion — there is no precision argument
-against it, and the determinism guarantee is untouched.
+against it~~ — right about storage, wrong about the binding constraint, and the
+rescale found out the hard way.
+
+Detection compares squared distances, to avoid a square root per sensor per
+target per tick. **A Q31.32 square overflows at 46,340 metres**, and a radar mast
+reaching 16.8 km against a decoy returning 3.2x its cross-section is 53 km of
+nominal reach. That would have wrapped negative and the mast would have seen
+**nothing at all** — a silent, total failure of the game's longest-ranged sensor,
+produced by making the numbers honest.
+
+Capped now via `SimConstants.MaxComparableRangeMetres`. The real consequence is
+that **the map cannot exceed about 32 km a side**. A 24.6 km map is comfortable.
+The 4096 map described below as "two kill zones" is 49 km and is no longer
+valid — that recommendation is withdrawn.
+
+The determinism guarantee is untouched, which was the part worth being confident
+about.
 
 **One explicit global time multiplier.** At **4x**, an FPV crosses the 22 km kill
 zone in 2.3 minutes of play and a truck in 6.1. That is precisely the two-minute
