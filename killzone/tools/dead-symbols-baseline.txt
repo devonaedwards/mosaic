@@ -54,7 +54,6 @@ enum-value      SortiePhase.Engaged
 enum-value      SortiePhase.Returning
 enum-value      SortiePhase.Terminal
 write-only      DecoyState.Mimics
-write-only      EntityTable.Velocity
 write-only      MeshNode.IsRepeater
 write-only      MineState.LaidByTeam
 write-only      MoverState.RadiusClass

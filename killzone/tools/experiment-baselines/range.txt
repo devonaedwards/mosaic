@@ -35,7 +35,7 @@ no longer run on the flat control world.
 
   world                              arrived   mount survives
   ------------------------------------------------------------
-  flat, clear, firm, ownerless           1.2             100%
+  flat, clear, firm, ownerless           1.2              89%
 
   That row is the same 6,600 m mount as the top of (a), on the world every
   experiment ran on before AUDIT F34 was fixed. FINDINGS 33 recorded the

@@ -1765,3 +1765,172 @@ condition that can actually fire.
 
 The renderer is now adequate to see whether any of that helped, which was the
 entire point of building it crude.
+
+## 36. Interception: it was a missing system, not a missing interface — and the crew cap is not the constraint
+
+KILL ZONE is a video game. Everything below is measured inside a fictional
+simulation against fictional factions; the numbers are the game's, not anyone's.
+
+Item 35 ended with an order of work, cheapest first: make incoming drones
+interceptable, then widen the crew cap, then a losing condition. The first two are
+done and the second one turned out to be the wrong thing to do.
+
+### The answer to "interface or simulation" was neither
+
+`IsInterceptor`, `InterceptBaseChance`, `ResolveInterception`, `CueMultiplier` and
+`SpeedRatio` all existed and all described the **terminal** moment — the roll at
+the merge. Nothing ever got the interceptor to the merge. It flew the order every
+other airframe flies: at the target's position *this* tick, recomputed next tick. A
+pure curve of pursuit, which against anything faster than you is a tail chase you
+lose.
+
+So the vectoring mechanic had never been built, and every stat describing
+interception was a stat about a moment that could not be reached. This is the
+FINDINGS 30 shape again — a complete-looking subsystem with no path into it — and
+it survived an explicit audit of exactly that kind because the audit looked for
+symbols with no callers, and all of these had callers.
+
+### Three bugs came out first, and two of them are why nothing was ever inbound
+
+Found by probing before building, which is now the house style and keeps earning
+it:
+
+1. **`Scenario.cs` passed the tick as the launch index.** `SortieSystem.Launch`
+   spaces a flight off the pad with `EgressUntilTick = tick + 8 + index * 4`, and
+   the defender's standing order handed it `tick`. Forty play-seconds in, that is a
+   five-thousand-tick hold, and it grows for the rest of the match. **Every airframe
+   the defence ever launched sat on its pad until the game ended.** One character.
+   That is the entire content of "you cannot intercept what the defender sends" —
+   there was nothing to intercept.
+2. **With that fixed, the defence could still see nothing to launch at.** Its
+   order is gated on `IsDetectedBy` and its forward-most eye was a tank with 4.3 km
+   of optics in a 90° arc, 5.8 km from the nearest thing the player owned. Three
+   hundred play-seconds of a passive match: zero detections, zero launches.
+3. **A sortie whose target died froze forever and kept its crew.** `MovementSystem`
+   fell back to `OrderPoint`, flew there, and the arrival test refused to clear an
+   order still naming a dead handle. The defence chases the player's *one-way*
+   drones, which kill themselves on impact, so every interceptor it launched
+   stalled over a corpse. Six crews gone inside a minute.
+
+Bug 3 is the one that matters beyond this scenario: it is the crew leak that made
+the cap look tight. See below.
+
+### What got built, and what the measurement says
+
+`World.TrackQualityOf` returns `None` / `Optical` / `Radar`, lifted out of
+`CueMultiplier` so that the vector an interceptor flies and the terminal roll it
+makes read the same answer about the same contact. `MovementSystem.InterceptPoint`
+solves the meeting point by three fixed iterations — the closed form squares
+range × speed and overflows Q31.32 at these distances, which is `SCALE.md`'s
+46,340 m ceiling turning up somewhere nobody expected it — and flies a fraction of
+the computed lead set by what the track is made of: **1.00 radar** (a measured
+velocity), **0.55 optical** (passive EO/IR gives bearing and no velocity; the 0.55
+is a marked designer estimate, not a sourced number), **0.00 with no track**.
+
+Twenty trials per row, same seeds, pure pursuit against vectored:
+
+| | before | after |
+|---|---|---|
+| FPV (33 m/s) head-on | 11/20 | 11/20 |
+| Jet (140 m/s) head-on | 7/20 | 7/20 |
+| **Jet crossing, radar alive** | **0/20** | **7/20** |
+| **Jet crossing, radar dead** | **0/20** | **3/20** |
+| Jet crossing, two interceptors | 0/20 | 10/20 |
+
+The lead matters exactly where it should and nowhere else. Head-on needs no lead
+and gets no benefit; crossing against a target four times your speed is otherwise
+impossible. And the radar mast finally buys something: `ResolveInterception`'s doc
+comment has claimed for months that "killing the radar is how you open the sky",
+and until now that sentence was about nothing.
+
+### Two models declined, and the reasons are worth more than the models
+
+**Bracketing.** Built, then deleted. The argument for it was that two interceptors
+should cover an adversary's *choices* rather than measurement noise — hunting, not
+error. That is right, and it is why the spread version was wrong. But **this game
+has no evasion, so its targets have no branches, so a second interceptor is
+honestly one more terminal roll**: 7/20 → 10/20, which is what 1−(1−p)² predicts.
+Bracketing without evasion is a coefficient with a story attached. The real
+version is recorded in the code instead of faked: `IsPilotedOnLiveFeed` already
+separates airframes that *could* break from autonomous ones that cannot, and the
+catalogue already prices branch count — a jet turns at 22°/s and an FPV at 180°/s,
+which is few large options against many small ones.
+
+**Miss distance.** The better model, declined on cost. Removing the
+`RandomStream.Interception` draw reorders every recorded result exactly as adding
+one would; `InterceptBaseChance` becomes a dead `UnitDef` field and fails the
+guard; the static Interceptor Battery does not fly and would have to keep the roll
+anyway; and at 10.6 m of travel per tick a two-metre lethal radius needs a swept-
+segment closest approach, not a point test. Shipped instead was the half that pays
+now at no risk: **track quality is visible on every contact** — filled ring radar,
+open ring optical, dot for memory — so a player can see what their 300 materiel is
+buying before they spend it.
+
+### The crew cap: do not move it. Money binds, not hands.
+
+Item 35 proposed widening the crew cap. Measured, not argued:
+
+- **The scenario does not run at 6 crews. It runs at 14** (`StartingCrews` 6, plus
+  two Crew Quarters at `CrewsPerQuarters` 4). The premise was wrong.
+- In the *before* play-test the player sat at **14/14 at every sample from t=53 s**.
+  Crews were never binding; there was nothing to spend them on.
+- Recovery is 8 play-seconds against a 50–90 second sortie. The roster refills far
+  faster than flight time drains it. **The cap that bites is transit.**
+- Playing the defence hard for ten play-minutes: 29 interceptors, 11 kills, crews
+  finish **14/14**, materiel finishes **2,500 of 12,000**.
+- The only time crews ever ran out was bug 3 above — a leak, now fixed.
+
+So `FINDINGS §24`'s two valves are both working and the one biting is money, which
+is correct for a defensive spend: 8,700 materiel for 11 kills against 200-materiel
+airframes is a real decision, and it is a decision about economy rather than about
+hands. A wider cap would have loosened the valve that was not closed.
+
+### The dead time is measurably gone
+
+Item 35's complaint was four decisions and then three minutes of watching. Before:
+`air=[]` at all twelve samples across 123 play-seconds — **zero** things to react
+to, and the log four identical lines of *a warhead went off on empty ground*. After,
+headless over ten play-minutes: **97% of five-second samples have an enemy airframe
+in sight, longest empty stretch five seconds.** First contact moved from T+100 to
+T+0.
+
+That is the specific complaint answered with the specific measurement. Whether it
+is *fun* still wants a human at a keyboard.
+
+### Three things that are still wrong, undressed
+
+1. **The quiet returns at the end.** A player who intercepts aggressively runs to
+   2,500 materiel and then gets a 195-second empty stretch, because they have
+   bankrupted themselves. Arguably correct — you spent your way out of the game —
+   but it is item 35's problem wearing a new hat and a human should say which.
+2. **With the jammer alive, the defence hits nothing.** Thirty-four sorties, zero
+   hit points taken off the player. Its own EW Post throws a 5.4 km bubble across
+   its only launch corridor, so every raid it flies goes black on departure and
+   finishes on a remembered coordinate. Kill the jammer — objective one — and the
+   same defence takes the player's relay mast off the map. **This was not tuned
+   away.** It is `FINDINGS §21`, "nothing is a switch", arriving as a decision: the
+   first thing on the objective list is also the thing protecting you. It is either
+   the best thing in the build or it reads as the opposition being broken, and that
+   is a judgement a play-test makes, not a measurement.
+3. **Autonomous deep strikes always miss.** Team 2 holds reference imagery only
+   east of the border, so anything autonomous over the player's ground has no
+   scene-matching lock and `NavMissedAimpoint` fires every time. The entire
+   autonomous threat axis is deleted by navigation denial working exactly as
+   designed. Correct mechanically, empty as content: the fix is imagery coverage in
+   the scenario, not a change to the navigation model.
+
+### A drift was attributed to the wrong change, and checking was cheap
+
+The delivered report read the `range` experiment's flat-control row moving 100% →
+89% as a consequence of the new one-way expend-on-arrival rule. Item 34 had already
+recorded that same move, attributing it to the aimpoint-displacement fix, and
+predicting it would land at exactly the realistic world's 89%.
+
+Both cannot be the cause. Building the commit that carries item 34 and none of the
+interception work reads **89%** — so item 34 was right, needed no amendment, and
+the only outstanding action was acknowledging the baseline it had already explained
+in prose. Generation 14 is recorded.
+
+The cost of settling it was one worktree and four minutes. The cost of not settling
+it would have been an amendment to a correct finding, which is the failure mode
+item 30 is named after: **the error looks like a fix.**
