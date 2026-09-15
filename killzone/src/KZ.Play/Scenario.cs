@@ -177,6 +177,42 @@ namespace KZ.Play
                     w.Enqueue(Command.FitThermalBlanket(2, truck));
             }
 
+            // The defender buys its own information, and this is the order that
+            // makes it an opponent rather than a target range.
+            //
+            // The raid below was already here and already correct, and it fired
+            // exactly never: it is gated on IsDetectedBy, and the defender's
+            // forward-most eye is a tank with 4.3 km of optics inside a 90 degree
+            // arc, sitting 5.8 km from the nearest thing the player owns. So in a
+            // whole match it saw nothing but the player's own one-way drones
+            // arriving over its head - which kill themselves on impact - and the
+            // FPVs it threw at those were left holding a dead handle. Zero enemy
+            // airframes ever crossed west. FINDINGS 35's "you cannot lose" and "you
+            // cannot intercept the FPVs the defender sends" are the same defect
+            // seen from two sides: there were no FPVs to intercept.
+            //
+            // The answer is not to let the defender read the entity table. It is to
+            // let it do what the player does - put something up and go and look.
+            // A Recon Wing at High with 10.8 km of optics sweeping west finds the
+            // player's rear, and everything downstream of that already worked. It
+            // also hands the player the single best decision in the game in the
+            // other direction: shoot the scout down and the raids stop, which is
+            // the same "push eyes forward, watch four kilometres appear" moment
+            // FINDINGS 35 called the most game-like thing in it.
+            if (tick > 0 && tick % SimConstants.PlaySeconds(45) == 0
+                && CountAloft(w, 2, "Recon Wing") == 0)
+            {
+                w.Enqueue(Command.LaunchSortie(2, Catalog.IdOf("Recon Wing"),
+                                               P(24000, 9360), EntityHandle.None, tick));
+            }
+
+            // A sortie with nothing to do gets told where to go. LaunchSortie can
+            // only be given a target handle, and the reconnaissance above has none
+            // by definition, so its route is issued here on the tick after it
+            // appears - a pure function of where it is, so two machines give the
+            // same aircraft the same order.
+            VectorIdleScouts(w, tick);
+
             // Every four play-seconds the defender looks at what it can actually
             // see and throws one cheap airframe at the nearest of it. This is the
             // whole opposition, and it is written against IsDetectedBy rather than
@@ -205,6 +241,50 @@ namespace KZ.Play
                     w.Enqueue(Command.MoveTo(2, tank, north ? P(16800, 7600) : P(16800, 11600)));
                 }
             }
+        }
+
+        /// <summary>
+        /// The defender's reconnaissance leg, and the whole of its navigation.
+        ///
+        /// West as far as the player's launch area, then home, where it lands and
+        /// gives its crew back so the next one can go. The turn is decided by where
+        /// the aircraft is rather than by a stored waypoint, so there is no state
+        /// here to hash and no way for two machines to disagree about which leg an
+        /// aircraft is flying.
+        ///
+        /// It is deliberately a straight line down the lane and not an evasive
+        /// route. A scout that cannot be caught is not a decision, and this one is
+        /// meant to be shot down.
+        /// </summary>
+        static void VectorIdleScouts(World w, int tick)
+        {
+            int reconId = Catalog.IdOf("Recon Wing");
+            for (int i = 1; i < w.Entities.HighWater; i++)
+            {
+                if (!w.Entities.IsSlotAlive(i)) continue;
+                if (w.Entities.Team[i] != 2) continue;
+                if (w.Entities.DefId[i] != reconId) continue;
+                if (!w.Entities.Has(i, ComponentMask.Mover)) continue;
+                if (w.Entities.Mover[i].HasOrder) continue;
+
+                bool outbound = w.Entities.Position[i].X > Fix.FromInt(12000);
+                w.Enqueue(Command.MoveTo(2, w.Entities.HandleAt(i),
+                                         outbound ? P(9000, 9360) : P(24000, 9360)));
+            }
+        }
+
+        /// <summary>How many of one airframe this team currently has in the air.</summary>
+        static int CountAloft(World w, byte team, string defName)
+        {
+            int defId = Catalog.IdOf(defName);
+            int n = 0;
+            for (int i = 1; i < w.Entities.HighWater; i++)
+            {
+                if (!w.Entities.IsSlotAlive(i)) continue;
+                if (w.Entities.Team[i] != team) continue;
+                if (w.Entities.DefId[i] == defId) n++;
+            }
+            return n;
         }
 
         /// <summary>

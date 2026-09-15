@@ -47,6 +47,26 @@ namespace KZ.Sim
                 return;
             }
 
+            // A target that has died stops being a target. Without this an attack
+            // order can never complete: the destination falls back to OrderPoint -
+            // where the target was when the order was given - the airframe arrives,
+            // and the arrival test below refuses to clear an order that still names
+            // a target. So it hangs over that spot for the rest of the match, and
+            // because a crew comes back only by landing or by dying, and a drone
+            // frozen in mid-air does neither, it takes a crew with it.
+            //
+            // That is not a cosmetic leak. The scenario's opposition throws a
+            // one-way FPV at whatever it can see, and the only thing it could ever
+            // see was the player's own one-way drones, which kill themselves on
+            // impact - so every airframe it launched stalled over a dead handle and
+            // its six crews were gone inside a minute. A defender with no crews
+            // launches nothing, which is the mechanism behind "you cannot lose".
+            if (!mover.OrderTarget.IsNone && !w.Entities.IsAlive(mover.OrderTarget))
+            {
+                mover.OrderTarget = EntityHandle.None;
+                w.Entities.Mover[i] = mover;
+            }
+
             Fix2 destination = mover.OrderPoint;
             if (w.Entities.IsAlive(mover.OrderTarget))
                 destination = w.Entities.Position[mover.OrderTarget.Index];
@@ -69,6 +89,22 @@ namespace KZ.Sim
                 {
                     mover.HasOrder = false;
                     w.Entities.Mover[i] = mover;
+
+                    // A one-way airframe is the munition (CombatSystem says so in
+                    // as many words when it kills one that has just struck). It has
+                    // no undercarriage and no way home, so an order that ends with
+                    // nothing there ends the airframe: it goes into the ground at
+                    // the aimpoint. The alternative, which is what happened before,
+                    // is a warhead hovering over an empty field forever holding one
+                    // of the six or fourteen crews the whole game is rationed by.
+                    //
+                    // Gated on HasLeftHome so that a munition ordered at a point
+                    // inside its own pad's landing ring is not destroyed on the
+                    // tick its egress hold expires, before it has flown anywhere.
+                    if (w.Entities.Has(i, ComponentMask.Sortie)
+                        && w.Entities.Sortie[i].OneWay
+                        && w.Entities.Sortie[i].HasLeftHome)
+                        w.Kill(w.Entities.HandleAt(i), EntityHandle.None);
                 }
                 return;
             }
@@ -142,7 +178,6 @@ namespace KZ.Sim
                 if (!w.Entities.Has(i, ComponentMask.Sortie)) continue;
 
                 SortieState s = w.Entities.Sortie[i];
-                if (s.OneWay || s.CrewId < 0) continue;
 
                 Fix radius = Fix.FromInt(SortieSystem.LandingRadiusMetres);
                 Fix distSq = Fix2.SqrDistance(w.Entities.Position[i], s.HomePosition);
@@ -155,7 +190,13 @@ namespace KZ.Sim
                         w.Entities.Sortie[i] = s;
                     }
                 }
-                else if (s.HasLeftHome)
+                // "Has this airframe actually departed" is now asked of every
+                // sortie, not only the ones that can come back: StepOne above
+                // expends a one-way munition that arrives at an empty aimpoint and
+                // needs the same guard against doing it on the pad. Landing is
+                // still only for something that can land and still has a crew to
+                // hand back.
+                else if (s.HasLeftHome && !s.OneWay && s.CrewId >= 0)
                 {
                     SortieSystem.Recover(w, w.Entities.HandleAt(i));
                 }
