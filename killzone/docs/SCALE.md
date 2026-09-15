@@ -207,3 +207,79 @@ the space without repeating itself.
 3. Do not add a "capture territory" win condition to a match.
 4. Build the campaign as sectors and months, not as a bigger map.
 5. Build maps against the fifteen-cell grid above, not by taste.
+
+
+---
+
+# Correction: compression is a view parameter, not a content one
+
+Everything above treats map size as a question about devices, and that framing is
+wrong. It was wrong when written and the question "shouldn't this work on a
+phone *or* a desktop *or* a tablet?" is what exposes it.
+
+## The mistake
+
+Arguing "a 2048 map is four to nine iPad screens, therefore 2048" couples the
+*content* to the *device*. Change the device and the content has to move, which is
+absurd — the kill zone is 22 km deep whoever is looking at it.
+
+The coupling is only there because the interface has no zoom. Give it one, and how
+much ground a screen shows stops being a property of the world and becomes a
+property of the viewport, which is where it belonged.
+
+Semantic zoom is the standard answer and it is what makes a fifty-screen map
+tractable on a phone: close in, individual airframes and a turret's arc; far out,
+contact clusters and threat bearings. You do not pan fifty screens. You zoom out,
+see where the trouble is, and drop into it. That is also the soda-straw reframe
+from the section above, but arrived at as an interface decision rather than forced
+by a screen size.
+
+## The scale is currently incoherent, which is the real answer to accuracy
+
+Store content in real units and the accuracy question answers itself. Right now
+the game cannot answer it, because it has no consistent scale at all. Taking
+12 map metres to the real metre and one game second to the real second:
+
+| | implied time compression |
+|---|---|
+| FPV | 10.2x real |
+| Jet strike drone | 4.7x |
+| Heavy strike drone | 3.4x |
+| Supply truck | 4.4x |
+| Day/night cycle | **240x** |
+
+The airframes disagree with each other by a factor of three and with the clock by
+a factor of fifty. These numbers were each picked for feel, separately, and never
+reconciled. An FPV currently flies at 1,469 km/h.
+
+## What robust looks like
+
+**Content in real metres and real seconds.** A 1.2 million metre front is nothing
+to Q31.32 fixed point, which reaches two billion — there is no precision argument
+against it, and the determinism guarantee is untouched.
+
+**One explicit global time multiplier.** At **4x**, an FPV crosses the 22 km kill
+zone in 2.3 minutes of play and a truck in 6.1. That is precisely the two-minute
+sortie argument two above reasoned toward, now *derived from a real speed* rather
+than reverse-engineered from a feel. It must be global rather than per-player:
+lockstep requires every participant to simulate the same ticks, so time
+acceleration is a match setting, never a camera setting.
+
+**Zoom as a pure view transform**, with no simulation consequence. Then a phone, a
+tablet and a desktop are the same game at different zoom defaults, and scaling to
+a real conflict is a content decision instead of an engine one.
+
+## What this costs, and the one thing it cannot buy
+
+The rescale is mechanical — every catalogue distance and speed, every recorded
+number in `FINDINGS.md`, and a loud week for the drift guard. It is not a
+redesign, and it removes a class of bug rather than adding one: a number in real
+units can be checked against reporting, which is the whole method this project
+runs on.
+
+What it cannot buy is **accurate distance and tactical time granularity at once**.
+At 4x, a 24-hour day takes six hours of play — so a day/night cycle and a
+turret slewing over 71 ticks cannot both live inside one match. The honest
+resolution is that a match happens *at* a time of day, and the cycle belongs to
+the campaign layer where the clock already runs in months. That is cleaner than
+what exists, where a full day passes every six minutes.
