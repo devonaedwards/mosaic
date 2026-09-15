@@ -28,6 +28,17 @@ namespace KZ.Sim
     public static class SortieSystem
     {
         /// <summary>
+        /// How close a reusable airframe must get to its own pad before
+        /// MovementSystem.CheckLandings calls Recover below. No source gives
+        /// a figure for this - a designer estimate, set a little looser than
+        /// MovementSystem's own arrival radius so a drone ordered back onto
+        /// its exact home point reliably lands once it gets there rather than
+        /// sitting one metre outside a stricter ring. AUDIT-UNWIRED.md F13.
+        /// </summary>
+        public const int LandingRadiusMetres = 30;
+
+
+        /// <summary>
         /// Put one airframe in the air from a pad, optionally against a target.
         /// launchIndex staggers departures so a flight of six does not spawn on top
         /// of itself.
@@ -142,6 +153,12 @@ namespace KZ.Sim
             w.Entities.Sortie[i].EgressUntilTick = w.Tick
                 + SimConstants.SortiePadEgressBaseTicks
                 + launchIndex * SimConstants.SortiePadEgressPerIndexTicks;
+            // AUDIT-UNWIRED.md F13: explicit, even though World.Spawn already
+            // set HomePosition to this same padPosition - a launch is the one
+            // place that actually knows "this is a pad", so it is the right
+            // place to say so, rather than leaning on Spawn's default.
+            w.Entities.Sortie[i].HomePosition = padPosition;
+            w.Entities.Sortie[i].HasLeftHome = false;
 
             if (w.Entities.IsAlive(target)) MovementSystem.OrderAttack(w, h, target);
 

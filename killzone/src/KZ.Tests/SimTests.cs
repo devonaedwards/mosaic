@@ -33,6 +33,7 @@ namespace KZ.Tests
             RegisterDamage(r);
             RegisterMinesAndNight(r);
             RegisterPointDefence(r);
+            RegisterEconomy(r);
         }
 
         // ------------------------------------------------------------------
@@ -516,6 +517,56 @@ namespace KZ.Tests
                              "not once the pilot has lost the picture");
             });
 
+            r.Run("an unmanned mount is willing to shoot a ground decoy (AUDIT-UNWIRED F18)", delegate
+            {
+                // CombatSystem.BestTargetInRange used to skip every
+                // ComponentMask.Decoy entity for every attacker, piloted or
+                // not - so a Gun Mount, which is never piloted at all, could
+                // never spend a shot on one either. That directly contradicts
+                // FINDINGS #17/#25: a decoy is supposed to be "one more thing
+                // worth shooting at" to ordinary shot-value targeting.
+                World w = MakeWorld(720);
+                EntityHandle decoy = w.SpawnDecoy(1, P(12050, 12000), TargetKind.HighValue, 100000);
+                w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(12000, 12000));
+
+                bool everHit = false;
+                // A full sweep of the mount's scanning head is ~5.1 s at
+                // 70 deg/s; run several to be well clear of wherever the
+                // sweep happens to start.
+                for (int t = 0; t < SimConstants.Seconds(20) && !everHit; t++)
+                {
+                    w.Step();
+                    if (!w.Entities.IsAlive(decoy) || w.Entities.Hp[decoy.Index] < Fix.FromInt(20))
+                        everHit = true;
+                }
+                Assert.True(everHit, "an unmanned mount takes the shot the old blanket skip refused it");
+            });
+
+            r.Run("a piloted drone with a live link still ignores the same decoy", delegate
+            {
+                // The other half of F18: the fix narrows the immunity to the
+                // piloted case, it does not remove it. Same decoy, an FPV Team
+                // with nothing else to shoot at instead of a Gun Mount.
+                World w = MakeWorld(721);
+                EntityHandle decoy = w.SpawnDecoy(2, P(12010, 12000), TargetKind.HighValue, 100000);
+                // A radio link needs a Command Post/Relay Mast/Crew Quarters
+                // in range to hold Green - without one it sits Amber, which
+                // IsPilotedWithClearFeed correctly refuses to call "a live
+                // link". Same fixture the existing "deception fools machines"
+                // test above already uses for the same reason.
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(11400, 12000));
+
+                EntityHandle drone;
+                SortieSystem.Launch(w, 1, Catalog.IdOf("FPV Team"), P(12000, 12000),
+                                    EntityHandle.None, 0, out drone);
+
+                for (int t = 0; t < SimConstants.Seconds(15); t++) w.Step();
+
+                Assert.True(w.Entities.IsAlive(decoy), "still standing");
+                Assert.Equal(20, w.Entities.Hp[decoy.Index].RoundToInt(),
+                             "untouched - a live-linked pilot was never fooled by it");
+            });
+
             r.Run("a machine that picks wrong says so out loud", delegate
             {
                 bool sawReport = false;
@@ -652,6 +703,109 @@ namespace KZ.Tests
                 int tick = 0;
                 for (int i = 0; i < SimConstants.CrewBenchedTicks + 4; i++) bays.Tick(++tick, events);
                 Assert.Equal(4, bays.ReadyCount, "but back afterwards");
+            });
+
+            r.Run("a reusable airframe lands and hands its crew back (AUDIT-UNWIRED F13)", delegate
+            {
+                // Before this, SortieSystem.Recover had zero call sites: the
+                // only way any of the five reusable airframes ever freed a
+                // crew was to be destroyed. A Scout Quad here should behave
+                // like what it is - a scout that comes home - not like a
+                // one-way munition that happens to survive.
+                World w = MakeWorld(22);
+                Fix2 pad = P(6000, 6000);
+                Fix2 outbound = P(6300, 6000); // 300 m out: well past both the
+                                               // 24 m arrival radius and the
+                                               // 30 m landing radius, so the
+                                               // return leg is unambiguous.
+
+                // A radio link out of range of any anchor sits Amber, and an
+                // amber link refuses new orders - the second OrderMoveTo below
+                // needs a live link to actually turn the drone around, which
+                // is a fact about MovementSystem.OrderMoveTo rather than
+                // anything this test is trying to prove, so give it a
+                // Command Post the way the existing "deception fools
+                // machines" test already does for the same reason.
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(5900, 6000));
+
+                EntityHandle drone;
+                LaunchResult res = SortieSystem.Launch(w, 1, Catalog.IdOf("Scout Quad"), pad,
+                                                       EntityHandle.None, 0, out drone);
+                Assert.Equal((long)LaunchResult.Launched, (long)res, "the sortie gets airborne");
+                Assert.Equal(SimConstants.StartingCrews - 1, w.Player(1).Crews.ReadyCount,
+                             "one crew is up");
+
+                MovementSystem.OrderMoveTo(w, drone, outbound);
+                int ticksOut = 0;
+                while (Fix2.Distance(w.Entities.Position[drone.Index], pad).ToDoubleForDisplay() < 100
+                       && ticksOut < 2000)
+                {
+                    w.Step();
+                    ticksOut++;
+                }
+                Assert.True(w.Entities.Sortie[drone.Index].HasLeftHome,
+                            "it actually left before anything can land it");
+                Assert.Equal(SimConstants.StartingCrews - 1, w.Player(1).Crews.ReadyCount,
+                             "still out - flying away is not landing");
+
+                MovementSystem.OrderMoveTo(w, drone, pad);
+                int ticksBack = 0;
+                while (w.Entities.Sortie[drone.Index].CrewId >= 0 && ticksBack < 2000)
+                {
+                    w.Step();
+                    ticksBack++;
+                }
+
+                Assert.Equal(-1, w.Entities.Sortie[drone.Index].CrewId, "the crew has been handed back");
+
+                // Release() puts the crew into its ordinary post-flight
+                // Recovering state rather than straight back to Ready - the
+                // same as any other landing - so wait that out too before
+                // asking whether the crew is actually flyable again.
+                for (int i = 0; i < SimConstants.CrewRecoveryTicks + 8; i++) w.Step();
+
+                Assert.Equal(SimConstants.StartingCrews, w.Player(1).Crews.ReadyCount,
+                             "and is available to fly again - not lost, not stuck recovering forever");
+                Assert.Equal(SimConstants.StartingCrews, w.Player(1).Crews.Count,
+                             "no crew was created or destroyed in the process");
+            });
+
+            r.Run("a flight leaves the pad staggered, not stacked (AUDIT-UNWIRED F19)", delegate
+            {
+                // SortieState.EgressUntilTick used to be write-only: computed
+                // from the launch index and read nowhere, so the balance
+                // harness had to fake the spacing itself by enqueueing launch
+                // commands on different ticks (KZ.Balance/Program.cs's own
+                // "Arrival scheduling" note). Two drones launched from the
+                // same pad in the same tick, indices 0 and 1, should now
+                // separate on their own.
+                World w = MakeWorld(23);
+                Fix2 pad = P(6000, 6000);
+                Fix2 far = P(9000, 6000);
+
+                EntityHandle first, second;
+                SortieSystem.Launch(w, 1, Catalog.IdOf("Scout Quad"), pad, EntityHandle.None, 0, out first);
+                SortieSystem.Launch(w, 1, Catalog.IdOf("Scout Quad"), pad, EntityHandle.None, 1, out second);
+                MovementSystem.OrderMoveTo(w, first, far);
+                MovementSystem.OrderMoveTo(w, second, far);
+
+                int firstEgress = w.Entities.Sortie[first.Index].EgressUntilTick;
+                int secondEgress = w.Entities.Sortie[second.Index].EgressUntilTick;
+                Assert.True(secondEgress > firstEgress, "the second index egresses later than the first");
+
+                // Step to a tick after the first drone's own egress window and
+                // before the second's - only reachable at all because
+                // SortiePadEgressPerIndexTicks is nonzero, i.e. the two
+                // windows actually differ.
+                while (w.Tick < firstEgress) w.Step();
+                w.Step();
+
+                Assert.True(w.Tick < secondEgress,
+                            "test still inside the second drone's egress window");
+                Assert.True(w.Entities.Position[first.Index].X != pad.X,
+                            "the first drone has started moving");
+                Assert.True(w.Entities.Position[second.Index].X == pad.X,
+                            "the second drone is still held at the pad");
             });
         }
 
@@ -1582,10 +1736,86 @@ namespace KZ.Tests
                 Assert.False(TankSurvives(4), "four kill it");
             });
 
-            r.Run("a cage buys the tank one more drone", delegate
+            r.Run("a fitted cage rolls a save, it does not bank hit points (AUDIT-UNWIRED F16)", delegate
             {
-                Assert.True(TankSurvivesWithCage(4), "four is no longer enough");
-                Assert.False(TankSurvivesWithCage(5), "five still does it");
+                // ground-force.md §2.1/§8.2: "the mechanism is not 'more
+                // armour'... the effect is therefore probabilistic and
+                // geometry-dependent, not a hit-point buffer", and "a cage
+                // that merely adds standoff without disrupting the warhead
+                // can raise penetration rather than lower it." CageHp used to
+                // be exactly the hit-point buffer the research says a cage is
+                // not, and nothing but a test could ever fit one (World had no
+                // production writer at all). This drives enough hits through
+                // World.FitCage's real consumer, World.ApplyDamage, to show
+                // both halves of that: some hits do far less than an uncaged
+                // one would, and at least one does *more* - which a hit-point
+                // pool can never produce, because a pool only ever subtracts.
+                World w = MakeWorld(42);
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 12000));
+                w.FitCage(tank, F(0.55)); // ground-force.md §2.1's 0.30-0.80 spread, midpoint
+                Fix hit = Catalog.Get(Catalog.IdOf("FPV Team")).WeaponDamage;
+                Fix uncaged = hit * Catalog.DamageMultiplier(DamageType.Shaped, ArmourClass.Heavy, true);
+
+                bool sawASave = false, sawAFailureWorseThanUncaged = false;
+                Fix lastHp = w.Entities.Hp[tank.Index];
+                for (int i = 0; i < 40 && w.Entities.Hp[tank.Index].Raw > 0; i++)
+                {
+                    // A different attacker handle each hit, so the
+                    // deterministic per-hit roll (keyed on tick, target and
+                    // attacker - see ApplyDamage) actually varies instead of
+                    // landing on the same result forty times running.
+                    w.ApplyDamage(tank, hit, DamageType.Shaped, true, new EntityHandle(i + 1, 1));
+                    Fix taken = lastHp - w.Entities.Hp[tank.Index];
+                    if (taken < uncaged) sawASave = true;
+                    if (taken > uncaged) sawAFailureWorseThanUncaged = true;
+                    lastHp = w.Entities.Hp[tank.Index];
+                }
+
+                Assert.True(sawASave, "at least one hit was disrupted well below the uncaged figure");
+                Assert.True(sawAFailureWorseThanUncaged,
+                            "and at least one failed save did more damage than no cage at all");
+            });
+
+            r.Run("a fitted cage still nets the tank a survivability win", delegate
+            {
+                // The point of building one: the same assault the tank could
+                // not survive uncaged, it usually can with a 0.55 save chance
+                // in play, because 0.55 saves at *0.15 plus 0.45 failures at
+                // *1.15 nets well under 1.0 in expectation.
+                World w = MakeWorld(43);
+                EntityHandle uncaged = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 12000));
+                EntityHandle caged = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(20000, 12000));
+                w.FitCage(caged, F(0.55));
+
+                Fix hit = Catalog.Get(Catalog.IdOf("FPV Team")).WeaponDamage;
+                for (int i = 0; i < 5; i++)
+                {
+                    EntityHandle attacker = new EntityHandle(i + 1, 1);
+                    w.ApplyDamage(uncaged, hit, DamageType.Shaped, true, attacker);
+                    w.ApplyDamage(caged, hit, DamageType.Shaped, true, attacker);
+                }
+
+                // Neither tank is actually destroyed here - ApplyDamage can
+                // drive Hp negative on its own, and destruction only happens
+                // when a Step() flushes it - so both Hp values compare
+                // meaningfully even past zero.
+                Assert.True(w.Entities.Hp[caged.Index] > w.Entities.Hp[uncaged.Index],
+                             "the cage is ahead over five hits despite its own failure branch");
+            });
+
+            r.Run("fitting a thermal blanket shrinks a target's thermal reach (AUDIT-UNWIRED F16)", delegate
+            {
+                World w = MakeWorld(44);
+                EntityHandle battery = w.Spawn(Catalog.IdOf("Interceptor Battery"), 1, P(12000, 12000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12500, 12000));
+
+                Fix before = w.DetectionRangeFor(battery.Index, tank.Index, SensorChannel.Thermal);
+                w.FitThermalBlanket(tank);
+                Fix after = w.DetectionRangeFor(battery.Index, tank.Index, SensorChannel.Thermal);
+
+                Assert.True(before.Raw > 0, "sanity: there was something to cut");
+                Assert.True(after.Raw > 0, "masking, not invisibility");
+                Assert.True(after < before, "a fitted blanket cuts the reach a heat sensor gets");
             });
 
             r.Run("fragmentation is useless against armour and lethal against people", delegate
@@ -1639,17 +1869,6 @@ namespace KZ.Tests
         {
             World w = MakeWorld(40);
             EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 12000));
-            Fix damage = Catalog.Get(Catalog.IdOf("FPV Team")).WeaponDamage;
-            for (int i = 0; i < droneHits; i++)
-                w.ApplyDamage(tank, damage, DamageType.Shaped, true, EntityHandle.None);
-            return w.Entities.Hp[tank.Index].Raw > 0;
-        }
-
-        static bool TankSurvivesWithCage(int droneHits)
-        {
-            World w = MakeWorld(41);
-            EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 12000));
-            w.Entities.CageHp[tank.Index] = Fix.FromInt(600);
             Fix damage = Catalog.Get(Catalog.IdOf("FPV Team")).WeaponDamage;
             for (int i = 0; i < droneHits; i++)
                 w.ApplyDamage(tank, damage, DamageType.Shaped, true, EntityHandle.None);
@@ -1873,6 +2092,121 @@ namespace KZ.Tests
 
                 Assert.True(sawSecondBurst,
                             "the mount should spend more than one engagement on a drone it has already laid on");
+            });
+        }
+
+        // ------------------------------------------------------------------
+
+        static void RegisterEconomy(TestRunner r)
+        {
+            r.Group("economy");
+
+            r.Run("a Recovery UGV collects what a fight leaves behind (AUDIT-UNWIRED F3)", delegate
+            {
+                // Before this, SalvageState decayed to nothing and
+                // SimEventKind.SalvageCollected was never pushed - Materiel
+                // only ever went down from its starting balance. Salvage is
+                // already spawned by World.Kill and already decaying every
+                // tick; this only has to prove the other end exists.
+                World w = MakeWorld(90);
+                Fix2 spot = P(12000, 12000);
+                EntityHandle victim = w.Spawn(Catalog.IdOf("Main Tank"), 2, spot);
+                w.Kill(victim, EntityHandle.None);
+                w.Spawn(Catalog.IdOf("Recovery UGV"), 1, spot); // parked right on the wreck
+
+                Fix before = w.Player(1).Materiel;
+                w.Step();
+
+                Assert.True(w.Player(1).Materiel > before,
+                            "collecting a pile raises the collector's own side's Materiel");
+                Assert.True(w.Events.CountOf(SimEventKind.SalvageCollected) > 0,
+                            "and the event nothing used to push actually fires");
+
+                bool pileRemains = false;
+                for (int i = 1; i < w.Entities.HighWater; i++)
+                    if (w.Entities.IsSlotAlive(i) && w.Entities.Has(i, ComponentMask.Salvage))
+                        pileRemains = true;
+                Assert.False(pileRemains, "the claimed pile is gone outright, not left to keep decaying");
+            });
+
+            r.Run("a pile too far from any Recovery UGV just decays, as before", delegate
+            {
+                // The negative case: collection is a proximity check, not an
+                // automatic payout the instant something dies. Regresses to
+                // the pre-existing decay behaviour when nothing is close
+                // enough to claim it - see SalvageCollectionRadiusMetres.
+                World w = MakeWorld(91);
+                Fix2 spot = P(12000, 12000);
+                EntityHandle victim = w.Spawn(Catalog.IdOf("Main Tank"), 2, spot);
+                w.Kill(victim, EntityHandle.None);
+                w.Spawn(Catalog.IdOf("Recovery UGV"), 1, P(20000, 12000)); // far away
+
+                Fix before = w.Player(1).Materiel;
+                for (int i = 0; i < SimConstants.SalvageDecayTicks + 8; i++) w.Step();
+
+                Assert.Equal(before.RoundToInt(), w.Player(1).Materiel.RoundToInt(),
+                             "nobody was close enough to collect it, so it just rotted away");
+            });
+
+            r.Run("money gates production, crews gate employment - two valves, not one (FINDINGS 24)", delegate
+            {
+                // "Airframes are cheap, crews are the cap" is most of the
+                // picture and misses the first valve: a bank with nothing in
+                // it should stop a launch exactly as completely as an empty
+                // crew roster does, and for a different reason - the sidebar
+                // card should grey out for two different reasons, not one.
+                // Salvage collection above is what makes Materiel a real,
+                // two-way resource instead of a countdown from 4000; this is
+                // that resource actually gating something, and recovering
+                // from a gate closing the moment income arrives.
+                World w = MakeWorld(92);
+                w.Player(1).Materiel = Fix.FromInt(50); // less than any airframe in the catalogue
+
+                EntityHandle refused;
+                LaunchResult moneyGate = SortieSystem.Launch(w, 1, Catalog.IdOf("Scout Quad"), P(6000, 6000),
+                                                             EntityHandle.None, 0, out refused);
+                Assert.Equal((long)LaunchResult.InsufficientMateriel, (long)moneyGate,
+                             "refused for want of money");
+                Assert.Equal(SimConstants.StartingCrews, w.Player(1).Crews.ReadyCount,
+                             "the crew gate was never even reached - money closed first");
+
+                Fix2 spot = P(6000, 6000);
+                EntityHandle victim = w.Spawn(Catalog.IdOf("Main Tank"), 2, spot);
+                w.Kill(victim, EntityHandle.None);
+                w.Spawn(Catalog.IdOf("Recovery UGV"), 1, spot);
+                w.Step();
+                Assert.True(w.Player(1).Materiel > Fix.FromInt(120), "collection actually paid out");
+
+                EntityHandle launched;
+                LaunchResult afterIncome = SortieSystem.Launch(w, 1, Catalog.IdOf("Scout Quad"), P(6000, 6000),
+                                                               EntityHandle.None, 1, out launched);
+                Assert.Equal((long)LaunchResult.Launched, (long)afterIncome,
+                             "the same crew, idle a moment ago, can fly the instant the money gate opens");
+            });
+
+            r.Run("an Uplink Terminal grants the satellite rung its capacity (AUDIT-UNWIRED F15)", delegate
+            {
+                // PlayerState.UplinkCapacity started at zero and nothing ever
+                // incremented it, so Designator Team - the only carrier of
+                // LinkKind.Satellite - could not launch in any real match.
+                // The satellite rung of the link ladder was unreachable code,
+                // not merely untested.
+                World w = MakeWorld(93);
+                w.Player(1).Materiel = Fix.FromInt(100000);
+
+                EntityHandle refused;
+                LaunchResult before = SortieSystem.Launch(w, 1, Catalog.IdOf("Designator Team"), P(6000, 6000),
+                                                          EntityHandle.None, 0, out refused);
+                Assert.Equal((long)LaunchResult.NoUplinkCapacity, (long)before,
+                             "unlaunchable with no terminal built");
+
+                w.Spawn(Catalog.IdOf("Uplink Terminal"), 1, P(6100, 6000));
+
+                EntityHandle launched;
+                LaunchResult after = SortieSystem.Launch(w, 1, Catalog.IdOf("Designator Team"), P(6000, 6000),
+                                                         EntityHandle.None, 1, out launched);
+                Assert.Equal((long)LaunchResult.Launched, (long)after,
+                             "and launchable the instant one is built");
             });
         }
     }

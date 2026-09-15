@@ -94,7 +94,17 @@ namespace KZ.Sim
 
         public readonly Fix[] Hp;
         public readonly Fix[] HpMax;
-        public readonly Fix[] CageHp;
+
+        /// <summary>
+        /// Zero means no cage fitted; otherwise the fitted cage's chance, per
+        /// hit, of disrupting a shaped-charge jet before it forms. Not a hit-
+        /// point pool - ground-force.md §2.1/§8.2: "the mechanism is not 'more
+        /// armour'... the effect is therefore probabilistic and geometry-
+        /// dependent, not a hit-point buffer." See World.ApplyDamage for the
+        /// roll and World.FitCage for how this gets set.
+        /// </summary>
+        public readonly Fix[] CageDisruptionChance;
+
         public readonly ArmourClass[] Armour;
 
         public readonly byte[] Team;
@@ -136,7 +146,7 @@ namespace KZ.Sim
             EntityLayer = new Layer[capacity];
             Hp = new Fix[capacity];
             HpMax = new Fix[capacity];
-            CageHp = new Fix[capacity];
+            CageDisruptionChance = new Fix[capacity];
             Armour = new ArmourClass[capacity];
             Team = new byte[capacity];
             DefId = new int[capacity];
@@ -183,6 +193,13 @@ namespace KZ.Sim
             alive[index] = true;
             Mask[index] = ComponentMask.None;
             HasThermalBlanket[index] = false;
+            // World.Spawn also zeroes this for the units it builds, but
+            // SpawnDecoy/SpawnMine/SpawnSalvage create a handle straight from
+            // this table without going through World.Spawn at all - without
+            // resetting it here too, a slot that last held a caged tank could
+            // hand a stale disruption chance to whatever salvage pile or decoy
+            // the free list gives that index to next.
+            CageDisruptionChance[index] = Fix.Zero;
             TetherId[index] = -1;
             Rank[index] = 1;
             AliveCount++;

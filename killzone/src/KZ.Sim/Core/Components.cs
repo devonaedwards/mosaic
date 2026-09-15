@@ -109,6 +109,21 @@ namespace KZ.Sim
         public int EgressUntilTick;     // staggered pad departure so a flight does not spawn stacked
         public bool AcceptsNewOrders;
         public bool OneWay;             // the airframe is the munition; it does not come home
+
+        /// <summary>
+        /// The pad this sortie launched from. A reusable airframe hands its
+        /// crew back (MovementSystem.CheckLandings) once it is close enough to
+        /// this again - AUDIT-UNWIRED.md F13.
+        /// </summary>
+        public Fix2 HomePosition;
+
+        /// <summary>
+        /// True once this sortie has actually flown outside landing range of
+        /// its own pad. Guards the landing check above: without it, a drone
+        /// would "land" on the very tick it launched, since it starts at
+        /// HomePosition, and hand its just-assigned crew straight back.
+        /// </summary>
+        public bool HasLeftHome;
     }
 
     /// <summary>

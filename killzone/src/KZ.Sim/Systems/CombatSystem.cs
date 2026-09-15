@@ -429,7 +429,20 @@ namespace KZ.Sim
                 if (!w.Entities.IsSlotAlive(j)) continue;
                 if (w.Entities.Team[j] == team || w.Entities.Team[j] == 0) continue;
                 if (!w.Entities.Has(j, ComponentMask.Health)) continue;
-                if (w.Entities.Has(j, ComponentMask.Decoy)) continue;
+
+                // AUDIT-UNWIRED.md F18: this used to skip every decoy for
+                // every attacker, piloted or not, linked or not, at any range
+                // - decoys-masking.md §2.4 / AutonomyClassifier.cs's own
+                // governing comment: deception fools machines, never people.
+                // IsPilotedWithClearFeed already existed and already
+                // implements exactly that rule (a live link, a crew, and
+                // close enough to have eyes on it); it was only ever called by
+                // tests. A machine flying on its last order - an autonomous
+                // seeker, or a radio drone whose link has gone black - is not
+                // exempt, which is the case the old blanket skip got wrong.
+                if (w.Entities.Has(j, ComponentMask.Decoy)
+                    && AutonomyClassifier.IsPilotedWithClearFeed(w, i, w.Entities.Position[j]))
+                    continue;
 
                 // An interceptor only engages things in the air, and almost
                 // nothing else may engage air at all.
@@ -489,8 +502,13 @@ namespace KZ.Sim
             Fix mult = Catalog.DamageMultiplier(weapon.Type, w.Entities.Armour[targetIndex], topAttack);
             if (mult.Raw <= 0) return Fix.Zero;
 
+            // AUDIT-UNWIRED.md F16: CageDisruptionChance is a save roll, not a
+            // hit-point pool (ground-force.md §2.1), so unlike the old CageHp
+            // it has nothing to add to "remaining" here - there is no second
+            // bar of health to account for, only a chance this particular
+            // shot does less damage than perShot says.
             Fix perShot = weapon.Damage * mult;
-            Fix remaining = w.Entities.Hp[targetIndex] + w.Entities.CageHp[targetIndex];
+            Fix remaining = w.Entities.Hp[targetIndex];
             if (remaining.Raw <= 0) return Fix.Zero;
 
             Fix fraction = perShot / remaining;

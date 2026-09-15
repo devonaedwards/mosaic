@@ -62,6 +62,48 @@ namespace KZ.Sim
         readonly List<EntityHandle> pendingDeaths = new List<EntityHandle>();
         readonly int[] meshNodeSlotByEntity;
 
+        // ---- Phase 3 / 4.5 wiring constants --------------------------------
+        //
+        // These belong conceptually in SimConstants.cs, alongside
+        // UplinkCapacity's sibling CrewsPerQuarters. They live here instead
+        // because another agent is rescaling every distance and speed in that
+        // file this session (WIRING-SPEC.md, "Files"), and a concurrent edit
+        // to the same lines would be the exact git-add-A hazard the spec's
+        // process note warns about. Move them once that pass lands.
+
+        /// <summary>
+        /// How much satellite capacity one Uplink Terminal grants its side.
+        /// No figure in economics.md or elsewhere - a designer estimate, kept
+        /// below Crew Quarters' four crews per building because the satellite
+        /// rung is meant to stay the scarce, expensive top of the link ladder
+        /// rather than a second population cap. AUDIT-UNWIRED.md F15.
+        /// </summary>
+        const int UplinkCapacityPerTerminal = 2;
+
+        /// <summary>
+        /// How close a friendly Recovery UGV must get to a salvage pile to
+        /// claim it. No figure in economics.md - a designer estimate, picked
+        /// on the same scale as the other short proximity checks in this file
+        /// (a mine's trigger radius, a sortie's landing radius) rather than
+        /// derived from any source. AUDIT-UNWIRED.md F3.
+        /// </summary>
+        const int SalvageCollectionRadiusMetres = 20;
+
+        /// <summary>
+        /// ground-force.md §2.1/§8.2: a cage that disrupts the jet is not a
+        /// full save - "crushing the cone" still lets some of the charge
+        /// through - and a cage that fails to disrupt detonates the warhead
+        /// closer to its own optimum standoff, which the research says can
+        /// raise penetration above the no-cage case, not just fail to lower
+        /// it. Neither multiplier is given a figure by the research (the only
+        /// number it gives is the 0.30-0.80 spread on the *save chance*
+        /// itself, passed in by the caller of FitCage) - both are designer
+        /// estimates, chosen so a save is clearly worth having and a failure
+        /// is clearly worse than an uncaged hit rather than merely equal to it.
+        /// </summary>
+        static readonly Fix CageDisruptedScale = Fix.FromDoubleContentOnly(0.15);
+        static readonly Fix CageFailedScale = Fix.FromDoubleContentOnly(1.15);
+
         public World(Terrain terrain, int entityCapacity, int tetherCapacity, ulong matchSeed, int playerCount)
             : this(terrain, entityCapacity, tetherCapacity, matchSeed, playerCount, 0) { }
 
@@ -129,7 +171,7 @@ namespace KZ.Sim
             Entities.EntityLayer[i] = def.Layer;
             Entities.Hp[i] = def.Hp;
             Entities.HpMax[i] = def.Hp;
-            Entities.CageHp[i] = Fix.Zero;
+            Entities.CageDisruptionChance[i] = Fix.Zero;
             Entities.Armour[i] = def.Armour;
             Entities.Team[i] = team;
             Entities.DefId[i] = defId;
@@ -199,7 +241,16 @@ namespace KZ.Sim
                     SpawnTick = Tick,
                     EgressUntilTick = 0,
                     AcceptsNewOrders = true,
-                    OneWay = def.OneWay
+                    OneWay = def.OneWay,
+                    // AUDIT-UNWIRED.md F13: where a reusable airframe reports
+                    // back to once it is home. Set here (rather than left at
+                    // the zero default) so a unit that never sorties through
+                    // SortieSystem.Launch - none currently exist, but nothing
+                    // stops one being spawned directly in a test or a mission
+                    // script - still has a sane home rather than a landing
+                    // check comparing against (0,0).
+                    HomePosition = position,
+                    HasLeftHome = false
                 };
             }
 
@@ -292,6 +343,19 @@ namespace KZ.Sim
                     Players[team].Crews.AddCrew(h, 1);
             }
 
+            // AUDIT-UNWIRED.md F15: PlayerState.UplinkCapacity was initialised
+            // to zero and never incremented anywhere, so the satellite rung of
+            // the link ladder was unlaunchable in any real match - Designator
+            // Team is the only carrier of LinkKind.Satellite, and
+            // SortieSystem.Launch refuses every one of its launches with
+            // NoUplinkCapacity. Same pattern as Crew Quarters above.
+            // UplinkCapacityPerTerminal has no figure in economics.md or
+            // anywhere else; it is a designer estimate, kept low because
+            // satellite is the top, scarcest rung of the ladder rather than a
+            // second Crew Quarters.
+            if (def.IsStructure && def.Name == "Uplink Terminal" && team < Players.Length)
+                Players[team].UplinkCapacity += UplinkCapacityPerTerminal;
+
             Events.Push(SimEventKind.UnitSpawned, Tick, h, EntityHandle.None, team, defId);
             return h;
         }
@@ -307,6 +371,22 @@ namespace KZ.Sim
             Entities.Armour[i] = ArmourClass.Soft;
             Entities.Team[i] = team;
             Entities.DefId[i] = -1;
+
+            // decoys-masking.md §2.1: "the inflation engine emits heat that
+            // presents an infrared signature" - no published figure, so 25 is
+            // a designer estimate, set well under a real vehicle's (Main Tank
+            // 90) since a blower is a far smaller heat source than a running
+            // engine. Visual 20 is likewise a designer estimate for a physical
+            // object of roughly vehicle size. Everything else stays at zero:
+            // no source gives this bare inflatable a radio, acoustic or radar
+            // return - a reflector is the flying Decoy Drone catalogue unit,
+            // not this one - and giving it one it does not have would make it
+            // as loud as the real thing for a fraction of the price. Without
+            // any signature at all this was undetectable by IsDetectedBy on
+            // every channel, which meant CombatSystem could never engage one
+            // regardless of AUDIT-UNWIRED.md F18's targeting fix below.
+            Entities.Signature[i] = SignatureProfile.Make(0, 25, 0, 20, 0);
+
             Entities.Decoy[i] = new DecoyState
             {
                 Mimics = mimics,
@@ -361,6 +441,39 @@ namespace KZ.Sim
             return h;
         }
 
+        // ---- fittable upgrades ------------------------------------------------
+        //
+        // AUDIT-UNWIRED.md F16: both HasThermalBlanket and CageDisruptionChance
+        // had a real, working consumer and no production writer at all - only
+        // KZ.Tests ever set either one. These two methods are that writer.
+        // Commands.cs is outside the files this pass owns, so there is no
+        // CommandKind for either yet; a build/upgrade command should call
+        // these rather than duplicate them.
+
+        /// <summary>
+        /// Fit a thermal blanket. Cheapest masking in the game and the only
+        /// kind a vehicle can wear - see EffectiveSignature for what it buys.
+        /// </summary>
+        public void FitThermalBlanket(EntityHandle h)
+        {
+            if (!Entities.IsAlive(h)) return;
+            Entities.HasThermalBlanket[h.Index] = true;
+        }
+
+        /// <summary>
+        /// Fit (or replace) a cage/slat screen. disruptionChance is the save
+        /// roll ApplyDamage makes against a topAttack shaped-charge hit -
+        /// ground-force.md §2.1 gives a spread of 0.30 (coarse, poorly placed)
+        /// to 0.80 (fine, disruption-dominated) from a single source of
+        /// unclear provenance, so this is left to the caller rather than
+        /// hard-coded. Zero removes the cage.
+        /// </summary>
+        public void FitCage(EntityHandle h, Fix disruptionChance)
+        {
+            if (!Entities.IsAlive(h)) return;
+            Entities.CageDisruptionChance[h.Index] = Fix.Clamp(disruptionChance, Fix.Zero, Fix.One);
+        }
+
         // ---- the tick -------------------------------------------------------
 
         /// <summary>Queue an order for the next tick.</summary>
@@ -397,6 +510,7 @@ namespace KZ.Sim
             NavigationSystem.Step(this);
 
             CombatSystem.Step(this);
+            CollectSalvage();
             UpdateSalvage();
             UpdateDecoys();
             UpdateMines();
@@ -566,6 +680,58 @@ namespace KZ.Sim
         }
 
         /// <summary>
+        /// economics.md "Concrete recommendations" 1 / FINDINGS.md §24:
+        /// AUDIT-UNWIRED.md F3 found salvage spawned, decayed, and never
+        /// collected - SalvageCollected was never pushed and Materiel only
+        /// ever went down from its starting balance, so no economic
+        /// conclusion drawn from this simulation was actually about an
+        /// economy. This is the collection end: a live Recovery UGV within
+        /// SalvageCollectionRadiusMetres of a pile claims whatever is left of
+        /// it - not a fraction, because the pile is already decaying on its
+        /// own every tick and collection only decides whether *this* tick's
+        /// remaining value goes to a player or to nothing.
+        ///
+        /// Called before UpdateSalvage so a pile created by a kill earlier
+        /// this same tick can still be claimed at its full just-spawned
+        /// value, rather than losing one tick's decay to ordering.
+        ///
+        /// Cost is bounded the same way UpdateMines already is: outer loop
+        /// over live piles (rare and short-lived - fifty seconds per pile),
+        /// inner loop over live entities to find a collector. Detection
+        /// remains the expensive thing per tick, not this.
+        /// </summary>
+        void CollectSalvage()
+        {
+            for (int p = 1; p < Entities.HighWater; p++)
+            {
+                if (!Entities.IsSlotAlive(p)) continue;
+                if (!Entities.Has(p, ComponentMask.Salvage)) continue;
+
+                Fix2 pilePos = Entities.Position[p];
+                Fix radius = Fix.FromInt(SalvageCollectionRadiusMetres);
+                Fix radiusSq = radius * radius;
+
+                for (int i = 1; i < Entities.HighWater; i++)
+                {
+                    if (!Entities.IsSlotAlive(i)) continue;
+                    byte team = Entities.Team[i];
+                    if (team == 0 || team >= Players.Length) continue;
+                    int defId = Entities.DefId[i];
+                    if (defId < 0) continue;
+                    if (Catalog.Get(defId).Name != "Recovery UGV") continue;
+                    if (Fix2.SqrDistance(Entities.Position[i], pilePos) > radiusSq) continue;
+
+                    Fix amount = Entities.SalvagePile[p].Amount;
+                    Players[team].Materiel += amount;
+                    Events.Push(SimEventKind.SalvageCollected, Tick, Entities.HandleAt(p),
+                                Entities.HandleAt(i), team, amount.RoundToInt());
+                    pendingDeaths.Add(Entities.HandleAt(p));
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
         /// Mines wait. That is the whole of their behaviour and the whole of their
         /// point: they cost nothing to maintain, cannot be jammed, cannot be shot
         /// down, and are still there twenty minutes later.
@@ -621,8 +787,9 @@ namespace KZ.Sim
 
         /// <summary>
         /// Apply damage, accounting for armour class and whether the attack came
-        /// down from above. A cage soaks shaped-charge damage first, which is the
-        /// only thing that lets a tank survive a drone swarm long enough to matter.
+        /// down from above. A fitted cage gets one disruption roll against a
+        /// shaped-charge hit to the arc it covers - see the roll below for why
+        /// that is not the same thing as soaking damage.
         /// </summary>
         public void ApplyDamage(EntityHandle target, Fix baseDamage, DamageType type,
                                 bool topAttack, EntityHandle attacker)
@@ -656,11 +823,31 @@ namespace KZ.Sim
 
             Fix damage = baseDamage * mult;
 
-            if (type == DamageType.Shaped && Entities.CageHp[i].Raw > 0)
+            // AUDIT-UNWIRED.md F16 / ground-force.md §2.1: "the mechanism is
+            // not 'more armour'... the effect is therefore probabilistic and
+            // geometry-dependent, not a hit-point buffer." So this is a roll,
+            // not a subtraction, and it only runs for the arc a cage actually
+            // covers - topAttack, the roof and turret a diving drone hits,
+            // which is also the arc every fielded cage in the research is
+            // built for. A save crushes the cone before it forms; a failure
+            // is not merely "no save" - §2.1 again: "a cage that merely adds
+            // standoff without disrupting the warhead can raise penetration
+            // rather than lower it" - so the failed roll scales damage up, not
+            // just through. Keyed to the tick, the target and the attacker
+            // rather than a DetRandom draw: WIRING-SPEC.md's hard constraint is
+            // that a new draw on an existing stream reorders every stream after
+            // it, and Math/DetRandom.cs is outside the files this pass owns, so
+            // this follows Reaches()'s own precedent for a deterministic
+            // per-event roll that needs no stream of its own.
+            if (type == DamageType.Shaped && topAttack && Entities.CageDisruptionChance[i].Raw > 0)
             {
-                Fix absorbed = Fix.Min(damage, Entities.CageHp[i]);
-                Entities.CageHp[i] -= absorbed;
-                damage -= absorbed;
+                ulong key = (ulong)(uint)i * 0x9E3779B97F4A7C15UL
+                          + (ulong)(uint)Tick * 0xBF58476D1CE4E5B9UL
+                          + (ulong)attacker.Value * 0x2545F4914F6CDD1DUL;
+                key ^= key >> 31;
+                int roll = (int)(key % 100UL);
+                int chancePercent = (Entities.CageDisruptionChance[i] * Fix.FromInt(100)).RoundToInt();
+                damage = damage * (roll < chancePercent ? CageDisruptedScale : CageFailedScale);
             }
 
             if (damage.Raw <= 0) return;
@@ -1353,6 +1540,35 @@ namespace KZ.Sim
                 h = (h ^ (ulong)Entities.Team[i]) * Prime;
                 h = (h ^ (ulong)(uint)Entities.DefId[i]) * Prime;
                 h = (h ^ (ulong)Entities.Mask[i]) * Prime;
+
+                // AUDIT-UNWIRED.md F16: both had a working consumer and no
+                // writer until FitThermalBlanket/FitCage, so a mismatch here
+                // could only ever have come from the tests that hand-set them.
+                // Now that a real command path can set them mid-match, a
+                // divergence in either is a divergence in what a shaped-charge
+                // hit or a detection roll actually does, and neither was
+                // previously reachable through here.
+                h = (h ^ (Entities.HasThermalBlanket[i] ? 1UL : 0UL)) * Prime;
+                h = (h ^ (ulong)Entities.CageDisruptionChance[i].Raw) * Prime;
+
+                if (Entities.Has(i, ComponentMask.Sortie))
+                {
+                    // AUDIT-UNWIRED.md F13/F19: EgressUntilTick now gates
+                    // MovementSystem (it did not before, so a miss here would
+                    // not have shown up as anything but a stale position was
+                    // already covered), and HomePosition/HasLeftHome decide
+                    // whether SortieSystem.Recover fires this tick - a crew
+                    // returning on one client and not the other is exactly
+                    // the kind of divergence the state hash exists to catch
+                    // before Players[t].Crews.StateHash() below reflects it.
+                    SortieState s = Entities.Sortie[i];
+                    h = (h ^ (ulong)(uint)s.CrewId) * Prime;
+                    h = (h ^ (ulong)s.Phase) * Prime;
+                    h = (h ^ (ulong)(uint)s.EgressUntilTick) * Prime;
+                    h = (h ^ (ulong)s.HomePosition.X.Raw) * Prime;
+                    h = (h ^ (ulong)s.HomePosition.Y.Raw) * Prime;
+                    h = (h ^ (s.HasLeftHome ? 1UL : 0UL)) * Prime;
+                }
 
                 if (Entities.Has(i, ComponentMask.Link))
                 {

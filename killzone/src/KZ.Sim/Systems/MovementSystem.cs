@@ -14,12 +14,29 @@ namespace KZ.Sim
                 if (w.Entities.Has(i, ComponentMask.Structure)) continue;
                 StepOne(w, i);
             }
+
+            CheckLandings(w);
         }
 
         static void StepOne(World w, int i)
         {
             MoverState mover = w.Entities.Mover[i];
             Fix2 pos = w.Entities.Position[i];
+
+            // AUDIT-UNWIRED.md F19: SortieState.EgressUntilTick was written by
+            // SortieSystem.Launch from the launch index and read nowhere, so
+            // the balance harness had to fake departure spacing by hand,
+            // enqueueing each launch command on a different tick, because a
+            // flight ordered to attack the same target spawned on top of
+            // itself and flew it as one simultaneous arrival. A drone held
+            // here until its own egress tick elapses gets the same spacing
+            // from the launch it already carries, with no harness workaround
+            // needed.
+            if (w.Entities.Has(i, ComponentMask.Sortie) && w.Tick < w.Entities.Sortie[i].EgressUntilTick)
+            {
+                w.Entities.Velocity[i] = Fix2.Zero;
+                return;
+            }
 
             // A drone flying an order it can no longer receive updates to still
             // flies the last order it got. A ground robot that loses its link just
@@ -93,6 +110,56 @@ namespace KZ.Sim
             w.Entities.Position[i] = next;
             w.Entities.Velocity[i] = velocity;
             w.Entities.Mover[i] = mover;
+        }
+
+        /// <summary>
+        /// AUDIT-UNWIRED.md F13: SortieSystem.Recover had zero call sites, so
+        /// the five reusable airframes (Scout Quad, Multirole Quad, Recon
+        /// Wing, Night Bomber, Mothership) held their crew forever - the only
+        /// way to free one was to lose the aircraft, which inverts "airframes
+        /// are cheap, crews are the cap" into "flying anything costs a crew
+        /// permanently" for exactly the units that were supposed to give
+        /// theirs back. A reusable, still-crewed airframe now lands - and
+        /// hands its crew back - the moment it is within LandingRadiusMetres
+        /// of the pad it launched from, provided it actually left first.
+        ///
+        /// That guard is not optional: HomePosition is set to the launch
+        /// position, so without it every fresh launch would be "within
+        /// landing range of home" on its very first tick and undo the crew
+        /// assignment SortieSystem.Launch just made in the same breath.
+        ///
+        /// Deliberately a passive check rather than an autopilot - it does not
+        /// invent a return order. Getting a drone home again is still the
+        /// player's (or a future AI's) job; this only wires up what happens
+        /// once it gets there, which is what AUDIT-UNWIRED.md's own sizing for
+        /// this item describes.
+        /// </summary>
+        static void CheckLandings(World w)
+        {
+            for (int i = 1; i < w.Entities.HighWater; i++)
+            {
+                if (!w.Entities.IsSlotAlive(i)) continue;
+                if (!w.Entities.Has(i, ComponentMask.Sortie)) continue;
+
+                SortieState s = w.Entities.Sortie[i];
+                if (s.OneWay || s.CrewId < 0) continue;
+
+                Fix radius = Fix.FromInt(SortieSystem.LandingRadiusMetres);
+                Fix distSq = Fix2.SqrDistance(w.Entities.Position[i], s.HomePosition);
+
+                if (distSq > radius * radius)
+                {
+                    if (!s.HasLeftHome)
+                    {
+                        s.HasLeftHome = true;
+                        w.Entities.Sortie[i] = s;
+                    }
+                }
+                else if (s.HasLeftHome)
+                {
+                    SortieSystem.Recover(w, w.Entities.HandleAt(i));
+                }
+            }
         }
 
         public static void OrderMoveTo(World w, EntityHandle h, Fix2 point)
