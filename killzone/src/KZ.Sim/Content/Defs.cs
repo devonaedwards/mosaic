@@ -416,6 +416,136 @@ namespace KZ.Sim
                 SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
                 SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
 
+            // TEST-ONLY, and the same argument as "Test Long Mount" above applied
+            // to the other half of a mount. KZ.Balance's SensorMixExperiment used
+            // to answer "which sensors matter" by spawning a real Gun Mount and
+            // then overwriting EntityTable.Sensor with a hypothetical suite -
+            // which is the hand-assignment WIRING-SPEC rules out as evidence, and
+            // which could only ever produce a detection *range*, never an
+            // outcome. These four are ordinary catalogue entries that go through
+            // World.Spawn like anything else, so the experiment can fight them.
+            //
+            // Every field except the sensor fit is copied from Gun Mount,
+            // including the 85 m barrel, so the one variable is what the mount
+            // can find things with. The sensor reaches are the Gun Mount's own
+            // optical 600 and a 400 m microphone array (acoustic.md's man-portable
+            // array figure, already used as the hypothetical fit in this
+            // experiment before it had units to carry it) and a 450 m uncooled
+            // imager, between the tank's 250 and the Interceptor Battery's 520.
+            // None of the four is a shipping unit or a proposal for one.
+            Add(new UnitDef
+            {
+                Name = "Test Mount Optics", IsStructure = true, Tier = 2,
+                CanEngageAir = true,
+                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
+                WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
+                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                CanReachHigh = false,
+                TraverseDegreesPerSecond = 150,
+                EngagementsPerBelt = 5, ReloadSeconds = 20,
+                SensorOptical = M(600),
+                SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
+                SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
+
+            Add(new UnitDef
+            {
+                Name = "Test Mount Acoustic", IsStructure = true, Tier = 2,
+                CanEngageAir = true,
+                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
+                WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
+                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                CanReachHigh = false,
+                TraverseDegreesPerSecond = 150,
+                EngagementsPerBelt = 5, ReloadSeconds = 20,
+                SensorAcoustic = M(400),
+                SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
+                SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
+
+            Add(new UnitDef
+            {
+                Name = "Test Mount Optics Acoustic", IsStructure = true, Tier = 2,
+                CanEngageAir = true,
+                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
+                WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
+                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                CanReachHigh = false,
+                TraverseDegreesPerSecond = 150,
+                EngagementsPerBelt = 5, ReloadSeconds = 20,
+                SensorOptical = M(600), SensorAcoustic = M(400),
+                SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
+                SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
+
+            Add(new UnitDef
+            {
+                Name = "Test Mount Optics Acoustic Thermal", IsStructure = true, Tier = 2,
+                CanEngageAir = true,
+                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
+                WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
+                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                CanReachHigh = false,
+                TraverseDegreesPerSecond = 150,
+                EngagementsPerBelt = 5, ReloadSeconds = 20,
+                SensorOptical = M(600), SensorThermal = M(450), SensorAcoustic = M(400),
+                SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
+                SensorArcDegrees = 120, SensorScanDegreesPerSecond = 70});
+
+            // TEST-ONLY, the same argument again applied to the aperture trade.
+            // FINDINGS 22 records a slider - narrow and far-seeing with a blind
+            // side, or wide and short - and every number recorded against it is
+            // a detection range computed by KZ.Balance from a hand-edited
+            // SensorSuite. Nothing has ever fought one. These three, plus the
+            // shipped Gun Mount's own 120-degree head sweeping at 70 deg/s, are
+            // the four positions on that slider as spawnable units, identical to
+            // the Gun Mount in every other field.
+            Add(new UnitDef
+            {
+                Name = "Test Mount Arc 30", IsStructure = true, Tier = 2,
+                CanEngageAir = true,
+                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
+                WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
+                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                CanReachHigh = false,
+                TraverseDegreesPerSecond = 150,
+                EngagementsPerBelt = 5, ReloadSeconds = 20,
+                SensorOptical = M(600), SensorAcoustic = M(200),
+                SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
+                SensorArcDegrees = 30, SensorScanDegreesPerSecond = 0});
+
+            Add(new UnitDef
+            {
+                Name = "Test Mount Arc 120 Staring", IsStructure = true, Tier = 2,
+                CanEngageAir = true,
+                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
+                WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
+                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                CanReachHigh = false,
+                TraverseDegreesPerSecond = 150,
+                EngagementsPerBelt = 5, ReloadSeconds = 20,
+                SensorOptical = M(600), SensorAcoustic = M(200),
+                SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
+                SensorArcDegrees = 120, SensorScanDegreesPerSecond = 0});
+
+            Add(new UnitDef
+            {
+                Name = "Test Mount Arc 360", IsStructure = true, Tier = 2,
+                CanEngageAir = true,
+                CostMateriel = 450, BuildTicks = SimConstants.Seconds(16),
+                Hp = M(700), Armour = ArmourClass.Structure, FootprintTiles = 2,
+                WeaponDamage = M(70), WeaponType = DamageType.Fragmentation,
+                WeaponRangeMetres = M(85), WeaponCooldownTicks = 24,
+                CanReachHigh = false,
+                TraverseDegreesPerSecond = 150,
+                EngagementsPerBelt = 5, ReloadSeconds = 20,
+                SensorOptical = M(600), SensorAcoustic = M(200),
+                SigRadio = 15, SigThermal = 30, SigAcoustic = 20, SigVisual = 55,
+                SensorArcDegrees = 360, SensorScanDegreesPerSecond = 0});
+
             Add(new UnitDef
             {
                 Name = "Uplink Terminal", IsStructure = true, Faction = FactionId.KestrelPact, Tier = 3,
