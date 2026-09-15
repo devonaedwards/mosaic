@@ -373,6 +373,12 @@ namespace KZ.Sim
             UpdateTethers();
             MovementSystem.Step(this);
 
+            // After movement, so a reconnaissance airframe grants coverage of
+            // where it actually is this tick, and before NavigationSystem, so a
+            // scene-matching drone flying the same ground this tick can use
+            // what recon just bought it.
+            if (Tick % SimConstants.ReconImageryGrantInterval == 0) UpdateReconImagery();
+
             // After movement, because navigation error is driven by the distance
             // actually flown this tick, and before combat, because what a drone
             // is wrong by is what it is wrong by when it arrives.
@@ -516,6 +522,41 @@ namespace KZ.Sim
             }
         }
 
+        /// <summary>
+        /// What a reconnaissance sortie buys: coverage of the ground its camera
+        /// passes over. navigation-denied.md §6's supply end of the imagery
+        /// resource - "acquired by reconnaissance sorties over ground you do
+        /// not control" - and AUDIT-UNWIRED.md F6 found neither end connected.
+        ///
+        /// Only the two unarmed sensor platforms count as reconnaissance here
+        /// (Recon Wing and Scout Quad - both introduced in Defs.cs as the
+        /// army's "eyes" and neither carries a weapon), the same name-based
+        /// test IsMeshAnchorStructure above already uses for "which structures
+        /// anchor a mesh". An FPV team's camera exists to find its own target
+        /// in the last second of a one-way flight, not to build a stockpile the
+        /// rest of the army can draw on.
+        ///
+        /// The coverage radius is the airframe's own optical reach - what the
+        /// camera can actually see - rather than an invented figure.
+        /// </summary>
+        void UpdateReconImagery()
+        {
+            for (int i = 1; i < Entities.HighWater; i++)
+            {
+                if (!Entities.IsSlotAlive(i)) continue;
+                if (!Entities.Has(i, ComponentMask.Sensor)) continue;
+                int defId = Entities.DefId[i];
+                if (defId < 0) continue;
+
+                string n = Catalog.Get(defId).Name;
+                if (n != "Recon Wing" && n != "Scout Quad") continue;
+
+                Fix radius = Entities.Sensor[i].Optical;
+                if (radius.Raw <= 0) continue;
+                Imagery.GrantAround(Entities.Team[i], Entities.Position[i], radius);
+            }
+        }
+
         void UpdateSalvage()
         {
             for (int i = 1; i < Entities.HighWater; i++)
@@ -628,6 +669,17 @@ namespace KZ.Sim
             }
 
             if (damage.Raw <= 0) return;
+
+            // navigation-denied.md §6: imagery is invalidated by events a
+            // player watched happen, never by a clock. Heavy bombardment is
+            // the example the research names for a sector losing its coverage;
+            // see SimConstants.HeavyBombardmentDamageThreshold for why this
+            // reads the raw warhead rather than the post-armour damage. It
+            // invalidates everyone's imagery, including the attacker's own -
+            // churned ground does not read differently depending on who
+            // churned it, which is also true of the enemy's mines.
+            if (baseDamage >= SimConstants.HeavyBombardmentDamageThreshold)
+                Imagery.Invalidate(Entities.Position[i], SimConstants.HeavyBombardmentInvalidateRadiusMetres);
 
             Entities.Hp[i] -= damage;
             if (Entities.Hp[i].Raw <= 0) Kill(target, attacker);

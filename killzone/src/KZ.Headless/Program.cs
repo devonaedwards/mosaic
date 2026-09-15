@@ -250,6 +250,8 @@ namespace KZ.Headless
             Console.WriteLine("AUDIT-UNWIRED.md F5/F6, wired this pass:");
             Console.WriteLine("  satellite lost/regained crossing the border  "
                               + n.SatelliteLost + " / " + n.SatelliteRegained);
+            Console.WriteLine("  scene-matching lock lost/regained            "
+                              + n.NavLocksLost + " / " + n.NavLocksRegained);
             Console.WriteLine("  strike drones that missed on navigation error"
                               + Pad(n.MissedByNavError));
             Console.WriteLine();
@@ -300,7 +302,7 @@ namespace KZ.Headless
 
         public int SortiesLaunched, RefusedNoCrew, LinksAmber, LinksBlack;
         public int LostToJamming, TethersCut, VerifiedKills, UnverifiedKills;
-        public int SatelliteLost, SatelliteRegained;
+        public int NavLocksLost, NavLocksRegained, SatelliteLost, SatelliteRegained;
         public int MissedByNavError;
 
         public Narrator(World w, bool verbose) { world = w; this.verbose = verbose; }
@@ -348,10 +350,18 @@ namespace KZ.Headless
                     case SimEventKind.DayPhaseChanged:
                         Say(e.Tick, "it is now " + ((DayPhase)e.Param).ToString().ToLowerInvariant());
                         break;
-                    // AUDIT-UNWIRED.md F6: this fired only inside KZ.Tests
-                    // before this pass. Narrating it here is how a played
-                    // match, not just a unit test, shows the border actually
-                    // doing something.
+                    // AUDIT-UNWIRED.md F5/F6: these four fired only inside
+                    // KZ.Tests before this pass. Narrating them here is how a
+                    // played match, not just a unit test, shows the border
+                    // actually doing something.
+                    case SimEventKind.NavLockLost:
+                        NavLocksLost++;
+                        Say(e.Tick, "a strike drone lost its scene-matching lock");
+                        break;
+                    case SimEventKind.NavLockRegained:
+                        NavLocksRegained++;
+                        Say(e.Tick, "a strike drone got its lock back");
+                        break;
                     case SimEventKind.SatelliteCoverageLost:
                         SatelliteLost++;
                         Say(e.Tick, "the designator team crossed the border and lost satellite coverage");
@@ -360,8 +370,6 @@ namespace KZ.Headless
                         SatelliteRegained++;
                         Say(e.Tick, "the designator team is back over its own ground");
                         break;
-                    // AUDIT-UNWIRED.md F5: fired only inside KZ.Tests before
-                    // this pass.
                     case SimEventKind.NavMissedAimpoint:
                         MissedByNavError++;
                         Say(e.Tick, "a strike drone's warhead went off on empty ground - it did not know where it was");

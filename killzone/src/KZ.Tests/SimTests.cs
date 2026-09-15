@@ -1091,6 +1091,82 @@ namespace KZ.Tests
                             "and the simulation says so, rather than silently doing no damage");
             });
 
+            r.Run("a reconnaissance sortie buys the imagery scene matching needs", delegate
+            {
+                // AUDIT-UNWIRED.md F6 / navigation-denied.md §6, the supply end.
+                // GrantAround had zero callers outside KZ.Tests. A Recon Wing
+                // spawned and flown - nothing more - should light up the ground
+                // it passes over on its own, through World.Step, not because the
+                // test told the imagery resource to appear.
+                Terrain t = new Terrain(2560, 2048);
+                t.Fill(TileClass.Open);
+                World w = new World(t, 64, 8, 406, 2);
+
+                Fix2 farGround = P(2100, 1000);
+                Assert.False(w.Imagery.HasCoverage(1, farGround),
+                             "nothing has flown near this ground yet");
+
+                EntityHandle scout = w.Spawn(Catalog.IdOf("Recon Wing"), 1, P(1000, 1000));
+                for (int k = 0; k < 700; k++)
+                {
+                    MovementSystem.OrderMoveTo(w, scout, farGround);
+                    w.Step();
+                }
+
+                Assert.True(w.Imagery.HasCoverage(1, farGround),
+                            "the recon wing's own camera bought coverage of the ground it overflew");
+                Assert.True(!w.Imagery.HasCoverage(2, farGround),
+                            "and only for the side that flew the sortie");
+            });
+
+            r.Run("heavy bombardment invalidates imagery; a routine kamikaze hit does not", delegate
+            {
+                // navigation-denied.md §6: a coverage resource invalidated by
+                // events a player watched happen, not a timer - and Invalidate
+                // had zero callers outside KZ.Tests. Two attacks land on the
+                // same covered ground: an FPV Team's kamikaze warhead (260,
+                // routine) and a Heavy Strike Drone's (520, the kind of hit the
+                // research calls "bombardment"). Only the second should churn
+                // the sector.
+                Terrain t = new Terrain(2048, 2048);
+                t.Fill(TileClass.Open);
+                World w = new World(t, 64, 8, 407, 2);
+                w.Territory.Fill(1);   // both attackers are on their own ground throughout - isolates the damage threshold from F5's aimpoint error
+
+                Fix2 spot = P(1000, 1000);
+                w.Imagery.GrantAround(1, spot, Fix.FromInt(50));
+                Assert.True(w.Imagery.HasCoverage(1, spot), "test setup: covered to start");
+
+                EntityHandle target1 = w.Spawn(Catalog.IdOf("Main Tank"), 2, spot);
+                EntityHandle fpv = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(990, 1000));
+                for (int k = 0; k < 60 && w.Entities.IsAlive(fpv); k++)
+                {
+                    MovementSystem.OrderAttack(w, fpv, target1);
+                    w.Step();
+                }
+
+                Assert.True(w.Entities.Hp[target1.Index] < Catalog.Get(Catalog.IdOf("Main Tank")).Hp,
+                            "test setup: the kamikaze hit actually landed");
+                Assert.True(w.Imagery.HasCoverage(1, spot),
+                            "a 260-warhead kamikaze hit is not what the research calls bombardment");
+
+                // An explicit attack order, not a move order: Heavy Strike Drone
+                // carries Link.Autonomy, so with no order at all FindTarget would
+                // route it through AutonomyClassifier instead, which returns
+                // nothing for a terminal-guidance airframe by design (FINDINGS
+                // 28) - a human already picked the target, which is what this
+                // order represents.
+                EntityHandle heavy = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 1, P(990, 1000));
+                for (int k = 0; k < 60 && w.Entities.IsAlive(heavy); k++)
+                {
+                    MovementSystem.OrderAttack(w, heavy, target1);
+                    w.Step();
+                }
+
+                Assert.True(!w.Imagery.HasCoverage(1, spot),
+                            "a 520-warhead strike churns the ground it lands on");
+            });
+
             r.Run("fog grounds nothing and blinds everything", delegate
             {
                 // The weather state a designer is most likely to get wrong, by

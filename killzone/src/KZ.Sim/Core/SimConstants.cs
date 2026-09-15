@@ -333,6 +333,38 @@ namespace KZ.Sim
         /// </summary>
         public static readonly Fix MunitionMissRadiusMetres = Fix.FromDoubleContentOnly(8.0);
 
+        /// <summary>
+        /// How much warhead a hit needs to carry before it counts as the "heavy
+        /// bombardment" that navigation-denied.md §6 names as one of the events
+        /// that invalidates reference imagery - "a sector bombarded into
+        /// unrecognisability" - rather than the routine kamikaze hit an FPV or
+        /// Fiber FPV Team carries (260 / 340). Read against the raw warhead
+        /// (WeaponState.Damage / MineState.Damage as passed to ApplyDamage,
+        /// before the armour multiplier - a shot that happens to land on thin
+        /// plate is not thereby a bigger bomb), this sits above every
+        /// FPV-class munition and at or below every Tier-3 strike drone and
+        /// the Night Bomber's mines. The research names the mechanism, not a
+        /// joules figure, so both this and the radius below are designer
+        /// estimates.
+        /// </summary>
+        public static readonly Fix HeavyBombardmentDamageThreshold = Fix.FromDoubleContentOnly(350.0);
+
+        /// <summary>How much of a sector one heavy hit churns past matching. Designer estimate - see HeavyBombardmentDamageThreshold.</summary>
+        public static readonly Fix HeavyBombardmentInvalidateRadiusMetres = Fix.FromDoubleContentOnly(150.0);
+
+        /// <summary>
+        /// How often a reconnaissance airframe's camera pays into the imagery
+        /// resource - navigation-denied.md §6's supply end, AUDIT-UNWIRED.md F6.
+        /// Coverage is a persistent bit per cell, so granting it every tick buys
+        /// nothing once a cell is already covered and only spends the tick
+        /// budget detection already needs. Four times a second is enough that a
+        /// recon airframe cruising at up to Recon Wing's 12 m/s (well under one
+        /// 64 m imagery cell between grants) never skips a cell it flew over -
+        /// an engineering cadence, not a content number, so it is not cited to
+        /// a section.
+        /// </summary>
+        public const int ReconImageryGrantInterval = 8;
+
         // ---- how reliable any of this is ------------------------------------
 
         /// <summary>

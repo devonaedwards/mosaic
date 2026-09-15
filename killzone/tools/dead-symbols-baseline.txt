@@ -49,8 +49,6 @@ test-only       EventRing.CountOf
 test-only       Fix.Ratio
 test-only       Fix2.ClampMagnitude
 test-only       GroundState.Frozen
-test-only       ReferenceImagery.GrantAround
-test-only       ReferenceImagery.Invalidate
 test-only       TetherSystem.AnySegmentNear
 test-only       Trig.Direction
 enum-value      CommandKind.DropPin
