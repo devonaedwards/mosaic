@@ -584,6 +584,141 @@ namespace KZ.Tests
                 }
                 Assert.True(sawReport, "a misidentification is reported, never swallowed");
             });
+
+            r.Run("a no-go bubble stops a munition diving on its own side (AUDIT-UNWIRED F17)", delegate
+            {
+                // autonomy.md §9.3: fratricide is "1-3% of autonomous
+                // engagements, dropping to near zero if the player has
+                // designated a no-go bubble".
+                //
+                // Everything here goes through the production path on purpose -
+                // World.Enqueue, World.Step, and the munition's own weapon loop
+                // reaching AutonomyClassifier by itself. Nothing hand-assigns
+                // AutonomyState, because a test that sets the state it then
+                // asserts on is exactly the failure FINDINGS 30 is about, and
+                // the box's whole problem was that only a test had ever written
+                // one.
+                Fix lostWithout, lostWith;
+                int without = NoGoBubbleTrial(4100, false, out lostWithout);
+                int with = NoGoBubbleTrial(4100, true, out lostWith);
+
+                // The control has to be loud, or the box proves nothing: with a
+                // friendly as the only thing in the seeker cone the classifier
+                // has no genuine target to prefer and picks it every time.
+                Assert.True(without > 0, "control: unprotected, it reports killing its own (got "
+                                         + without + " reports)");
+                Assert.True(lostWithout.Raw > 0, "control: and the friendly actually took the hits");
+
+                Assert.Equal(0, with, "inside the bubble it is never considered at all");
+                Assert.Equal(0, lostWith.RoundToInt(), "so the friendly is untouched");
+            });
+
+            r.Run("the bubble lapses, and stops protecting anything when it does", delegate
+            {
+                // The expiry is not decoration - see AutonomyState.BoxExpiryTick
+                // for why a bubble a player never refreshes is worse than none.
+                // Same fixture, a bubble with four play-seconds on it, run long
+                // past that: the friendly is safe at first and not afterwards.
+                World w = MakeWorld(4200);
+                EntityHandle friendly = w.Spawn(Catalog.IdOf("Main Tank"), 1, P(12000, 12000));
+                w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(12080, 12000));
+                w.Enqueue(Command.SetAutonomyBox(1, P(11950, 11950), P(12050, 12050),
+                                                 SimConstants.PlaySeconds(4)));
+
+                int before = 0, after = 0;
+                for (int t = 0; t < SimConstants.PlaySeconds(12); t++)
+                {
+                    w.Step();
+                    int n = w.Events.CountOf(SimEventKind.AutonomyMisidentified);
+                    if (w.Tick <= SimConstants.PlaySeconds(4)) before += n; else after += n;
+                }
+
+                Assert.Equal(0, before, "protected while the designation stands");
+                Assert.True(after > 0, "and on its own again once it lapses (got " + after + ")");
+                Assert.True(w.Entities.Hp[friendly.Index] < Catalog.Get(Catalog.IdOf("Main Tank")).Hp,
+                            "which is a real cost, not a flag flipping");
+            });
+
+            r.Run("the bubble belongs to the team, so a munition launched later inherits it", delegate
+            {
+                // Per-team rather than per-airframe, and this is the case that
+                // decides it: these are one-way munitions that spend their whole
+                // life inside a single order, so a bubble that only reached what
+                // was already in the air would reach almost nothing. The order
+                // is given first and the munition built afterwards, which is the
+                // ordinary way round.
+                World w = MakeWorld(4300);
+                EntityHandle friendly = w.Spawn(Catalog.IdOf("Main Tank"), 1, P(12000, 12000));
+                w.Enqueue(Command.SetAutonomyBox(1, P(11950, 11950), P(12050, 12050),
+                                                 SimConstants.PlaySeconds(60)));
+                w.Step();
+
+                w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(12080, 12000));
+
+                int reports = 0;
+                for (int t = 0; t < SimConstants.Seconds(20); t++)
+                {
+                    w.Step();
+                    reports += w.Events.CountOf(SimEventKind.AutonomyMisidentified);
+                }
+                Assert.Equal(0, reports, "an airframe that did not exist when the line was drawn obeys it");
+                Assert.Equal(Catalog.Get(Catalog.IdOf("Main Tank")).Hp.RoundToInt(),
+                             w.Entities.Hp[friendly.Index].RoundToInt(), "untouched");
+            });
+
+            r.Run("the bubble spares whoever is standing in it, enemy included", delegate
+            {
+                // Not a friend filter: the machine is not offered anything
+                // inside the rectangle, so an opponent who parks in one is as
+                // safe as the vehicles it was drawn for. That is the price of
+                // the order, and the reason to draw it tightly - stated here as
+                // a test rather than a comment because it is the half of the
+                // design a player will discover the expensive way.
+                World w = MakeWorld(4400);
+                EntityHandle enemy = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 12000));
+                w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(12080, 12000));
+                w.Enqueue(Command.SetAutonomyBox(1, P(11950, 11950), P(12050, 12050),
+                                                 SimConstants.PlaySeconds(60)));
+
+                for (int t = 0; t < SimConstants.Seconds(20); t++) w.Step();
+
+                Assert.Equal(Catalog.Get(Catalog.IdOf("Main Tank")).Hp.RoundToInt(),
+                             w.Entities.Hp[enemy.Index].RoundToInt(),
+                             "a tank inside your own no-go area is a tank you told your munitions to ignore");
+            });
+        }
+
+        /// <summary>
+        /// One run of the fratricide fixture: a friendly vehicle and an
+        /// autonomous munition 80 m away, which is inside the seeker cone. With
+        /// the friendly as the only candidate the classifier has no genuine
+        /// target to prefer, so it picks the friendly on both branches of its
+        /// roll - which makes this the sharpest possible control for the box.
+        /// Returns how many times the munition reported killing its own, and
+        /// hands back the health the friendly lost doing it.
+        /// </summary>
+        static int NoGoBubbleTrial(ulong seed, bool drawBubble, out Fix hpLost)
+        {
+            World w = MakeWorld(seed);
+            EntityHandle friendly = w.Spawn(Catalog.IdOf("Main Tank"), 1, P(12000, 12000));
+            w.Spawn(Catalog.IdOf("Autonomous Munition"), 1, P(12080, 12000));
+            Fix hp0 = w.Entities.Hp[friendly.Index];
+
+            // The real command path: queued, executed inside Step, applied by
+            // CommandBuffer.Apply. The munition sits outside the rectangle and
+            // the friendly inside it.
+            if (drawBubble)
+                w.Enqueue(Command.SetAutonomyBox(1, P(11950, 11950), P(12050, 12050),
+                                                 SimConstants.PlaySeconds(60)));
+
+            int reports = 0;
+            for (int t = 0; t < SimConstants.Seconds(20); t++)
+            {
+                w.Step();
+                reports += w.Events.CountOf(SimEventKind.AutonomyMisidentified);
+            }
+            hpLost = hp0 - w.Entities.Hp[friendly.Index];
+            return reports;
         }
 
         // ------------------------------------------------------------------
@@ -1818,6 +1953,48 @@ namespace KZ.Tests
                 Assert.True(after < before, "a fitted blanket cuts the reach a heat sensor gets");
             });
 
+            r.Run("an order fits the cage, and the same six drones stop working (AUDIT-UNWIRED F16)", delegate
+            {
+                // The two tests above prove the cage works and prove nothing
+                // about whether anybody can have one: until CommandKind.FitCage
+                // existed, World.FitCage's only caller was this file. This runs
+                // the same tank through a real attack twice, identical but for
+                // one queued order, and never touches CageDisruptionChance.
+                //
+                // 55%: ground-force.md §2.1 gives a 0.30-0.80 spread and no
+                // single figure, so the midpoint is a designer estimate.
+                //
+                // Six drones against one tank, and the order is worth exactly
+                // the difference between the rush working and not working -
+                // which is the shape World.cs already claims for it: "the only
+                // thing that lets a tank survive a drone swarm long enough to
+                // matter."
+                Assert.False(TankSurvivesADroneRush(4500, 0), "control: six drones kill a bare tank");
+                Assert.True(TankSurvivesADroneRush(4500, 55), "one queued order and the same six do not");
+            });
+
+            r.Run("an order fits the blanket, and the wrong team's order does not", delegate
+            {
+                World w = MakeWorld(4600);
+                EntityHandle battery = w.Spawn(Catalog.IdOf("Interceptor Battery"), 1, P(12000, 12000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12500, 12000));
+                Fix before = w.DetectionRangeFor(battery.Index, tank.Index, SensorChannel.Thermal);
+
+                // Team 1 would love to blanket team 2's tank into being a less
+                // convincing target for team 1's own munitions. An upgrade is
+                // fitted to something you own, and CommandBuffer.Apply checks.
+                w.Enqueue(Command.FitThermalBlanket(1, tank));
+                w.Step();
+                Assert.Equal(before.RoundToInt(),
+                             w.DetectionRangeFor(battery.Index, tank.Index, SensorChannel.Thermal).RoundToInt(),
+                             "an order from the wrong team does nothing at all");
+
+                w.Enqueue(Command.FitThermalBlanket(2, tank));
+                w.Step();
+                Assert.True(w.DetectionRangeFor(battery.Index, tank.Index, SensorChannel.Thermal) < before,
+                            "its owner's order fits it");
+            });
+
             r.Run("fragmentation is useless against armour and lethal against people", delegate
             {
                 Fix vsHeavy = Catalog.DamageMultiplier(DamageType.Fragmentation, ArmourClass.Heavy, false);
@@ -1873,6 +2050,32 @@ namespace KZ.Tests
             for (int i = 0; i < droneHits; i++)
                 w.ApplyDamage(tank, damage, DamageType.Shaped, true, EntityHandle.None);
             return w.Entities.Hp[tank.Index].Raw > 0;
+        }
+
+        /// <summary>
+        /// Six one-way drones against one tank, fought out through World.Step,
+        /// and whether the tank is still standing at the end. cagePercent of
+        /// zero queues no order at all, so the two runs differ by exactly one
+        /// command and nothing else.
+        /// </summary>
+        static bool TankSurvivesADroneRush(ulong seed, int cagePercent)
+        {
+            World w = MakeWorld(seed);
+            EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(12000, 12000));
+            // Low-flying rotary drones, because a cage covers the roof and
+            // CombatSystem only calls a hit top-attack when the shooter is in
+            // the low layer - which is the same reason the research says a cage
+            // is built for that arc and no other.
+            for (int d = 0; d < 6; d++)
+                w.Spawn(Catalog.IdOf("FPV Team"), 1, P(12060 + d * 4, 12000));
+            if (cagePercent > 0) w.Enqueue(Command.FitCage(2, tank, cagePercent));
+
+            for (int t = 0; t < SimConstants.Seconds(60); t++)
+            {
+                w.Step();
+                if (!w.Entities.IsAlive(tank) || w.Entities.Hp[tank.Index].Raw <= 0) return false;
+            }
+            return true;
         }
 
         static void RegisterPointDefence(TestRunner r)

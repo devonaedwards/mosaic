@@ -27,7 +27,9 @@ namespace KZ.Sim
         PlaceDecoy,
         LayMines,
         SetAltitude,
-        SetAutonomyBox
+        SetAutonomyBox,
+        FitThermalBlanket,
+        FitCage
     }
 
     public struct Command
@@ -39,7 +41,9 @@ namespace KZ.Sim
         public Fix2 Point;
         public int DefId;              // for a launch: which airframe
         public int Param;              // launch index, decoy lifetime, and so on
-        public Fix2 MineEnd;           // far end of a mine-laying run
+        // The second point of a two-point order: the far end of a mine-laying
+        // run, or the opposite corner of an autonomy no-go box.
+        public Fix2 MineEnd;
 
         public static Command MoveTo(byte team, EntityHandle subject, Fix2 point)
         {
@@ -104,6 +108,69 @@ namespace KZ.Sim
         {
             Command c = new Command();
             c.Kind = CommandKind.PlaceDecoy; c.Team = team; c.Point = point; c.Param = lifetimeTicks;
+            return c;
+        }
+
+        /// <summary>
+        /// Draw a no-go bubble over your own ground: a rectangle your autonomous
+        /// munitions will not pick a target out of, whoever is standing in it.
+        ///
+        /// autonomy.md §9.3 asks for exactly this, and asks for it as a thing the
+        /// player builds rather than a difficulty setting, because a no-go bubble
+        /// is what brigades actually improvise - §5 notes that every mitigation
+        /// in use against autonomous misidentification is procedural.
+        ///
+        /// Note the two things it is not. It is not per-airframe: the order is
+        /// the team's and every autonomous unit it owns, in the air now or
+        /// launched later, obeys it. And it is not a friend filter - an enemy
+        /// who parks inside your bubble is as safe from your munitions as your
+        /// own tanks are, which is the price of drawing one and the reason to
+        /// draw it tightly.
+        ///
+        /// lifetimeTicks is the player's, as a decoy's is, and it is not
+        /// optional: see AutonomyState.BoxExpiryTick for why a bubble lapses.
+        /// Zero or less erases the current one.
+        /// </summary>
+        public static Command SetAutonomyBox(byte team, Fix2 corner, Fix2 opposite, int lifetimeTicks)
+        {
+            Command c = new Command();
+            c.Kind = CommandKind.SetAutonomyBox; c.Team = team;
+            c.Point = corner; c.MineEnd = opposite; c.Param = lifetimeTicks;
+            return c;
+        }
+
+        /// <summary>
+        /// Fit a thermal blanket to one of your vehicles. AUDIT-UNWIRED.md F16:
+        /// the blanket's consumers - World.EffectiveSignature and the
+        /// classifier's plausibility term - have worked all along, and until this
+        /// order existed nothing but a test could ever put one on a vehicle.
+        /// </summary>
+        public static Command FitThermalBlanket(byte team, EntityHandle subject)
+        {
+            Command c = new Command();
+            c.Kind = CommandKind.FitThermalBlanket; c.Team = team; c.Subject = subject;
+            return c;
+        }
+
+        /// <summary>
+        /// Fit a cage or slat screen. savePercent is the chance a shaped-charge
+        /// hit on the roof is disrupted rather than let through - a *roll*, not
+        /// a pool of extra hit points, because ground-force.md §2.1 is explicit
+        /// that a cage disrupts the jet rather than absorbing it, and §8.2 that
+        /// a cage which only adds standoff can raise penetration instead of
+        /// lowering it. World.ApplyDamage carries both branches.
+        ///
+        /// The research gives a spread of 0.30 (coarse, poorly placed) to 0.80
+        /// (fine, disruption-dominated) from one source of unclear provenance
+        /// and no single figure, so **whatever a caller passes here is a
+        /// designer estimate** and should say so at the call site. It rides as
+        /// an integer percent because a command is a replay record first: the
+        /// same few bytes have to mean the same thing on both machines.
+        /// </summary>
+        public static Command FitCage(byte team, EntityHandle subject, int savePercent)
+        {
+            Command c = new Command();
+            c.Kind = CommandKind.FitCage; c.Team = team; c.Subject = subject; c.Param = savePercent;
             return c;
         }
     }
@@ -181,6 +248,25 @@ namespace KZ.Sim
 
                 case CommandKind.PlaceDecoy:
                     w.SpawnDecoy(c.Team, c.Point, TargetKind.HighValue, c.Param);
+                    break;
+
+                case CommandKind.SetAutonomyBox:
+                    w.SetAutonomyNoGoBox(c.Team, c.Point, c.MineEnd, c.Param);
+                    break;
+
+                // An upgrade is fitted to something you own. Every other case
+                // above takes the subject on trust, which is fine while a
+                // subject is something you are ordering about - a MoveTo aimed
+                // at an enemy tank does nothing, because the tank has no order
+                // to follow. These two would work, so they check.
+                case CommandKind.FitThermalBlanket:
+                    if (w.Entities.IsAlive(c.Subject) && w.Entities.Team[c.Subject.Index] == c.Team)
+                        w.FitThermalBlanket(c.Subject);
+                    break;
+
+                case CommandKind.FitCage:
+                    if (w.Entities.IsAlive(c.Subject) && w.Entities.Team[c.Subject.Index] == c.Team)
+                        w.FitCage(c.Subject, Fix.FromInt(c.Param) / 100);
                     break;
             }
         }

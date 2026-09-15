@@ -165,6 +165,40 @@ namespace KZ.Headless
 
         static void Script(World w, int tick)
         {
+            // AUDIT-UNWIRED.md F16/F17: the defender's opening housekeeping, and
+            // the only place in the repository outside a test where a cage, a
+            // blanket or a no-go bubble is brought to a match. All three go
+            // through w.Enqueue rather than calling World directly, because the
+            // point of the exercise was that they had no order behind them.
+            if (tick == 0)
+            {
+                EntityHandle tank = FindFirst(w, 2, "Main Tank");
+                if (w.Entities.IsAlive(tank))
+                    // 55%: ground-force.md §2.1 gives a 0.30-0.80 spread for a
+                    // cage's disruption chance and no single figure, so the
+                    // midpoint is a designer estimate, not a sourced number.
+                    w.Enqueue(Command.FitCage(2, tank, 55));
+
+                EntityHandle truck = FindFirst(w, 2, "Supply Truck");
+                if (w.Entities.IsAlive(truck))
+                    w.Enqueue(Command.FitThermalBlanket(2, truck));
+
+                // A bubble over the defender's own rear - command post, gun
+                // mount and the truck behind them - which is the shape
+                // autonomy.md §5 describes brigades improvising. Nothing in
+                // this scenario currently flies an autonomous munition, so it
+                // changes no outcome here; it is in the mission because a
+                // mission is where the order has to be reachable from, and
+                // FINDINGS 30 is about exactly the gap between those two.
+                //
+                // 120 play-seconds is a designer estimate. autonomy.md gives no
+                // figure for how long a designation should stand, and the
+                // duration is pacing rather than physics - it is how often the
+                // player is made to look at their own rear area.
+                w.Enqueue(Command.SetAutonomyBox(2, P(22000, 8000), P(26000, 11000),
+                                                 SimConstants.PlaySeconds(120)));
+            }
+
             // AUDIT-UNWIRED.md F6 / FINDINGS 26: with the border now placed,
             // push the forward observer across it partway through the match -
             // ground the attacker is not shooting for, just standing on. This

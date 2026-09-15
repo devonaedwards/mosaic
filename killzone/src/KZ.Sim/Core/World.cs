@@ -22,6 +22,20 @@ namespace KZ.Sim
         public int UplinkInUse;
         public CrewPool Crews;
         public bool HasThermalOptics;
+
+        /// <summary>
+        /// This team's autonomy no-go bubble, and the authority for it.
+        /// AutonomyState carries a copy on each munition because that is what
+        /// the classifier reads, but the team record is what a unit launched
+        /// after the order was given inherits from - and a munition launched
+        /// after the bubble was drawn is the common case, not the exception, so
+        /// without this the feature would protect only whatever happened to
+        /// already be in the air. AUDIT-UNWIRED.md F17.
+        /// </summary>
+        public Fix2 NoGoBoxMin;
+        public Fix2 NoGoBoxMax;
+        public int NoGoBoxExpiryTick;
+        public bool HasNoGoBox;
     }
 
     public sealed class World
@@ -330,6 +344,12 @@ namespace KZ.Sim
                     HasBox = false,
                     ConsumesCrew = def.ConsumesCrew
                 };
+
+                // AUDIT-UNWIRED.md F17: a bubble the player drew ten seconds ago
+                // has to cover the munition they launch now, or it covers almost
+                // nothing - these are one-way airframes that spend their whole
+                // life inside a single order.
+                if (team < Players.Length && Players[team].HasNoGoBox) CopyNoGoBoxTo(i, team);
             }
 
             if (def.IsMeshRepeater) Entities.AddComponent(i, ComponentMask.MeshRepeater);
@@ -445,10 +465,9 @@ namespace KZ.Sim
         //
         // AUDIT-UNWIRED.md F16: both HasThermalBlanket and CageDisruptionChance
         // had a real, working consumer and no production writer at all - only
-        // KZ.Tests ever set either one. These two methods are that writer.
-        // Commands.cs is outside the files this pass owns, so there is no
-        // CommandKind for either yet; a build/upgrade command should call
-        // these rather than duplicate them.
+        // KZ.Tests ever set either one. These two methods are that writer, and
+        // CommandKind.FitCage/FitThermalBlanket are what a player gets to call
+        // them with.
 
         /// <summary>
         /// Fit a thermal blanket. Cheapest masking in the game and the only
@@ -472,6 +491,54 @@ namespace KZ.Sim
         {
             if (!Entities.IsAlive(h)) return;
             Entities.CageDisruptionChance[h.Index] = Fix.Clamp(disruptionChance, Fix.Zero, Fix.One);
+        }
+
+        // ---- the autonomy no-go bubble ---------------------------------------
+
+        /// <summary>
+        /// Draw (or redraw) this team's no-go bubble: the rectangle its own
+        /// autonomous munitions will not consider a target inside, whoever is
+        /// standing in it. autonomy.md §9.3 asks for it by name as the counter
+        /// to the 1-3% fratricide rate the autonomous tier otherwise carries.
+        ///
+        /// The two corners arrive in whatever order the player dragged them and
+        /// are normalised here rather than at the factory, so a replay of the
+        /// raw command produces the same rectangle on every machine.
+        ///
+        /// durationTicks of zero or less erases the bubble instead of drawing
+        /// one - the eraser is the same order with no time on it rather than a
+        /// second command kind, the way a decoy with no lifetime is not a decoy.
+        /// See AutonomyState.BoxExpiryTick for why a bubble lapses at all.
+        /// </summary>
+        public void SetAutonomyNoGoBox(byte team, Fix2 cornerA, Fix2 cornerB, int durationTicks)
+        {
+            if (team >= Players.Length) return;
+
+            PlayerState p = Players[team];
+            p.NoGoBoxMin = new Fix2(Fix.Min(cornerA.X, cornerB.X), Fix.Min(cornerA.Y, cornerB.Y));
+            p.NoGoBoxMax = new Fix2(Fix.Max(cornerA.X, cornerB.X), Fix.Max(cornerA.Y, cornerB.Y));
+            p.NoGoBoxExpiryTick = Tick + (durationTicks > 0 ? durationTicks : 0);
+            p.HasNoGoBox = durationTicks > 0;
+
+            // Everything of this team's that is already flying, too. One order,
+            // every machine - the player drew a line around their own position,
+            // not around one airframe's opinion of it.
+            for (int i = 1; i < Entities.HighWater; i++)
+            {
+                if (!Entities.IsSlotAlive(i)) continue;
+                if (Entities.Team[i] != team) continue;
+                if (!Entities.Has(i, ComponentMask.Autonomy)) continue;
+                CopyNoGoBoxTo(i, team);
+            }
+        }
+
+        void CopyNoGoBoxTo(int i, byte team)
+        {
+            PlayerState p = Players[team];
+            Entities.Autonomy[i].BoxMin = p.NoGoBoxMin;
+            Entities.Autonomy[i].BoxMax = p.NoGoBoxMax;
+            Entities.Autonomy[i].BoxExpiryTick = p.NoGoBoxExpiryTick;
+            Entities.Autonomy[i].HasBox = p.HasNoGoBox;
         }
 
         // ---- the tick -------------------------------------------------------
@@ -1570,6 +1637,24 @@ namespace KZ.Sim
                     h = (h ^ (s.HasLeftHome ? 1UL : 0UL)) * Prime;
                 }
 
+                // AUDIT-UNWIRED.md F17: the no-go bubble is persistent state
+                // that decides what a munition is allowed to consider, and it
+                // is set by an order rather than derived from anything else
+                // hashed here - two peers that disagreed about where the line
+                // was drawn would disagree about which of the player's own
+                // vehicles their munitions are willing to dive on, which is
+                // about as divergent as a match gets.
+                if (Entities.Has(i, ComponentMask.Autonomy))
+                {
+                    AutonomyState a = Entities.Autonomy[i];
+                    h = (h ^ (a.HasBox ? 1UL : 0UL)) * Prime;
+                    h = (h ^ (ulong)a.BoxMin.X.Raw) * Prime;
+                    h = (h ^ (ulong)a.BoxMin.Y.Raw) * Prime;
+                    h = (h ^ (ulong)a.BoxMax.X.Raw) * Prime;
+                    h = (h ^ (ulong)a.BoxMax.Y.Raw) * Prime;
+                    h = (h ^ (ulong)(uint)a.BoxExpiryTick) * Prime;
+                }
+
                 if (Entities.Has(i, ComponentMask.Link))
                 {
                     h = (h ^ (ulong)Entities.Link[i].Pip) * Prime;
@@ -1608,6 +1693,18 @@ namespace KZ.Sim
                 h = (h ^ (ulong)Players[t].Materiel.Raw) * Prime;
                 h = (h ^ (ulong)Players[t].TaskingPoints.Raw) * Prime;
                 h = (h ^ Players[t].Crews.StateHash()) * Prime;
+
+                // The team's copy of the bubble as well as each munition's. It
+                // is what every munition launched from here on will inherit, so
+                // a divergence in it is a divergence in the future rather than
+                // in anything currently alive - exactly the kind that would
+                // otherwise surface minutes later as an unexplained one.
+                h = (h ^ (Players[t].HasNoGoBox ? 1UL : 0UL)) * Prime;
+                h = (h ^ (ulong)Players[t].NoGoBoxMin.X.Raw) * Prime;
+                h = (h ^ (ulong)Players[t].NoGoBoxMin.Y.Raw) * Prime;
+                h = (h ^ (ulong)Players[t].NoGoBoxMax.X.Raw) * Prime;
+                h = (h ^ (ulong)Players[t].NoGoBoxMax.Y.Raw) * Prime;
+                h = (h ^ (ulong)(uint)Players[t].NoGoBoxExpiryTick) * Prime;
 
                 // The track hold's memory (RebuildDetection). It is a function of
                 // tick history rather than of this instant's positions, so unlike

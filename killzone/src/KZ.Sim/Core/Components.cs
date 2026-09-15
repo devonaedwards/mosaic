@@ -397,8 +397,46 @@ namespace KZ.Sim
         public AutonomyTier Tier;
 
         public byte Quality;            // confidence; decoys drag this down
+
+        /// <summary>
+        /// The no-go bubble, as an axis-aligned rectangle in map metres. Nothing
+        /// standing inside it is offered to this machine's classifier at all -
+        /// see AutonomyClassifier.SelectTarget.
+        ///
+        /// autonomy.md §9.3: fratricide runs at "1-3% of autonomous engagements,
+        /// dropping to near zero if the player has designated a no-go bubble.
+        /// Make the bubble a buildable, because that is exactly what brigades
+        /// improvise in reality" - and §5 is emphatic that every mitigation
+        /// actually in use is *procedural, not technical*: an altitude band
+        /// reserved by radio, a bubble drawn on somebody's map.
+        ///
+        /// It is a team's bubble rather than an airframe's. A player drawing a
+        /// line around their own command post means it for everything they own,
+        /// so World.SetAutonomyNoGoBox fans one order out to every autonomous
+        /// unit the team has in the air and World.Spawn hands it to every one it
+        /// launches afterwards. The copy lives here, on the munition, so the
+        /// classifier's inner loop reads its own component rather than chasing a
+        /// team lookup per candidate.
+        /// </summary>
         public Fix2 BoxMin;
         public Fix2 BoxMax;
+
+        /// <summary>
+        /// The tick the bubble lapses on. The classifier honours the box only
+        /// while the clock is short of this, and a lapsed box is simply not
+        /// consulted.
+        ///
+        /// It expires on purpose, and the reason is the one §5 gives: the real
+        /// mitigation is a procedure, and a procedure is only worth what the
+        /// last update to it was worth. A bubble drawn around where the infantry
+        /// stood ten minutes ago is worse than no bubble at all, because it
+        /// protects empty ground while the player believes they are covered. A
+        /// permanent one would also be a single free tap that deletes the only
+        /// real drawback of the autonomous tier - the tier is meant to trade an
+        /// operator for a visible selection error (FINDINGS 23), and a safety
+        /// net with no upkeep does not trade anything. So the cost of the bubble
+        /// is paid in attention rather than Materiel: keep it current or lose it.
+        /// </summary>
         public int BoxExpiryTick;
         public bool HasBox;
         public bool ConsumesCrew;

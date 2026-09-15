@@ -49,16 +49,11 @@ test-only       GroundState.Frozen
 test-only       TetherSystem.AnySegmentNear
 test-only       Trig.Direction
 enum-value      CommandKind.DropPin
-enum-value      CommandKind.SetAutonomyBox
 enum-value      CrewState.Reserved
 enum-value      RandomStream.AIJitter
 enum-value      SortiePhase.Engaged
 enum-value      SortiePhase.Returning
 enum-value      SortiePhase.Terminal
-write-only      AutonomyState.BoxExpiryTick
-write-only      AutonomyState.BoxMax
-write-only      AutonomyState.BoxMin
-write-only      AutonomyState.HasBox
 write-only      DecoyState.Mimics
 write-only      EntityTable.HpMax
 write-only      EntityTable.Velocity
@@ -74,7 +69,6 @@ write-only      Tether.Anchor
 write-only      TetherNode.Tile
 sim-public      Fix.Half
 sim-public      Fix.Lerp
-sim-public      Fix.Max
 sim-public      Fix.Sign
 sim-public      Fix.ToInt
 sim-public      Fix2.FromInts

@@ -47,6 +47,13 @@ namespace KZ.Sim
             // collapsing it made every autonomous munition a crewless gamble when
             // the fielded reality is the opposite: the common tier keeps its crew
             // and is *more* accurate, not less.
+            //
+            // It is also the reason the no-go bubble below is a narrow tool and
+            // must stay one. Everything returning here never reaches it, so the
+            // bubble governs AutonomyTier.TargetSelection and nothing else - one
+            // unit in the catalogue, which FINDINGS 30 records as the correct
+            // rarity. It is not a no-fly zone, it does not stop a gun mount, and
+            // it cannot call back a munition a human already aimed.
             if (w.Entities.Has(munitionIndex, ComponentMask.Autonomy)
                 && w.Entities.Autonomy[munitionIndex].Tier != AutonomyTier.TargetSelection)
                 return EntityHandle.None;
@@ -55,6 +62,28 @@ namespace KZ.Sim
             Fix2 pos = w.Entities.Position[munitionIndex];
             Fix cone = Fix.FromInt(SimConstants.AutonomySeekerConeMetres);
             Fix coneSq = cone * cone;
+
+            // The player's no-go bubble (AUDIT-UNWIRED.md F17, autonomy.md §9.3).
+            // Until it existed the seeker cone was the only control anybody had
+            // over what a machine may consider, and the cone is a fixed radius
+            // around wherever the munition happens to be - which is to say, no
+            // control at all. This is the other half of §1's definition of
+            // autonomous selection: a class filter *and an area*.
+            //
+            // Read once, outside the loop, because the candidate loop is the
+            // expensive part and this must cost two comparisons per candidate
+            // and nothing else. An expired box is simply not consulted; nothing
+            // sweeps it, because a lazy check is free and a sweep is a pass over
+            // every entity every tick to delete a rectangle nobody is reading.
+            bool hasBox = false;
+            Fix2 boxMin = Fix2.Zero, boxMax = Fix2.Zero;
+            if (w.Entities.Has(munitionIndex, ComponentMask.Autonomy))
+            {
+                AutonomyState au = w.Entities.Autonomy[munitionIndex];
+                hasBox = au.HasBox && w.Tick < au.BoxExpiryTick;
+                boxMin = au.BoxMin;
+                boxMax = au.BoxMax;
+            }
 
             ClassifierCandidate[] candidates = new ClassifierCandidate[SimConstants.AutonomyMaxCandidates];
             int n = 0;
@@ -67,6 +96,15 @@ namespace KZ.Sim
                 if (!w.Entities.Has(i, ComponentMask.Transform)) continue;
                 if (w.Entities.Has(i, ComponentMask.Salvage)) continue;
                 if (Fix2.SqrDistance(pos, w.Entities.Position[i]) > coneSq) continue;
+
+                // Inside the bubble, so the machine never learns it is there.
+                // Deliberately ahead of the decoy count as well: a decoy the
+                // player parked inside their own no-go area is not clutter this
+                // seeker has to see through, because it is not offered to it.
+                // And deliberately blind to whose it is - an enemy who drives
+                // into your bubble is as safe as your own vehicles, which is the
+                // price of the order and the reason to draw it tight.
+                if (hasBox && InsideBox(w.Entities.Position[i], boxMin, boxMax)) continue;
 
                 TargetKind kind = ClassifyCandidate(w, i, team);
                 if (kind == TargetKind.Decoy) decoysInCone++;
@@ -138,6 +176,16 @@ namespace KZ.Sim
             if (q < 0) q = 0;
             if (q > 100) q = 100;
             return q;
+        }
+
+        /// <summary>
+        /// Axis-aligned, inclusive of the edge: a vehicle sitting exactly on the
+        /// line the player drew is inside it. The player drew the line around
+        /// something they wanted spared, and the tie goes to them.
+        /// </summary>
+        static bool InsideBox(Fix2 p, Fix2 min, Fix2 max)
+        {
+            return p.X >= min.X && p.X <= max.X && p.Y >= min.Y && p.Y <= max.Y;
         }
 
         static TargetKind ClassifyCandidate(World w, int i, byte seekerTeam)
