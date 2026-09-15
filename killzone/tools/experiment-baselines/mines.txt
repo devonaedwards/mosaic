@@ -1,0 +1,14 @@
+
+MINES - a field laid across a supply road
+four mines from one heavy drone, 600 damage each, into the underside
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 900 m (team 2 west / team 1 east), imagery granted over each side's own ground
+
+  vehicle             per mine   survives a mine   field stops
+  ------------------------------------------------------------
+  Supply Truck             780            0 of 4   yes, after 1 mine(s)
+  Logistics UGV            780            0 of 4   yes, after 1 mine(s)
+  IFV                     1320            0 of 4   yes, after 1 mine(s)
+  Main Tank               1320            1 of 4   yes, after 2 mine(s)
+
+  A mine costs nothing to keep there. The heavy drone that laid it
+  flew home and can do it again tomorrow night.

@@ -1,0 +1,16 @@
+
+STACKING - more turrets covering the same approach
+twelve drones launched together, 450 Materiel per turret
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
+
+  turrets   defence cost   drones needed to take one   attacker cost
+  --------------------------------------------------------------------
+        1            450                           8            1600
+        2            900                           8            1600
+        3           1350                           8            1600
+        4           1800                           8            1600
+
+  Each turret adds its own rate of fire over the same crossing time,
+  so the cost of attacking rises roughly in step with the number of
+  guns - but the attacker is also paying for drones that die to guns
+  they were never sent at.

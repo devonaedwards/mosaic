@@ -1,0 +1,22 @@
+
+VERTICAL - six drones against one turret, split between altitudes
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
+
+  attack                  arrived   turret killed
+  ------------------------------------------------
+  all low                     6.0           100%
+  four low, two high          6.0           100%
+  three low, three high       6.0           100%
+  two low, four high          6.0           100%
+  all high                    6.0           100%
+
+  and the same, against a turret that also has a radar:
+
+  all low                     6.0           100%
+  four low, two high          6.0           100%
+  three low, three high       6.0           100%
+  two low, four high          6.0           100%
+  all high                    6.0           100%
+
+  Height is cover from a gun and exposure to a radar. Which of those
+  matters depends entirely on what the defender bought.

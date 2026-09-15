@@ -1,0 +1,30 @@
+
+APERTURE - the same 600 m camera, spread over different arcs
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1100 m (team 1 west / team 2 east), imagery granted over each side's own ground
+
+  arc      reach vs a quad   covered at once   heads for 360   total cost
+  --------------------------------------------------------------------------
+    30 deg            255 m                8%              12     5400 MAT
+    45 deg            208 m               12%               8     3600 MAT
+    90 deg            147 m               25%               4     1800 MAT
+   120 deg            127 m               33%               3     1350 MAT
+   180 deg            104 m               50%               2      900 MAT
+   360 deg             73 m              100%               1      450 MAT
+
+  Buying 360 degrees at long reach costs twelve heads. Buying it with
+  one head costs more than half the reach. Both are worse deals than
+  a cheap short-range sensor line, which is the next table.
+
+  COVERAGE - one good head against several poor ones, same money
+
+  arrangement                          drone seen at   gaps
+  --------------------------------------------------------------
+  one 30-deg staring head                       255 m   blind over 11/12 of the sky
+  one 120-deg head sweeping at 70 deg/s          127 m   covered, but looking away 2/3 of the time
+  one 360-deg head                               73 m   none, and half the reach
+  three 120-deg heads, no sweep                 127 m   none, at three times the price
+
+  Microphones and radio listening are exempt from all of this, because
+  they are omnidirectional by nature - which is exactly why they are
+  the cheap way to know something is out there and the useless way to
+  know where it is.

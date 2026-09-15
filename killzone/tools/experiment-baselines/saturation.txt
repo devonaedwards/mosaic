@@ -1,0 +1,18 @@
+
+SATURATION - simultaneous drones against one gun mount
+launched together from 1,200 m, gun's real range is 85 m (FINDINGS 2)
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
+
+  drones   arrived   gun killed   materiel spent   per kill
+  --------------------------------------------------------------
+       1       0.8          0%              200      never
+       2       1.8          0%              400      never
+       3       2.8         80%              600        750
+       5       4.8        100%             1000       1000
+       8       7.8        100%             1600       1600
+      12      11.8        100%             2400       2400
+      16      14.8        100%             3200       3200
+      24      14.8        100%             4800       4800
+
+  A gun mount takes three hits to destroy. 'arrived' is the average
+  number of drones per attempt that lived long enough to strike it.

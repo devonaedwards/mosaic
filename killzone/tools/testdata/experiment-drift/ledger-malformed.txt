@@ -1,0 +1,11 @@
+# Fixture: a deliberately broken ledger, for check_experiment_drift.py's
+# self-test. Every non-comment line below is wrong in a different way; the
+# checker must collect an error for each rather than silently skipping any of
+# them - a malformed ledger fails the build the same way a malformed
+# dead-symbols allowlist entry does, because both mean the record can no
+# longer be trusted at face value.
+
+generation not-a-number fixture
+saturation only two fields
+saturation 1 2 3 four five
+stacking 1 abc deadbeef

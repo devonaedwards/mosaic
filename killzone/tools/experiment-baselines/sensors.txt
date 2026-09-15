@@ -1,0 +1,20 @@
+
+SENSORS - what a turret can find, and from how far
+the gun's own kill range is 85 m (FINDINGS 2); these are how far its
+sensors could find a target if the barrel could reach that far too -
+the sensor suites below are hypothetical fits, not the shipped Gun Mount's
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1100 m (team 1 west / team 2 east), imagery granted over each side's own ground
+
+  fitted with              vs quad (day)  vs quad (night)  vs tank (day)
+  --------------------------------------------------------------------------
+  optics only                       73 m             15 m          300 m
+  acoustic only                     48 m             96 m          320 m
+  optics + acoustic                 73 m             96 m          320 m
+  optics + thermal                  73 m             73 m          300 m
+  optics + acoustic + thermal          73 m             96 m          320 m
+
+  Cameras alone leave a turret nearly blind after dark. Microphones
+  do not care about the time, and against a quadcopter they are the
+  best sensor on the list at any hour. Thermal buys back the night
+  against vehicles, and rather little against a small drone, because
+  a small drone is not very hot.

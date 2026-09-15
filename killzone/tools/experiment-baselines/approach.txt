@@ -1,0 +1,20 @@
+
+APPROACH - eight drones, varying where they launch from
+gun at 1,650 m reaching its real 85 m (FINDINGS 2), so its edge is at 1,565 m
+(the launch pads below were chosen to bracket the old, wrong 550 m edge at
+ 1,100 m; they do not resolve the much closer real edge - see notes below)
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
+
+  launch at   arrived   gun killed
+  --------------------------------------
+      400 m       7.5         100%
+      800 m       8.0         100%
+     1100 m       7.7         100%
+     1300 m       7.8         100%
+     1500 m       7.8         100%
+     1600 m       5.8         100%
+
+  Launching from inside the gun's reach means the drones are under
+  fire from the moment they exist, but for far less time. Only the last
+  row or two above actually land inside the real 85 m envelope - a
+  pad set re-tuned around that edge would resolve this transition better.

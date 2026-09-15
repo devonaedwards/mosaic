@@ -1,0 +1,18 @@
+
+REACH - eight drones against one gun mount, varying its range
+'Test Long Mount' on the flat control world - see comment above
+
+  gun range   seconds under fire   arrived   gun killed
+  ----------------------------------------------------------
+      550 m               25.0 s       7.4         100%
+      450 m               20.5 s       7.4         100%
+      350 m               15.9 s       7.4         100%
+      250 m               11.4 s       7.5         100%
+      180 m                8.2 s       7.6         100%
+      120 m                5.5 s       7.7         100%
+       85 m                3.9 s       7.8         100%   <- the deployed range
+
+  The gun's acquisition-plus-cooldown cycle is roughly 1.25 seconds, so
+  'seconds under fire' divided by 1.25 is about how many drones it gets
+  to kill before the rest arrive - before its magazine runs out at five
+  rounds, which this sweep does not otherwise account for (see FINDINGS 18).

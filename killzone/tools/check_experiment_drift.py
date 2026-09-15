@@ -167,7 +167,7 @@ def capture(exe_argv, name, verify_determinism):
     second = run_once(exe_argv, name)
     if first != second:
         raise RunFailure(
-            "%s produced two different outputs from two runs with nothing "
+            "%s: produced two different outputs from two runs with nothing "
             "changed in between. Either it is not seeded (see DetRandom.Get "
             "call sites in the systems it exercises) or something it prints "
             "is not deterministic (wall clock, iteration order, a float). "
@@ -291,7 +291,10 @@ def save_ledger(path, ledger):
     lines.append("")
     for name in sorted(ledger.experiments):
         for r in ledger.experiments[name]:
-            lines.append("%-16s%-6d%-6d%s" % (name, r.first_gen, r.last_gen, r.digest))
+            # A literal space always separates fields, regardless of name
+            # length - %-16s alone collided for "recently_settled" (16 chars)
+            # against the digits that followed it, corrupting the round trip.
+            lines.append("%-16s %-5d %-5d %s" % (name, r.first_gen, r.last_gen, r.digest))
     with open(path, "w") as fh:
         fh.write("\n".join(lines) + "\n")
 
@@ -404,20 +407,25 @@ def inertia_findings(ledger, names, threshold=INERTIA_MIN_OPPORTUNITIES):
         if not runs:
             continue
         current = runs[-1]
+        born_at = runs[0].first_gen
+        age = ledger.generation - born_at + 1
         moved = moved_generations(ledger, exclude=name)
         opportunities = sorted(g for g in moved if current.first_gen < g <= current.last_gen)
-        if len(runs) == 1 and ledger.generation < threshold + 1:
-            insufficient.append((name, ledger.generation))
+        if len(runs) == 1 and age < threshold + 1:
+            # Too young to judge - not "stable", just unproven either way. This
+            # is about the experiment's own age, not the project's: an
+            # experiment born last generation gets the same benefit of the
+            # doubt on generation 500 of a long-lived ledger as it would on
+            # generation 5 of a new one.
+            insufficient.append((name, age))
             continue
         if len(opportunities) >= threshold:
-            who = []
-            for g in opportunities:
-                who.extend(moved[g])
-            detail = ("unchanged for %d generation(s) (gen %d-%d) while %d sibling change(s) "
-                       "happened in that span: %s" %
+            distinct_siblings = sorted(set(n for g in opportunities for n in moved[g]))
+            per_gen = ", ".join("gen%d (%d)" % (g, len(moved[g])) for g in opportunities)
+            detail = ("unchanged for %d generation(s) (gen %d-%d) while %d other experiment(s) "
+                       "changed across %d of those generations - %s" %
                        (current.last_gen - current.first_gen + 1, current.first_gen,
-                        current.last_gen, len(opportunities),
-                        ", ".join("%s@gen%d" % (n, g) for g in opportunities for n in moved[g])))
+                        current.last_gen, len(distinct_siblings), len(opportunities), per_gen))
             findings.append(Finding(
                 "inertia", name, detail,
                 "cannot be fixed here - it means the experiment could not have shown a change "
@@ -445,7 +453,8 @@ class Result(object):
 
     @property
     def failing(self):
-        return [f for f in self.findings if f.category in ("crash", "new", "drift")] or self.ledger_errors
+        return ([f for f in self.findings if f.category in ("crash", "new", "drift")]
+                + list(self.ledger_errors))
 
 
 def analyse(ledger, current_texts, names, crashes=()):
@@ -587,15 +596,29 @@ def list_mode(res):
 # miniature project history: four fictional experiments walked across enough
 # synthetic generations to exercise every shape this file has to get right.
 #
-#   steady    - changes at every generation. Never flagged.
-#   frozen    - never changes while `steady` changes constantly. This is the
-#               Stacking/Vertical/Decoy-Escort shape and must be flagged.
-#   quiet     - never changes, but *nothing else* changes either for most of
-#               its life. Must NOT be flagged - "nothing to disturb it" is not
-#               "cannot be disturbed", and confusing the two is the exact
-#               overconfidence this file's design has to refuse.
-#   newcomer  - only exists for the last couple of generations. Must be
-#               reported as insufficient history, not accused.
+#   steady            - changes at every generation. Never flagged.
+#   frozen            - never changes once, across a span where `steady`
+#                       changed five times. This is the Stacking/Vertical/
+#                       Decoy-Escort shape and must be flagged.
+#   recently_settled  - changed at generation 5 and has been flat for exactly
+#                       one generation since. Only one sibling change (gen 6)
+#                       has happened since it last moved - below the
+#                       opportunity threshold, so it must NOT be flagged. This
+#                       is the honest middle case: not enough evidence yet,
+#                       which is different from "flat and cleared".
+#   newcomer          - born at generation 5, so it has existed for only two
+#                       generations total. Must be reported as insufficient
+#                       history, never as suspected or as clean - there has
+#                       not been time to tell.
+#
+# What this fixture deliberately does NOT try to test: a "legitimately still"
+# experiment sitting in the exact same generation span as `frozen`, with the
+# exact same siblings moving around it. That case is genuinely
+# indistinguishable from this file's own vantage point - it has no way to know
+# `frozen`'s output was *supposed* to move and `quiet`'s was not, only that
+# something else did. Claiming this self-test can tell them apart would be
+# asserting a capability the checker does not have; see the comment above
+# inertia_findings for what it does instead (warn with evidence, never fail).
 
 
 def build_fixture_ledger():
@@ -610,7 +633,7 @@ def build_fixture_ledger():
 
     add("steady", [(1, 1, "s1"), (2, 2, "s2"), (3, 3, "s3"), (4, 4, "s4"), (5, 5, "s5"), (6, 6, "s6")])
     add("frozen", [(1, 6, "f0")])
-    add("quiet", [(1, 6, "q0")])
+    add("recently_settled", [(1, 4, "r0"), (5, 6, "r1")])
     add("newcomer", [(5, 6, "n0")])
     return ledger
 
@@ -618,33 +641,20 @@ def build_fixture_ledger():
 def selftest():
     ok = True
     ledger = build_fixture_ledger()
-    names = ["steady", "frozen", "quiet", "newcomer"]
-    current = {
-        "steady": "irrelevant, not used unless it differs from the last recorded digest\n",
-        "frozen": "irrelevant\n",
-        "quiet": "irrelevant\n",
-        "newcomer": "irrelevant\n",
-    }
-    # For this pass, make current digests match the ledger's last recorded
-    # digest for every experiment except "steady" isn't checked for drift here
-    # (this fixture is about inertia, not drift - drift is exercised below).
+    names = ["steady", "frozen", "recently_settled", "newcomer"]
 
-    class FakeLoad(object):
-        pass
-
-    # Patch digest_of via matching text to the recorded digest directly: give
-    # each experiment text whose digest_of() equals its last recorded digest,
-    # by constructing text = the digest string embedded so digest_of differs
-    # per call - simplest is to bypass digest matching and call inertia
-    # directly, since inertia is a pure function of the ledger alone.
+    # inertia_findings is a pure function of the ledger alone (it never looks
+    # at current output, only history), so it is exercised directly here with
+    # no captured text needed.
     findings, insufficient = inertia_findings(ledger, names)
     got = set(f.name for f in findings)
 
     print("self-test: inertia over a synthetic six-generation history")
     checks = [
-        ("frozen", "frozen" in got, "unchanged while a sibling changed every generation - must flag"),
+        ("frozen", "frozen" in got, "unchanged while a sibling changed five times - must flag"),
         ("steady", "steady" not in got, "changes every generation - must never flag"),
-        ("quiet", "quiet" not in got, "unchanged, but so is nearly everything else - must not flag"),
+        ("recently_settled", "recently_settled" not in got,
+         "settled one generation ago, only one sibling change since - not enough evidence yet"),
         ("newcomer", "newcomer" not in got, "too little history - must not flag as inert"),
     ]
     for name, cond, why in checks:
@@ -817,12 +827,7 @@ def main(argv):
 
     ledger = load_ledger(ledger_path)
     outputs, failures = capture_all(exe_argv, names, verify_determinism=False)
-    crash_names = set()
-    crash_msgs = list(failures)
-    for msg in failures:
-        crash_names.add(msg.split(":", 1)[0])
-
-    res = analyse(ledger, outputs, names, crashes=crash_msgs)
+    res = analyse(ledger, outputs, names, crashes=failures)
 
     if "--list" in argv:
         list_mode(res)
