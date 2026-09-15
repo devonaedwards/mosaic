@@ -72,10 +72,13 @@ FIXTURE = os.path.join(HERE, "testdata", "experiment-drift")
 DEFAULT_LEDGER = os.path.join(HERE, "experiment-drift-ledger.txt")
 DEFAULT_SNAPSHOTS = os.path.join(HERE, "experiment-baselines")
 
-# An experiment that has not moved across this many *other* experiments'
-# changes is reported as suspected-inert. Set at 3 rather than 1 so a single
-# coincidental change elsewhere never accuses an experiment that simply had
-# nothing to do with it - see "How inertia is judged" below.
+# An experiment that has sat unchanged while at least this many *distinct
+# other* experiments moved is reported as suspected-inert - distinct
+# experiments, not distinct generations, so one commit that bundles several
+# real changes and moves six siblings at once counts for more than six
+# generations of one sibling twitching alone. Set at 3 rather than 1 so a
+# single coincidental change elsewhere never accuses an experiment that simply
+# had nothing to do with it - see "How inertia is judged" below.
 INERTIA_MIN_OPPORTUNITIES = 3
 
 TIMEOUT_SECONDS = 180
@@ -411,6 +414,14 @@ def inertia_findings(ledger, names, threshold=INERTIA_MIN_OPPORTUNITIES):
         age = ledger.generation - born_at + 1
         moved = moved_generations(ledger, exclude=name)
         opportunities = sorted(g for g in moved if current.first_gen < g <= current.last_gen)
+        # The gate counts distinct SIBLINGS, not distinct generations. One
+        # generation where six of the other nine experiments all moved at once
+        # (a single commit that bundles several real changes, which is the
+        # common case - see docs/EXPERIMENT-DRIFT.md) is strong evidence that
+        # something happened; counting it as "one opportunity" the same as a
+        # generation where only one sibling twitched would bury exactly the
+        # strongest signal this checker gets.
+        distinct_siblings = sorted(set(n for g in opportunities for n in moved[g]))
         if len(runs) == 1 and age < threshold + 1:
             # Too young to judge - not "stable", just unproven either way. This
             # is about the experiment's own age, not the project's: an
@@ -419,8 +430,7 @@ def inertia_findings(ledger, names, threshold=INERTIA_MIN_OPPORTUNITIES):
             # generation 5 of a new one.
             insufficient.append((name, age))
             continue
-        if len(opportunities) >= threshold:
-            distinct_siblings = sorted(set(n for g in opportunities for n in moved[g]))
+        if len(distinct_siblings) >= threshold:
             per_gen = ", ".join("gen%d (%d)" % (g, len(moved[g])) for g in opportunities)
             detail = ("unchanged for %d generation(s) (gen %d-%d) while %d other experiment(s) "
                        "changed across %d of those generations - %s" %
@@ -597,15 +607,21 @@ def list_mode(res):
 # synthetic generations to exercise every shape this file has to get right.
 #
 #   steady            - changes at every generation. Never flagged.
-#   frozen            - never changes once, across a span where `steady`
-#                       changed five times. This is the Stacking/Vertical/
+#   mover1/2/3        - each changes exactly once, at a different generation.
+#                       Not asserted on directly; they exist so `frozen` below
+#                       has evidence from three *distinct* siblings, not one
+#                       sibling changing three times - see the gate's own
+#                       comment above inertia_findings for why that distinction
+#                       matters.
+#   frozen            - never changes, across a span where steady and all
+#                       three movers changed. This is the Stacking/Vertical/
 #                       Decoy-Escort shape and must be flagged.
 #   recently_settled  - changed at generation 5 and has been flat for exactly
-#                       one generation since. Only one sibling change (gen 6)
-#                       has happened since it last moved - below the
-#                       opportunity threshold, so it must NOT be flagged. This
-#                       is the honest middle case: not enough evidence yet,
-#                       which is different from "flat and cleared".
+#                       one generation since. Only `steady` has moved since -
+#                       one distinct sibling, below the threshold of three -
+#                       so it must NOT be flagged. This is the honest middle
+#                       case: not enough evidence yet, which is different from
+#                       "flat and cleared".
 #   newcomer          - born at generation 5, so it has existed for only two
 #                       generations total. Must be reported as insufficient
 #                       history, never as suspected or as clean - there has
@@ -635,6 +651,15 @@ def build_fixture_ledger():
     add("frozen", [(1, 6, "f0")])
     add("recently_settled", [(1, 4, "r0"), (5, 6, "r1")])
     add("newcomer", [(5, 6, "n0")])
+    # Three more siblings, each moving exactly once, at a different generation.
+    # The gate counts distinct siblings, not distinct generations, so `frozen`
+    # needs evidence from three different experiments, not one experiment
+    # changing three times - these three plus `steady` (which also moves in
+    # this span) supply that. Not asserted on individually; present only as
+    # evidence sources for `frozen` and `recently_settled` above.
+    add("mover1", [(1, 1, "m1a"), (2, 6, "m1b")])
+    add("mover2", [(1, 2, "m2a"), (3, 6, "m2b")])
+    add("mover3", [(1, 3, "m3a"), (4, 6, "m3b")])
     return ledger
 
 
@@ -651,7 +676,7 @@ def selftest():
 
     print("self-test: inertia over a synthetic six-generation history")
     checks = [
-        ("frozen", "frozen" in got, "unchanged while a sibling changed five times - must flag"),
+        ("frozen", "frozen" in got, "unchanged while three distinct siblings each changed - must flag"),
         ("steady", "steady" not in got, "changes every generation - must never flag"),
         ("recently_settled", "recently_settled" not in got,
          "settled one generation ago, only one sibling change since - not enough evidence yet"),

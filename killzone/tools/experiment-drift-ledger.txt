@@ -19,41 +19,50 @@ generation  5    90ee5fa
 generation  6    602341c
 generation  7    f6fb277
 generation  8    d979139
+generation  9    ad7f15c
+generation  10   ab00282
+generation  11   cf66a42
 
 aperture         1     2     a2d750b66be6f1035cc154648172c26fa0fc7d41b9524e98a8e98124a4e29bff
 aperture         3     5     34b4f16fd24c22e7a57d42e27e521eb0e6f3ed3b88e9672b1fc50c1ba2970329
-aperture         6     8     f039e5bd7796fbacd28a2ce9d8713d836869a15f2cf3cf2dc7bdc457e23e9e59
+aperture         6     11    f039e5bd7796fbacd28a2ce9d8713d836869a15f2cf3cf2dc7bdc457e23e9e59
 approach         1     1     bdd871e143270460ca63269e1d6469dab6cf4ff4715c7ad0eab22762e1be1aab
 approach         2     2     78f463e3ea0d5c0efccd5f82c50ba08161364a7b9c6cd945ca4018e6ef2a4be0
 approach         3     3     c02a6ab8e05802753add2812e927a47bfcfbb21e749e1531863f470c820919a8
 approach         4     5     fef02785361ce6e52ef7100b448f766fca615e57e69def13f70aafe0474f44df
 approach         6     8     aa80254ab7017c1ae00291254bf3d9b50746b348a56f5329eaf654f197f451ee
+approach         9     10    91194c4d4c6ac24a291af434559b80c2389f3dd748e04d335f475d3d10877e67
+approach         11    11    e801d90396a70d9bb23b25d0167fc0a2db8523f3e0005086439a5d08240a9f73
 decoys           1     1     1b972e8c9f7af86a89c16976fc76ed9a3b005775775f9df9f162b10cdad3b269
 decoys           2     2     9285b20a50048e7f140118bc8e2c08d388c04cb1a96d7f21f31a7866dd78082e
 decoys           3     5     4f251ef12a4a0556e60faa7db7569c39aad176ba0bf36c1c27531ddc972df494
-decoys           6     8     3b238d29428479ae9f9f885e97e07c6c7428cb1c0e1d2a098f265bd81cb237d5
+decoys           6     11    3b238d29428479ae9f9f885e97e07c6c7428cb1c0e1d2a098f265bd81cb237d5
 mines            1     5     b71762ddd1deb2e03dc3821f2e3a3e4df139543abb1624139df44ec118c7e114
-mines            6     8     a4d5c9bb4de43e7d4a939af1e3411e78c3d0224c7abc94f868f44cdc6da849d2
+mines            6     11    a4d5c9bb4de43e7d4a939af1e3411e78c3d0224c7abc94f868f44cdc6da849d2
 night            1     1     a6b1c25571f9d1d5fde587a8b6b4d30a9aae20d9ccbfc7adc9301430ac3faa7c
 night            2     2     d1991cf2696b5ce9caaa7a6e30e10a2a94856f76117231d068398966aa447ac1
 night            3     3     2686ae3a5d2c6e4b5ddb83a5ed09788ce9964a4e614fb881c1b801c5e74c3a82
 night            4     5     f5f17dd1d597e3886680b2c270d4c3ed8cb54fc3274f31f3dc6d580e398ecd08
 night            6     8     2cd24d3ca130d0b08b0f06323f8c9d6048a100a840ec19795e067fb763a19757
+night            9     10    4726da0ea8617256f51844ced04531e9669d93640a428043f5f29959119dceaf
+night            11    11    89e31096017c307c44eff87055b41a703bf781fe246e0377abf47fc77829cb7f
 range            1     1     df158ab525d7a648b580e79b28eaeb896b19bb2e35f0356a4ebe68a1fa5d18a6
 range            2     2     397cd927df44fc1d352528a3e814d1063d0832cc93fe6e480b8fd3fc22f54d04
 range            3     3     1f56a94f86a49a1eb04ced80a368146243b06ef980c01d565967c916c6662252
 range            4     5     397cd927df44fc1d352528a3e814d1063d0832cc93fe6e480b8fd3fc22f54d04
 range            6     8     e984f99b59550c45a15ceefde3b53b9481c6a3e0a005d817fc4e3ebfb6f4896c
+range            9     11    c7e41413cdddc82e023f31c07c3db8d6b0b220a0ce5e7f416550f13e4b78643a
 saturation       1     1     8815f8c108953389770d7f4bb4dd4a7f43c45e81526b66cd61a3e53f98275cd0
 saturation       2     2     bd0814c6177cdb716875f6758cb89e3287d7f5b2cfb3b4ceedd555511e13d00d
 saturation       3     3     73d7c1521682a3c76488006d694582dd3c6dad2440f8844fe9ad4e5cdbd6bc69
 saturation       4     5     75053c1baadfe5f58cc44af579a767ec51eaa2cb7033d72db55a54f81b714101
-saturation       6     8     57d7762cf2ab40ccc7458c342f66ae72bd228ac91f0e363648c354e656ee0708
+saturation       6     10    57d7762cf2ab40ccc7458c342f66ae72bd228ac91f0e363648c354e656ee0708
+saturation       11    11    ce6ff4515518a63f8a68d6378fbd6b6da829d656fb3e77ae33a06d863a54a369
 sensors          1     2     273820c60d6698deae037053ea7e9ec1cdeca1bfa707d97c1d41ff4d9f1fa11b
 sensors          3     5     e70b352c5fcad4001b16261b88294dd0e3e8bf0584a3c878651699f0d72d5055
-sensors          6     8     ebad6a850b9b45c0c7d041b7f30ed12a5e4226a6cda0d6ce3dff385a040c5e36
+sensors          6     11    ebad6a850b9b45c0c7d041b7f30ed12a5e4226a6cda0d6ce3dff385a040c5e36
 stacking         1     5     1b7d912de4e53f70f0bd27493baca1e074ff9695c89683cbb0ee31d876e84379
-stacking         6     8     31b2461ce718d3b7e5fa5970ed71e0df8182fd0b62a8384e2c6be40deb39bfd0
+stacking         6     11    31b2461ce718d3b7e5fa5970ed71e0df8182fd0b62a8384e2c6be40deb39bfd0
 vertical         1     1     6d11af09f3db44ab659412c9add59978a4933a6d6e0bafbf20ca308538907ab4
 vertical         2     5     2f65a9732ce65ab6df577cdf86d0103101634fab25d26b8c71c4eb7b7997a24b
-vertical         6     8     399acaf1484f745c09695312ec78a3e8cd90397338e3f870069fc3e1fea93d40
+vertical         6     11    399acaf1484f745c09695312ec78a3e8cd90397338e3f870069fc3e1fea93d40

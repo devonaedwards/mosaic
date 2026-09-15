@@ -162,19 +162,67 @@ history is auditable back to source rather than asserted:
 | 8 | `d979139` | the magazine field renamed to count engagements, not rounds |
 | 9 | `ad7f15c` | the engagement-commitment mechanic (one channel per mount) |
 | 10 | `ab00282` | the autocannon tier added |
-| 11 | *(live tree)* | this session's tree at the time the guard landed |
+| 11 | `cf66a42` | this session's tree at the time the guard landed (BlackPolicy, the gun-mount lay/hold fix, and the honest FINDINGS re-run all included) |
 
 That is every substantive change FINDINGS 32 names, plus more, run through the
-same instrument. What it found:
+same instrument. What it found, at generation 11:
 
-<!-- FIRST-RUN-RESULTS -->
+```
+experiment-drift check: generation 11, 10 experiment(s) tracked
 
-The three experiments FINDINGS 32 already named by hand — Stacking, Vertical,
-Decoy Escort — are exactly the ones this ran flagged **suspected inert**
-without being told to look for them. That is the guard working as intended.
-**Nothing about them was fixed here.** `src/KZ.Balance` belongs to other
-agents; wiring them back onto their knees, or confirming nothing they exercise
-has changed, is their call to make, not this checker's.
+  WARN  7 experiment(s) suspected inert
+    aperture    unchanged for 6 generations (gen 6-11), 4 other experiments changed
+    decoys      unchanged for 6 generations (gen 6-11), 4 other experiments changed
+    mines       unchanged for 6 generations (gen 6-11), 4 other experiments changed
+    range       unchanged for 3 generations (gen 9-11), 3 other experiments changed
+    sensors     unchanged for 6 generations (gen 6-11), 4 other experiments changed
+    stacking    unchanged for 6 generations (gen 6-11), 4 other experiments changed
+    vertical    unchanged for 6 generations (gen 6-11), 4 other experiments changed
+
+  10 ok, 0 failing, 7 warning
+```
+
+(`--all` shows the full generation-by-generation evidence behind each row;
+run it to see exactly which siblings moved where.)
+
+The three experiments FINDINGS 32 already named by hand — **Stacking, Vertical,
+Decoy Escort** — are in that list, flagged without being told to look for them.
+That is the guard working as intended. It also found **four more** FINDINGS 32
+never named — Mines, Sensors, Aperture and Range — sitting in the same shape:
+unmoved since generation 6 (Range since generation 9) while several siblings
+changed underneath them. Whether all seven deserve the same verdict is a
+judgement call for whoever owns `src/KZ.Balance`; what the guard contributes is
+that none of the seven can hide behind "probably fine" any longer, and neither
+can an eighth if one shows up the same way later. **Nothing about any of them
+was fixed here** — `src/KZ.Balance` belongs to other agents; wiring one back
+onto its knees, or confirming nothing it exercises has changed, is their call
+to make, not this checker's.
+
+Worth noting exactly what the ledger shows and does not show: all seven reset
+together at generation 6 — a genuine, verified change, not a false read (`602341c`
+removed the 550 m range override and switched the harness to a realistic
+world). FINDINGS 33 already argues the *realistic-world* half of that commit
+provably changes nothing on its own (terrain occludes nothing yet); the range
+correction bundled into the same commit is the more likely cause of the reset.
+Generations are real commits, and a commit can bundle more than one conceptual
+change - the guard cannot separate them, only report that *something* in that
+commit moved these seven. Since that reset, six of the seven have not moved
+again across five further generations covering `BlackPolicy`, the magazine's
+unit change, the engagement-commitment mechanic, the autocannon tier, and a
+gun-mount lay/hold fix - which is the FINDINGS 32 shape, continuing.
+
+One more thing this run turned up, from manual exploration alongside building
+this guard rather than from the guard itself (the guard has no way to explain
+*why*, only *that*): every one of these experiments launches its drones in a
+single simultaneous wave, so a mount that can hold only a handful of
+engagements gets exactly one engagement window per trial regardless of its
+magazine size. Staggering the launch times by a few seconds was enough to move
+a mount's reload count from zero out of sixty trials to sixty out of sixty in
+a manual test. That is a plausible, concrete mechanism behind at least part of
+this list - a magazine-relevant number cannot move in an experiment that never
+gives the mount a second window to use it - but it is a hypothesis about *why*,
+offered for whoever owns `src/KZ.Balance` to check, not a finding this guard
+verified or a fix this task made.
 
 ## What it cannot see, stated so nobody trusts it too far
 

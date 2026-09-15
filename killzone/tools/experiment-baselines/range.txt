@@ -4,11 +4,11 @@ REACH - eight drones against one gun mount, varying its range
 
   gun range   seconds under fire   arrived   gun killed
   ----------------------------------------------------------
-      550 m               25.0 s       7.4         100%
-      450 m               20.5 s       7.4         100%
-      350 m               15.9 s       7.4         100%
-      250 m               11.4 s       7.5         100%
-      180 m                8.2 s       7.6         100%
+      550 m               25.0 s       7.6         100%
+      450 m               20.5 s       7.6         100%
+      350 m               15.9 s       7.6         100%
+      250 m               11.4 s       7.7         100%
+      180 m                8.2 s       7.7         100%
       120 m                5.5 s       7.7         100%
        85 m                3.9 s       7.8         100%   <- the deployed range
 

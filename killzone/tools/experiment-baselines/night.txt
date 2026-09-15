@@ -6,9 +6,9 @@ gun's own best sensor reaches 127 m by day, 48 m after dark
   drones   by day             at night
            arrived  killed    arrived  killed
   ----------------------------------------------------
-       3       2.8     80%        3.0    100%
+       3       2.8     61%        3.0    100%
        5       4.8    100%        5.0    100%
-       8       7.8    100%        7.8    100%
-      12      11.8    100%       11.8    100%
+       8       7.8    100%        8.0    100%
+      12      11.7    100%       12.0    100%
 
   Nothing about the gun changed. Only whether it could see.
