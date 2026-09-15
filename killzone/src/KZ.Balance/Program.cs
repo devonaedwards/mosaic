@@ -242,58 +242,175 @@ namespace KZ.Balance
         }
 
         /// <summary>
-        /// The same assault, with the gun's reach varied. If saturation cannot beat
-        /// it at any number, the reach is the variable that matters.
+        /// What actually limits a mount's output: the barrel, or the seeing.
         ///
-        /// This is the one experiment whose entire purpose is to change the gun's
-        /// range, so per AUDIT-UNWIRED.md F33 it does not do that by quietly
-        /// overwriting the real Gun Mount - it spawns "Test Long Mount", a
-        /// catalogue entry that exists only for this sweep (see Defs.cs), and
-        /// runs on the flat control world (MakeFlatControlWorld) rather than the
-        /// default mixed one, so terrain and weather cannot confound the one
-        /// variable under study. 85 m - the real, shipped Gun Mount range - is
-        /// included as the last row for reference; everything above it is the
-        /// hypothetical the old, wrong 550 m figure used to be reported as real.
+        /// <para><b>What it used to measure, and why that question was already
+        /// answered.</b> Eight drones launched together against "Test Long Mount"
+        /// with its barrel swept from 550 m down to 85 m. It read 7.6 arrived at
+        /// 550 m and 7.8 at 85 m, and 100% gun killed at every rung - twenty-five
+        /// seconds of nominal exposure and three point nine producing the same
+        /// result. FINDINGS 31 explains why, and the explanation makes the sweep
+        /// a question with a known and boring answer: above about 70 m the barrel
+        /// is not what stops the mount shooting, because 70 m is where it first
+        /// holds a track and the whole engagement is over 3.2 seconds later. A
+        /// sweep of a variable that is not binding is a flat line by
+        /// construction.</para>
+        ///
+        /// <para>It was also worse than flat. Sweeping the barrel against a
+        /// simultaneous wave gives the mount one engagement window whatever the
+        /// barrel is, so even a barrel that *was* binding could not have shown
+        /// it: a longer reach buys time, and time is only worth something if
+        /// there is a second target to spend it on.</para>
+        ///
+        /// <para><b>What it measures now.</b> Two sweeps side by side against a
+        /// stream of arrivals - the barrel with the seeing held fixed, and the
+        /// seeing with the barrel held fixed. The comparison is the point: if
+        /// FINDINGS 31 is right, the first should be nearly flat and the second
+        /// should not, and the experiment becomes a test of that claim rather
+        /// than a restatement of it.</para>
+        ///
+        /// <para><b>And one thing that had to change.</b> This sweep used to run
+        /// on MakeFlatControlWorld, so that terrain and weather could not confound
+        /// the variable. That world has no territory owner, and navigation error
+        /// is now consumed by World.ApplyDamage - over an ownerless map every
+        /// square metre is denied ground, every FPV Team's dead reckoning crosses
+        /// SimConstants.MunitionMissRadiusMetres on the way in, and every warhead
+        /// misses. The sweep read 0% gun killed at all seven rungs. The flat
+        /// control world stopped being a control the moment something started
+        /// reading the territory layer, which is worth recording against FINDINGS
+        /// 33's "identical, every cell" table rather than working around
+        /// silently. This runs on the same realistic world as everything else.</para>
         /// </summary>
         static void GunRangeExperiment()
         {
             Console.WriteLine();
-            Console.WriteLine("REACH - eight drones against one gun mount, varying its range");
-            Console.WriteLine("'Test Long Mount' on the flat control world - see comment above");
+            Console.WriteLine("REACH - what limits a mount's output, the barrel or the seeing");
+            Console.WriteLine("'Test Long Mount' (Defs.cs, test-only), four FPV Teams one every 3 s");
+            Console.WriteLine("from 1,200 m. Each sweep varies one of the mount's own numbers and");
+            Console.WriteLine("holds the other fixed - see the comment on this method for why this is");
+            Console.WriteLine("no longer run on the flat control world.");
+            PrintWorldConfig(StandardBorderMetres, 1, 2);
+
+            const int trials = 100;
+
             Console.WriteLine();
-            Console.WriteLine("  gun range   seconds under fire   arrived   gun killed");
-            Console.WriteLine("  " + new string('-', 58));
+            Console.WriteLine("  (a) the barrel, with the mount's 600 m optics held fixed");
+            Console.WriteLine();
+            Console.WriteLine("  barrel   seconds under fire   arrived   mount survives");
+            Console.WriteLine("  " + new string('-', 60));
 
             int[] ranges = { 550, 450, 350, 250, 180, 120, 85 };
             for (int r = 0; r < ranges.Length; r++)
             {
-                Fix range = F(ranges[r]);
-                int arrivedTotal = 0, gunKilled = 0;
-                const int trials = 60;
-
+                int arrivedTotal = 0, survived = 0;
                 for (int trial = 0; trial < trials; trial++)
                 {
                     int arrived;
-                    bool killed = RunRangeSweep(8, F(1200), (ulong)(trial + 1), out arrived, range);
+                    if (!RunRangeSweep(4, (ulong)(trial + 1), out arrived,
+                                       MountTweak.Range(F(ranges[r])))) survived++;
                     arrivedTotal += arrived;
-                    if (killed) gunKilled++;
                 }
-
                 // A drone crosses the gun's reach at 22 m/s.
                 double exposure = ranges[r] / 22.0;
-
-                Console.WriteLine(string.Format("  {0,9}   {1,18}   {2,7}   {3,10}{4}",
+                Console.WriteLine(string.Format("  {0,6}   {1,18}   {2,7}   {3,14}{4}",
                     ranges[r] + " m",
                     exposure.ToString("0.0") + " s",
                     (arrivedTotal / (double)trials).ToString("0.0"),
-                    (gunKilled * 100 / trials) + "%",
-                    ranges[r] == 85 ? "   <- the deployed range" : ""));
+                    (survived * 100 / trials) + "%",
+                    ranges[r] == 85 ? "   <- the deployed barrel" : ""));
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("  (b) the optics, with the barrel held at 550 m");
+            Console.WriteLine();
+            Console.WriteLine("  optics   finds a quad at      arrived   mount survives");
+            Console.WriteLine("  " + new string('-', 60));
+
+            int[] optics = { 600, 450, 300, 200, 120, 60 };
+            for (int o = 0; o < optics.Length; o++)
+            {
+                int arrivedTotal = 0, survived = 0;
+                for (int trial = 0; trial < trials; trial++)
+                {
+                    int arrived;
+                    MountTweak t = MountTweak.Range(F(550));
+                    t.Optical = F(optics[o]);
+                    if (!RunRangeSweep(4, (ulong)(trial + 1), out arrived, t)) survived++;
+                    arrivedTotal += arrived;
+                }
+                Console.WriteLine(string.Format("  {0,6}   {1,15}   {2,10}   {3,14}{4}",
+                    optics[o] + " m",
+                    OpticalReachVsFPV(optics[o]).RoundToInt() + " m",
+                    (arrivedTotal / (double)trials).ToString("0.0"),
+                    (survived * 100 / trials) + "%",
+                    optics[o] == 600 ? "   <- the deployed optics" : ""));
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("  (c) the flat control world, kept so the old conclusions stay checkable");
+            Console.WriteLine();
+            Console.WriteLine("  world                              arrived   mount survives");
+            Console.WriteLine("  " + new string('-', 60));
+            {
+                int arrivedTotal = 0, survived = 0;
+                for (int trial = 0; trial < trials; trial++)
+                {
+                    int arrived;
+                    World w = MakeFlatControlWorld(2400, 1600, 256, 32, (ulong)(trial + 1), 2, 0);
+                    if (!RunAssaultScenario(w, "Test Long Mount", MountTweak.Range(F(550)),
+                                            4, F(1200), Sec(3), out arrived)) survived++;
+                    arrivedTotal += arrived;
+                }
+                Console.WriteLine(string.Format("  {0,-33}  {1,7}   {2,14}",
+                    "flat, clear, firm, ownerless",
+                    (arrivedTotal / (double)trials).ToString("0.0"),
+                    (survived * 100 / trials) + "%"));
             }
             Console.WriteLine();
-            Console.WriteLine("  The gun's acquisition-plus-cooldown cycle is roughly 1.25 seconds, so");
-            Console.WriteLine("  'seconds under fire' divided by 1.25 is about how many drones it gets");
-            Console.WriteLine("  to kill before the rest arrive - before its magazine runs out at five");
-            Console.WriteLine("  rounds, which this sweep does not otherwise account for (see FINDINGS 18).");
+            Console.WriteLine("  That row is the same 550 m mount as the top of (a), on the world every");
+            Console.WriteLine("  experiment ran on before AUDIT F34 was fixed. FINDINGS 33 recorded the");
+            Console.WriteLine("  two worlds as identical in every cell. They are not any more: the flat");
+            Console.WriteLine("  world has no territory owner, so every square metre of it is denied");
+            Console.WriteLine("  ground, every FPV Team's dead reckoning crosses the miss radius on the");
+            Console.WriteLine("  way in, and the warheads land on empty grass. Nothing about the mount");
+            Console.WriteLine("  changed. The world did, and something finally reads it.");
+            Console.WriteLine();
+            Console.WriteLine("  Read the two 'mount survives' columns against each other. They are the");
+            Console.WriteLine("  same mount, the same attack and the same seeds; the only difference is");
+            Console.WriteLine("  which of its two numbers is being spent. Whichever column moves is the");
+            Console.WriteLine("  one that is binding, and that is the number a player's upgrade should");
+            Console.WriteLine("  be buying.");
+            Console.WriteLine();
+            Console.WriteLine("  Both of them move, which is not what the old flat sweep implied and is");
+            Console.WriteLine("  not quite what FINDINGS 31 says either. The barrel matters a great");
+            Console.WriteLine("  deal here and mattered not at all before, and the difference is only");
+            Console.WriteLine("  the spacing: reach buys time, and time is worth nothing against a");
+            Console.WriteLine("  flight that arrives in one instant and everything against one that");
+            Console.WriteLine("  keeps arriving. 'Barrel length barely matters' is true of a wave and");
+            Console.WriteLine("  false of a stream.");
+            Console.WriteLine();
+            Console.WriteLine("  The optics column is not monotonic and that is the more interesting");
+            Console.WriteLine("  half. A mount that finds the drone at 64 m does better than one that");
+            Console.WriteLine("  finds it at 127, because a five-round belt spent at the rim of the");
+            Console.WriteLine("  envelope is a belt spent at the worst hit chance the falloff offers.");
+            Console.WriteLine("  Seeing further is only an advantage to a mount that can afford to");
+            Console.WriteLine("  wait, and this one cannot.");
+        }
+
+        /// <summary>
+        /// What a 120-degree sweeping head of the given nominal reach actually
+        /// finds a quadcopter at, after the aperture law and the signature table
+        /// have had their say. Printed beside the sweep so the optics column is
+        /// readable as a distance rather than as a catalogue figure.
+        /// </summary>
+        static Fix OpticalReachVsFPV(int nominalOptical)
+        {
+            World w = MakeRealisticWorld(2048, 2048, 64, 4, 1, 2, 0, 1100, 1, 2);
+            EntityHandle gun = w.Spawn(Catalog.IdOf("Test Long Mount"), 1, P(1000, 1000));
+            w.Entities.Sensor[gun.Index].Optical = F(nominalOptical);
+            EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1200, 1000));
+            w.Step();
+            return w.DetectionRangeFor(gun.Index, drone.Index, SensorChannel.Optical);
         }
 
         /// <summary>
@@ -865,120 +982,206 @@ namespace KZ.Balance
         }
 
         /// <summary>
-        /// Cheap decoys flown alongside a real strike, to be shot at instead of it.
-        /// The question is whether spending part of the budget on things that carry
-        /// nothing gets more warheads onto the target than spending all of it on
-        /// warheads.
+        /// Cheap decoys flown alongside a real strike, against a defence that can
+        /// actually engage them.
+        ///
+        /// <para><b>What it used to measure, and why it could not move.</b> Three
+        /// budget-equal packages of Heavy Strike Drones and Decoy Drones against
+        /// one Gun Mount and one Radar Mast, with a right-hand control column that
+        /// re-ran each package with the decoy's radar cross-section cut from 92 to
+        /// 52. Every cell of both columns read every real drone through, on every
+        /// build in this project's history, unchanged to the hundredth (FINDINGS
+        /// 25, 32).</para>
+        ///
+        /// <para>Both halves were dead, for two different reasons, and neither is
+        /// "the numbers happened to agree".</para>
+        ///
+        /// <para>The <i>package</i> column was dead because a Heavy Strike Drone
+        /// and a Decoy Drone both have <c>Layer = High</c> and a Gun Mount has
+        /// <c>CanReachHigh = false</c>, so <c>CombatSystem.EffectiveReach</c>
+        /// returns zero range against every airframe in the experiment. The
+        /// defence in this experiment has never been able to fire a single round
+        /// at anything in it. "Every real drone gets through" was not a
+        /// measurement of decoy escort; it was a restatement of the roster.</para>
+        ///
+        /// <para>The <i>reflector</i> column was dead for a reason that survives
+        /// fixing the first, which is why it is not fixed below but retired.
+        /// Radar cross-section enters the simulation at exactly one place:
+        /// <c>World.ComputeDetection</c>, where it sets how far a radar reaches.
+        /// Detection then gates exactly two things - whether a weapon may engage
+        /// (<c>CombatSystem.CanEngage</c>) and how well an interceptor is cued
+        /// (<c>CueMultiplier</c>) - and both of those are asked only about a
+        /// target already inside a weapon envelope, which in this game is at most
+        /// 320 m. Every sensor in the roster finds every airframe in the roster at
+        /// 320 m. So a decoy that is detected at 2,373 m instead of 750 m cannot
+        /// change any outcome, at any package mix, against any defence that can be
+        /// assembled from the current catalogue - not as an empirical result but
+        /// as a property of where the number is read. FINDINGS 25 reached that
+        /// conclusion from arithmetic and was right; keeping a control column that
+        /// can only ever confirm it is keeping an instrument that reads zero
+        /// because it is not plugged in.</para>
+        ///
+        /// <para><b>What it measures now.</b> The same budget-equal packages
+        /// against an Interceptor Battery - the unit the research says a decoy
+        /// exists to make somebody spend - defending a Command Post behind it. The
+        /// battery reaches the high band, carries twelve engagements and a
+        /// twenty-second reload, and cycles every three seconds, so it is a
+        /// defence that can be saturated at a realistic rate. The control arm is
+        /// the same money spent entirely on warheads. That is a control that
+        /// varies the thing under test: whether buying decoys instead of warheads
+        /// puts more warheads on the target.</para>
         /// </summary>
         static void DecoyEscortExperiment()
         {
             Console.WriteLine();
-            Console.WriteLine("DECOY ESCORT - 2,600 Materiel of strike package against one turret");
-            Console.WriteLine("heavy strike drone 800, decoy drone 130");
+            Console.WriteLine("DECOY ESCORT - about 2,500 Materiel of strike package against one battery");
+            Console.WriteLine("heavy strike drone 800, decoy drone 130; the battery defends the radar");
+            Console.WriteLine("mast 100 m behind it, and the package is aimed at the mast (two warheads");
+            Console.WriteLine("on target destroy it)");
+            Console.WriteLine("arrivals spaced 2 s apart, so the battery's belt and its cooldown both bind");
             PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
-            Console.WriteLine("  The right-hand column is a control. It re-runs the same package with");
-            Console.WriteLine("  the decoy's radar cross-section cut to the strike drone's, leaving");
-            Console.WriteLine("  everything else alone - so the gap between the columns is what the");
-            Console.WriteLine("  reflector buys, as opposed to what simply being one more thing worth");
-            Console.WriteLine("  shooting at buys.");
+            Console.WriteLine("  The first row is the control: the same money, no decoys. The question");
+            Console.WriteLine("  is whether any row below it puts more warheads on the target than it");
+            Console.WriteLine("  does. There is no reflector column any more - see the comment on this");
+            Console.WriteLine("  method for why that control could not move and was not worth keeping.");
             Console.WriteLine();
-            Console.WriteLine("  package                 through (reflector)   through (no reflector)");
-            Console.WriteLine("  " + new string('-', 70));
+            Console.WriteLine("  package                cost   warheads on target   mast killed   decoys shot   rounds");
+            Console.WriteLine("  " + new string('-', 96));
+
+            int strikeCost = Catalog.ByName("Heavy Strike Drone").CostMateriel;
+            int decoyCost = Catalog.ByName("Decoy Drone").CostMateriel;
 
             int[][] mixes = {
-                new int[] {3, 1}, new int[] {2, 6}, new int[] {1, 13}
+                new int[] {3, 0}, new int[] {3, 1}, new int[] {2, 6}, new int[] {1, 13}
             };
             for (int i = 0; i < mixes.Length; i++)
             {
                 int real = mixes[i][0], decoys = mixes[i][1];
-                double withReflector = AverageThrough(real, decoys, true);
-                double without = AverageThrough(real, decoys, false);
-                Console.WriteLine(string.Format("  {0,-22}  {1,19}   {2,22}",
+                const int trials = 40;
+                int through = 0, postKilled = 0, decoysShot = 0, rounds = 0;
+                for (int trial = 0; trial < trials; trial++)
+                {
+                    int t, ds, rd;
+                    if (RunDecoyStrike(real, decoys, (ulong)(trial + 1), out t, out ds, out rd))
+                        postKilled++;
+                    through += t; decoysShot += ds; rounds += rd;
+                }
+
+                Console.WriteLine(string.Format("  {0,-20}  {1,5}   {2,18}   {3,11}   {4,11}   {5,6}",
                     real + " real + " + decoys + " decoy",
-                    withReflector.ToString("0.00") + " of " + real,
-                    without.ToString("0.00") + " of " + real));
+                    real * strikeCost + decoys * decoyCost,
+                    (through / (double)trials).ToString("0.00") + " of " + real,
+                    (postKilled * 100 / trials) + "%",
+                    (decoysShot / (double)trials).ToString("0.0") + " of " + decoys,
+                    (rounds / (double)trials).ToString("0.0")));
             }
+
             Console.WriteLine();
             Console.WriteLine("  Nothing special-cases a decoy here. A defence picks targets by how");
-            Console.WriteLine("  much of one it can remove per shot, and a decoy dies to one shot");
-            Console.WriteLine("  just as a real drone does - so it is an equally good thing to shoot");
-            Console.WriteLine("  at, which is exactly the product being sold.");
+            Console.WriteLine("  much of one it can remove per shot, and a decoy dies to one round");
+            Console.WriteLine("  just as a strike drone does - so it is an equally good thing to shoot");
+            Console.WriteLine("  at, which is exactly the product being sold. The rounds column is");
+            Console.WriteLine("  whether the defence was made to spend it.");
             Console.WriteLine();
-            Console.WriteLine("  The reflector, though, is doing nothing - the two columns agree to");
-            Console.WriteLine("  two decimals. It is not that the reflector is modelled wrongly: the");
-            Console.WriteLine("  radar finds a decoy at 2373 m and a strike drone at 750, which is");
-            Console.WriteLine("  the three-to-one the reporting describes. It is that the gun kills");
-            Console.WriteLine("  at 85 m and the battery at 320, so early warning arrives long");
-            Console.WriteLine("  before anything can act on it, and by the time something can, the");
-            Console.WriteLine("  cameras have the target anyway.");
-            Console.WriteLine();
-            Console.WriteLine("  A reflector decoy was never meant to fool gunnery. It is meant to");
-            Console.WriteLine("  make a defence spend an interceptor and a crew on an inflatable.");
-            Console.WriteLine("  Until a radar track can scramble something by itself, there is no");
-            Console.WriteLine("  decision here for a decoy to corrupt. See FINDINGS 25.");
+            Console.WriteLine("  The bottom row is the other end of the trade and it is not a failure");
+            Console.WriteLine("  of the mechanic: two warheads are needed to take the mast and that");
+            Console.WriteLine("  package only buys one, so it can saturate the battery completely and");
+            Console.WriteLine("  still not finish the job. Spending everything on escorts is the same");
+            Console.WriteLine("  mistake as spending nothing on them.");
         }
 
-        static double AverageThrough(int real, int decoys, bool reflector)
-        {
-            const int trials = 40;
-            int total = 0;
-            for (int trial = 0; trial < trials; trial++)
-            {
-                int through;
-                RunDecoyStrike(real, decoys, (ulong)(trial + 1), reflector, out through);
-                total += through;
-            }
-            return total / (double)trials;
-        }
-
-        static bool RunDecoyStrike(int real, int decoys, ulong seed, bool reflector, out int through)
+        /// <summary>
+        /// One strike. Returns whether the command post died, and reports how many
+        /// warheads reached it, how many decoys the defence removed, and how many
+        /// rounds the battery spent.
+        /// </summary>
+        static bool RunDecoyStrike(int real, int decoys, ulong seed,
+                                   out int through, out int decoysShot, out int rounds)
         {
             World w = MakeRealisticWorld(2400, 1600, 512, 32, seed, 2, 0, StandardBorderMetres, 1, 2);
-            w.Player(1).Materiel = Fix.FromInt(200000);
-            w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
+            BuildAttackerRear(w);
 
-            EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(1650, 780));
-            w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(1750, 780));
+            // A Radar Mast, not a Command Post. The post has 5,000 hit points and
+            // a Heavy Strike Drone removes 468 of them, so no package this budget
+            // can buy could ever kill one and the "killed" column was a constant
+            // zero - the same ceiling error, one column over. The mast is 900, so
+            // two warheads on target take it, which makes the column a result.
+            // The attacker has flown reconnaissance over the objective, so this
+            // experiment measures the escort and not navigation denial. Without
+            // it the answer is a different one entirely: a Heavy Strike Drone is
+            // one-way and scene-matching, its NavState error crosses
+            // SimConstants.MunitionMissRadiusMetres about 270 m past the border,
+            // and World.ApplyDamage then puts the warhead on empty ground - so
+            // every package delivers nothing whatever the escort does, and the
+            // table returns to being a constant for a reason that has nothing to
+            // do with decoys. That interaction is real and worth its own
+            // experiment; it is a confound in this one.
+            GrantHomeImagery(w, 1, true, 2400);
 
-            for (int i = 0; i < real; i++)
-                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Heavy Strike Drone"),
-                    new Fix2(F(900), F(780 + (i - real / 2) * 30)), gun, i));
-            for (int i = 0; i < decoys; i++)
-                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Decoy Drone"),
-                    new Fix2(F(900), F(700 + i * 22)), gun, real + i));
+            EntityHandle post = w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(1750, 780));
+            EntityHandle battery = w.Spawn(Catalog.IdOf("Interceptor Battery"), 2, P(1650, 780));
 
-            // The control: strip the reflector and leave the airframe. A Gerbera
-            // without its corner reflector is a cheap piston aircraft, and on radar
-            // it is no more interesting than what it is escorting.
-            byte decoyRadar = reflector ? (byte)92 : (byte)52;
+            List<Arrival> plan = PlanFlight(1, Catalog.IdOf("Heavy Strike Drone"), F(900), F(780), 30,
+                                            post, real, Sec(2), 0);
+            List<Arrival> escort = PlanFlight(1, Catalog.IdOf("Decoy Drone"), F(900), F(760), 22,
+                                              post, decoys, Sec(2), real);
+            // Interleave by tick so the escort flies with the package rather than
+            // behind it; a decoy that arrives after the warheads is not an escort.
+            // Merged by hand rather than with List.Sort: both inputs are already
+            // in tick order, a merge that takes the warhead first on a tie is
+            // stable where List.Sort is not, and this harness's whole value rests
+            // on two runs of the same seed producing the same launch order.
+            plan = MergeByTick(plan, escort);
 
-            int reached = 0;
-            bool[] struck = new bool[w.Entities.Capacity];
-            int realDefId = Catalog.IdOf("Heavy Strike Drone");
+            int next = 0;
+            int lastLaunchTick = plan[plan.Count - 1].Tick;
 
             int decoyDefId = Catalog.IdOf("Decoy Drone");
 
+            bool[] sawDecoy = new bool[w.Entities.Capacity];
+            bool[] countedDecoy = new bool[w.Entities.Capacity];
+            int reached = 0, shot = 0;
+            int lastBelt = -1, fired = 0;
+            // Warheads *delivered*, counted as distinct falls in the mast's
+            // health. Proximity was the old measure and it counts a drone that
+            // arrived and missed as a warhead on target.
+            Fix lastHp = w.Entities.Hp[post.Index];
+
             for (int tick = 0; tick < 300 * SimConstants.TicksPerSecond; tick++)
             {
+                IssueDue(w, plan, ref next, tick);
                 w.Step();
-                for (int i = 1; i < w.Entities.HighWater; i++)
-                    if (w.Entities.IsSlotAlive(i) && w.Entities.DefId[i] == decoyDefId)
-                        w.Entities.Signature[i].Radar = decoyRadar;
-                if (!w.Entities.IsAlive(gun)) { through = reached; return true; }
 
-                Fix2 gunPos = w.Entities.Position[gun.Index];
+                if (w.Entities.IsSlotAlive(battery.Index))
+                {
+                    int belt = w.Entities.Weapon[battery.Index].EngagementsRemaining;
+                    if (lastBelt >= 0 && belt < lastBelt) fired += lastBelt - belt;
+                    lastBelt = belt;
+                }
+
                 for (int i = 1; i < w.Entities.HighWater; i++)
                 {
-                    if (struck[i] || !w.Entities.IsSlotAlive(i)) continue;
-                    if (w.Entities.Team[i] != 1) continue;
-                    if (w.Entities.DefId[i] != realDefId) continue;
-                    if (Fix2.Distance(w.Entities.Position[i], gunPos) <= F(50))
-                    { struck[i] = true; reached++; }
+                    if (w.Entities.IsSlotAlive(i) && w.Entities.DefId[i] == decoyDefId) sawDecoy[i] = true;
+                    if (sawDecoy[i] && !countedDecoy[i] && !w.Entities.IsSlotAlive(i))
+                    { countedDecoy[i] = true; shot++; }
                 }
-                if (CountFriendlyDronesAirborne(w) == 0 && tick > 8) break;
+
+                if (w.Entities.IsSlotAlive(post.Index))
+                {
+                    Fix hp = w.Entities.Hp[post.Index];
+                    if (hp < lastHp) reached++;
+                    lastHp = hp;
+                }
+
+                if (!w.Entities.IsAlive(post))
+                { through = reached; decoysShot = shot; rounds = fired; return true; }
+
+
+                if (next >= plan.Count && tick > lastLaunchTick + 8
+                    && CountFriendlyDronesAirborne(w) == 0) break;
             }
-            through = reached;
+            through = reached; decoysShot = shot; rounds = fired;
             return false;
         }
 
@@ -1174,16 +1377,18 @@ namespace KZ.Balance
         }
 
         /// <summary>
-        /// GunRangeExperiment only. Sweeps a range value across "Test Long Mount"
-        /// (Defs.cs) - a catalogue entry that exists solely for this purpose - on
-        /// the flat control world, so the one thing under study is the number
-        /// being varied, not an unstated mix of terrain and weather as well. See
-        /// AUDIT-UNWIRED.md F33 and the comment on GunRangeExperiment.
+        /// GunRangeExperiment only. Sweeps one of "Test Long Mount"'s own numbers
+        /// - a catalogue entry that exists solely for this purpose (Defs.cs) - and
+        /// holds everything else fixed. See AUDIT-UNWIRED.md F33 and the comment
+        /// on GunRangeExperiment for why it no longer runs on the flat control
+        /// world.
         /// </summary>
-        static bool RunRangeSweep(int droneCount, Fix padX, ulong seed, out int arrived, Fix gunRange)
+        static bool RunRangeSweep(int droneCount, ulong seed, out int arrived, MountTweak tweak)
         {
-            World w = MakeFlatControlWorld(2400, 1600, 256, 32, seed, 2, 0);
-            return RunAssaultScenario(w, "Test Long Mount", gunRange, droneCount, padX, out arrived);
+            World w = MakeRealisticWorld(2400, 1600, 256, 32, seed, 2, 0,
+                StandardBorderMetres, 1, 2);
+            return RunAssaultScenario(w, "Test Long Mount", tweak, droneCount, F(1200),
+                                      Sec(3), out arrived);
         }
 
         /// <summary>
