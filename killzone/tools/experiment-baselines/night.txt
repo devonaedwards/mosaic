@@ -1,14 +1,14 @@
 
 DARKNESS - the same assault by day and by night
-gun's own best sensor reaches 127 m by day, 48 m after dark
-  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
+gun's own best sensor reaches 1527 m by day, 576 m after dark
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 21600 m (team 1 west / team 2 east), imagery granted over each side's own ground
 
   drones   by day             at night
            arrived  killed    arrived  killed
   ----------------------------------------------------
-       3       2.8     61%        3.0    100%
-       5       4.8    100%        5.0    100%
-       8       7.8    100%        8.0    100%
-      12      11.7    100%       12.0    100%
+       3       2.4     36%        2.6     41%
+       5       4.4     98%        4.6    100%
+       8       7.4    100%        7.6    100%
+      12       9.6    100%        9.6    100%
 
   Nothing about the gun changed. Only whether it could see.

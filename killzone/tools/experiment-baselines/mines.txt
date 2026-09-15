@@ -4,7 +4,7 @@ four mines from one heavy drone, 600 damage each, into the underside
 every number below is read off a vehicle driving through a live field,
 not computed from the damage table; a + means the first mine killed it
 outright, so the observed bite is a lower bound on the warhead
-  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 900 m (team 2 west / team 1 east), imagery granted over each side's own ground
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 10800 m (team 2 west / team 1 east), imagery granted over each side's own ground
 
   vehicle             health off   survives a mine   field stops
   ------------------------------------------------------------

@@ -614,7 +614,11 @@ namespace KZ.Balance
             for (int p = 0; p < pads.Length; p++)
             {
                 int arrivedTotal = 0, gunKilled = 0;
-                const int trials = 60;
+                // 200. This sweep is reporting a transition rather than a level,
+                // and at 60 trials the standard error is six points against a
+                // transition that turns out to be about twenty-five wide - enough
+                // for the middle of the curve to read as non-monotonic noise.
+                const int trials = 200;
 
                 for (int trial = 0; trial < trials; trial++)
                 {
@@ -633,15 +637,21 @@ namespace KZ.Balance
             Console.WriteLine();
             Console.WriteLine("  * the row that straddles the 1,000 m kill ring.");
             Console.WriteLine();
-            Console.WriteLine("  A forward pad is worth something, and it is worth less than the map");
-            Console.WriteLine("  makes it look. Three kilometres of standoff buys the defence about");
-            Console.WriteLine("  fifteen points; the sharp row is the last one, at 300 m, where the");
-            Console.WriteLine("  flight is inside the ring before the head has swept onto it and the");
-            Console.WriteLine("  mount never gets a first engagement at all. Between 2,400 m and");
-            Console.WriteLine("  600 m the column is nearly flat, because what the mount spends is");
-            Console.WriteLine("  not the crossing time - it has thirty real seconds of that at every");
-            Console.WriteLine("  row above the last - but the seconds between latching a track and");
-            Console.WriteLine("  the drone arriving, and those do not scale with the pad.");
+            Console.WriteLine("  A forward pad is worth something, and it is worth much less than");
+            Console.WriteLine("  the map makes it look. Moving the pad from 5,400 m to 300 m - most");
+            Console.WriteLine("  of a map width - takes the mount from surviving one attack in five");
+            Console.WriteLine("  to surviving none, and nearly all of that is spent in the last");
+            Console.WriteLine("  900 m. Above the kill ring the column barely moves, because what");
+            Console.WriteLine("  the mount spends is not the crossing time - it has thirty real");
+            Console.WriteLine("  seconds of that at every row but the last - it is the seconds");
+            Console.WriteLine("  between latching a track and the drone arriving, and those are set");
+            Console.WriteLine("  by the ring and not by the pad.");
+            Console.WriteLine();
+            Console.WriteLine("  The two rows either side of the ring are the defence's best after");
+            Console.WriteLine("  the longest standoff, by about two standard errors at 200 trials.");
+            Console.WriteLine("  A pad at the rim gives the mount its engagement at maximum range");
+            Console.WriteLine("  and its full belt to spend on the approach; a pad inside the rim");
+            Console.WriteLine("  gives it neither. Worth a probe before it is worth a conclusion.");
             Console.WriteLine();
             Console.WriteLine("  The arrived column is flat across the whole sweep and that is the");
             Console.WriteLine("  more useful half: a forward pad does not get more drones through, it");
@@ -1003,7 +1013,7 @@ namespace KZ.Balance
             Console.WriteLine("a cluster of mounts all covering one defended point, 450 Materiel each");
             PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
-            Console.WriteLine("  each cell: share of 40 trials in which the attack destroyed the lead");
+            Console.WriteLine("  each cell: share of 100 trials in which the attack destroyed the lead");
             Console.WriteLine("  mount. FPV Teams, 200 Materiel each, from a pad 5,400 m out. The last");
             Console.WriteLine("  column is rounds fired per trial by each mount, lead first, averaged");
             Console.WriteLine("  over every trial in the row.");
@@ -1032,7 +1042,15 @@ namespace KZ.Balance
                     for (int f = 0; f < forces.Length; f++)
                     {
                         int wins = 0;
-                        const int trials = 40;
+                        // 100, not the 40 this table used to run. At 40 trials a
+                        // cell's standard error is about eight points and every
+                        // difference this table reports between one mount and
+                        // four is smaller than that, so the answer it printed was
+                        // noise shaped like a result - the same failure as a
+                        // ceiling, one floor down. 100 halves it. It costs about
+                        // a minute of build time and buys the only column anyone
+                        // reads this experiment for.
+                        const int trials = 100;
                         for (int trial = 0; trial < trials; trial++)
                             if (RunStacked(guns, forces[f], (ulong)(trial + 1), spacings[sp], shots)) wins++;
                         trialsInRow += trials;
@@ -1063,15 +1081,30 @@ namespace KZ.Balance
             Console.WriteLine("  egress - now wired, four ticks per airframe - means a tap is no");
             Console.WriteLine("  longer one instant. 'Launched together' is a tap, not a wave.");
             Console.WriteLine();
-            Console.WriteLine("  And the stack still does not pay. Adding the second, third and");
-            Console.WriteLine("  fourth mount moves the attack win rate by a few points at most and");
-            Console.WriteLine("  by nothing at all in several cells, for 450 Materiel each, while the");
-            Console.WriteLine("  lead mount fires five rounds against a tap and eight against a");
-            Console.WriteLine("  stream and does nearly all the work either way. The rounds column");
-            Console.WriteLine("  says why: a supporting mount gets about one round per trial because");
-            Console.WriteLine("  it commits to a target that is already being engaged. At 40 trials a");
-            Console.WriteLine("  cell a few points either way is noise, and the honest reading of");
-            Console.WriteLine("  this table is that the differences are inside it.");
+            Console.WriteLine("  Against a tap the stack still does not pay. Four mounts read within");
+            Console.WriteLine("  a couple of points of one mount in every column, for 450 Materiel");
+            Console.WriteLine("  each, and the rounds column says why: the lead fires its whole belt");
+            Console.WriteLine("  either way and each supporting mount gets about one round, because");
+            Console.WriteLine("  it commits to a target that is already being engaged and the");
+            Console.WriteLine("  engagement is over before it can commit to another.");
+            Console.WriteLine();
+            Console.WriteLine("  Against a stream it does. Four mounts take six points off the");
+            Console.WriteLine("  attack at three drones and twelve at six, and every supporting");
+            Console.WriteLine("  mount fires four and a half rounds rather than one. That is the");
+            Console.WriteLine("  whole content of FINDINGS 13's structural argument and it is the");
+            Console.WriteLine("  first table in this project to show it, because it is the first one");
+            Console.WriteLine("  to offer a second engagement for a second mount to service.");
+            Console.WriteLine();
+            Console.WriteLine("  One row does not fit and is left standing rather than smoothed. In");
+            Console.WriteLine("  the stream arm TWO mounts are worse for the defence than one, in");
+            Console.WriteLine("  all four columns - 22 against 17, 48 against 37, 71 against 67, 90");
+            Console.WriteLine("  against 96 - while three and four are better than either. The cells");
+            Console.WriteLine("  share seeds, so the comparison is paired and the standard error is");
+            Console.WriteLine("  smaller than the five points 100 trials would suggest, but four");
+            Console.WriteLine("  cells one way is suggestive rather than settled. If it is real it is");
+            Console.WriteLine("  about engagement commitment - a supporting mount that kills the");
+            Console.WriteLine("  drone the lead had committed to costs the lead an acquisition - and");
+            Console.WriteLine("  it is worth a probe rather than a paragraph.");
         }
 
         /// <summary>
@@ -1180,7 +1213,7 @@ namespace KZ.Balance
         static void VerticalExperiment()
         {
             Console.WriteLine();
-            Console.WriteLine("VERTICAL - three Multirole Quads, split between altitudes");
+            Console.WriteLine("VERTICAL - five Multirole Quads, split between altitudes");
             Console.WriteLine("one tap every 3 s of play, because a band change is only charged between");
             Console.WriteLine("engagements and a simultaneous wave only ever offers one");
             PrintWorldConfig(StandardBorderMetres, 1, 2);
@@ -1190,11 +1223,15 @@ namespace KZ.Balance
             Console.WriteLine("  attack                  quads lost   mount killed  quads lost   mount killed");
             Console.WriteLine("  " + new string('-', 78));
 
+            // Five, not three. Against the Autocannon Mount three quads lose 2.90
+            // of themselves on average - a loss column pinned within a tenth of
+            // its own ceiling, which is the FINDINGS 32 shape however live the
+            // cell beside it looks. Five leaves the defence something to fail at.
             int[][] splits = {
-                new int[] {3, 0}, new int[] {2, 1}, new int[] {1, 2}, new int[] {0, 3}
+                new int[] {5, 0}, new int[] {3, 2}, new int[] {2, 3}, new int[] {0, 5}
             };
             string[] labels = {
-                "all low", "two low, one high", "one low, two high", "all high"
+                "all low", "three low, two high", "two low, three high", "all high"
             };
             string[] mounts = { "Gun Mount", "Autocannon Mount" };
 
@@ -1204,7 +1241,7 @@ namespace KZ.Balance
                 for (int m = 0; m < mounts.Length; m++)
                 {
                     int lostTotal = 0, killed = 0;
-                    const int trials = 40;
+                    const int trials = 100;
                     for (int trial = 0; trial < trials; trial++)
                     {
                         int lost;
@@ -1223,8 +1260,8 @@ namespace KZ.Balance
             Console.WriteLine("  The left pair is not a tactic and should not be read as one. A Gun");
             Console.WriteLine("  Mount cannot engage the high band at all, so a drone sent there is");
             Console.WriteLine("  not evading the defence, it is outside it - which is why one high");
-            Console.WriteLine("  drone in the flight takes the mount's score to exactly zero and");
-            Console.WriteLine("  keeps it there. Its 100% column is a ceiling and carries no");
+            Console.WriteLine("  drone in the flight takes the mount's score to almost exactly zero");
+            Console.WriteLine("  and keeps it there. Its 100% column is a ceiling and carries no");
             Console.WriteLine("  information; the quads-lost column beside it is the live one.");
             Console.WriteLine();
             Console.WriteLine("  The right pair is the question FINDINGS 18 was asking. The Autocannon");

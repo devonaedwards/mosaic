@@ -1,6 +1,6 @@
 
-APERTURE - the same 600 m camera, spread over different arcs
-  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1100 m (team 1 west / team 2 east), imagery granted over each side's own ground
+APERTURE - the same 7,200 m camera, spread over different arcs
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 13200 m (team 1 west / team 2 east), imagery granted over each side's own ground
 
   The law. Reach scales as the square root of how narrow the arc is;
   this is the formula evaluated, not a fight, and it moves only when a
@@ -8,23 +8,23 @@ APERTURE - the same 600 m camera, spread over different arcs
 
   arc      reach vs a quad   covered at once   heads for 360   total cost
   --------------------------------------------------------------------------
-    30 deg            255 m                8%              12     5400 MAT
-    45 deg            208 m               12%               8     3600 MAT
-    90 deg            147 m               25%               4     1800 MAT
-   120 deg            127 m               33%               3     1350 MAT
-   180 deg            104 m               50%               2      900 MAT
-   360 deg             73 m              100%               1      450 MAT
+    30 deg           3055 m                8%              12     5400 MAT
+    45 deg           2494 m               12%               8     3600 MAT
+    90 deg           1764 m               25%               4     1800 MAT
+   120 deg           1527 m               33%               3     1350 MAT
+   180 deg           1247 m               50%               2      900 MAT
+   360 deg            882 m              100%               1      450 MAT
 
   What it is worth. Four mounts differing only in their head, against
-  three FPV Teams arriving one every 3 s from the west.
+  three FPV Teams, one tap every 3 s of play, from the west.
 
   head                                         reach on axis   mount survives
   ----------------------------------------------------------------------------
-  30 deg staring, facing east (default)               255 m              45%
-  30 deg staring, turned to face the threat           255 m              71%
-  120 deg staring, facing east (default)              127 m              45%
-  120 deg sweeping at 70 deg/s (shipped)              127 m              63%
-  360 deg, no blind side                               73 m              71%
+  30 deg staring, facing east (default)              3055 m              84%
+  30 deg staring, turned to face the threat          3055 m              79%
+  120 deg staring, facing east (default)             1527 m              84%
+  120 deg sweeping at 70 deg/s (shipped)             1527 m              83%
+  360 deg, no blind side                              882 m              80%
 
   "Reach on axis" is what the head finds when it happens to be pointed
   the right way - DetectionRangeFor answers the range question and not
@@ -44,14 +44,15 @@ APERTURE - the same 600 m camera, spread over different arcs
   the cheap way to know something is out there and the useless way to
   know where it is. It is also why the narrow heads below are not as
   blind as their arc suggests: these mounts carry the Gun Mount's
-  200 m array as well, and it does not care which way the camera is
+  2,400 m array as well, and it does not care which way the camera is
   pointed.
 
   Worth reading against the law above it: the 30-degree head sees three
   and a half times as far as the 360-degree one, costs twelve times as
   much to cover the same sky, and - when it is pointed the right way,
-  which nothing can currently arrange - survives exactly as often. Above
-  about 70 m the extra reach buys a mount nothing, because 70 m is where
-  it first holds a track and 3.2 s is all it has after that (FINDINGS
-  31). The panoramic head is not the compromise position on this slider;
+  which nothing can currently arrange - survives no more often; on
+  these numbers it survives slightly less. Above
+  about 840 m the extra reach buys a mount nothing, because 840 m is
+  where it first holds a track and about 25 real seconds is all it has
+  after that (FINDINGS 31, in real metres). The panoramic head is not the compromise position on this slider;
   on these numbers it is the only one worth buying.

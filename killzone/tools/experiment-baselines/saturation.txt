@@ -1,18 +1,21 @@
 
-SATURATION - simultaneous drones against one gun mount
-launched together from 1,200 m, gun's real range is 85 m (FINDINGS 2)
-  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
+SATURATION - one tap's worth of drones against one gun mount
+launched on one tap from a pad 5,400 m out; the gun's kill ring is
+1,000 m (point-defence.md Q2) and its camera finds a quad at 1,527 m.
+'together' is now one tap: pad egress walks them off 4 ticks apart, so
+the 24-drone row is spread over nearly three of the mount's cooldowns
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 21600 m (team 1 west / team 2 east), imagery granted over each side's own ground
 
   drones   arrived   gun killed   materiel spent   per kill
   --------------------------------------------------------------
-       1       0.8          0%              200      never
-       2       1.8          0%              400      never
-       3       2.8         62%              600        972
-       5       4.8        100%             1000       1000
-       8       7.8        100%             1600       1600
-      12      11.7        100%             2400       2400
-      16      14.7        100%             3200       3200
-      24      14.7        100%             4800       4800
+       1       0.5          0%              200      never
+       2       1.4          0%              400      never
+       3       2.4         37%              600       1636
+       5       4.4         98%             1000       1016
+       8       7.4        100%             1600       1600
+      12       9.6        100%             2400       2400
+      16      11.3        100%             3200       3200
+      24      12.9        100%             4800       4800
 
   A gun mount takes three hits to destroy. 'arrived' is the average
   number of drones per attempt that lived long enough to strike it.

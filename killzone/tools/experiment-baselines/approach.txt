@@ -1,20 +1,42 @@
 
-APPROACH - eight drones, varying where they launch from
-gun at 1,650 m reaching its real 85 m (FINDINGS 2), so its edge is at 1,565 m
-(the launch pads below were chosen to bracket the old, wrong 550 m edge at
- 1,100 m; they do not resolve the much closer real edge - see notes below)
-  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
+APPROACH - four drones, varying where they launch from
+gun at 19,800 m with a 1,000 m kill ring, so its edge is at 18,800 m and
+it latches a track on a quad at about 840 m (FINDINGS 31 in real metres)
+pads retuned this session to bracket that edge - the old set bracketed
+the wrong one and FINDINGS 31 said so; the 5,400 m row is the pad every
+other experiment in this file launches from
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 21600 m (team 1 west / team 2 east), imagery granted over each side's own ground
 
-  launch at   arrived   gun killed
-  --------------------------------------
-      400 m       7.7         100%
-      800 m       7.7         100%
-     1100 m       7.7         100%
-     1300 m       7.7         100%
-     1500 m       7.7         100%
-     1600 m       5.0         100%
+  launch at   out from gun   arrived   gun killed
+  ------------------------------------------------------
+    14400 m         5400 m       3.5          81%
+    17400 m         2400 m       3.4          86%
+    18200 m         1600 m       3.5          90%
+    18600 m       1200 m *       3.4          86%
+    18900 m          900 m       3.5          85%
+    19200 m          600 m       3.4          94%
+    19500 m          300 m       3.7         100%
 
-  Launching from inside the gun's reach means the drones are under
-  fire from the moment they exist, but for far less time. Only the last
-  row or two above actually land inside the real 85 m envelope - a
-  pad set re-tuned around that edge would resolve this transition better.
+  * the row that straddles the 1,000 m kill ring.
+
+  A forward pad is worth something, and it is worth much less than
+  the map makes it look. Moving the pad from 5,400 m to 300 m - most
+  of a map width - takes the mount from surviving one attack in five
+  to surviving none, and nearly all of that is spent in the last
+  900 m. Above the kill ring the column barely moves, because what
+  the mount spends is not the crossing time - it has thirty real
+  seconds of that at every row but the last - it is the seconds
+  between latching a track and the drone arriving, and those are set
+  by the ring and not by the pad.
+
+  The two rows either side of the ring are the defence's best after
+  the longest standoff, by about two standard errors at 200 trials.
+  A pad at the rim gives the mount its engagement at maximum range
+  and its full belt to spend on the approach; a pad inside the rim
+  gives it neither. Worth a probe before it is worth a conclusion.
+
+  The arrived column is flat across the whole sweep and that is the
+  more useful half: a forward pad does not get more drones through, it
+  gets the same drones through against a mount that has had less
+  warning. The old pad set - chosen around the mount's long-since-
+  corrected 550-compressed-metre reach - could show neither.

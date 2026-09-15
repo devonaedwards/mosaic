@@ -1,23 +1,23 @@
 
-VERTICAL - three Multirole Quads, split between altitudes
-arriving one every 3 s, because a band change is only charged between
+VERTICAL - five Multirole Quads, split between altitudes
+one tap every 3 s of play, because a band change is only charged between
 engagements and a simultaneous wave only ever offers one
-  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 21600 m (team 1 west / team 2 east), imagery granted over each side's own ground
 
-                          Gun Mount (85 m,           Autocannon Mount
-                          cannot reach high)         (280 m, reaches high)
+                          Gun Mount (1,000 m,        Autocannon Mount
+                          cannot reach high)         (3,360 m, reaches high)
   attack                  quads lost   mount killed  quads lost   mount killed
   ------------------------------------------------------------------------------
-  all low                       0.53           100%        1.90            60%
-  two low, one high             0.00           100%        1.40            77%
-  one low, two high             0.00           100%        1.28            82%
-  all high                      0.00           100%        1.33            77%
+  all low                       0.08           100%        4.71            10%
+  three low, two high           0.01           100%        4.21            31%
+  two low, three high           0.00           100%        4.04            34%
+  all high                      0.00           100%        4.15            29%
 
   The left pair is not a tactic and should not be read as one. A Gun
   Mount cannot engage the high band at all, so a drone sent there is
   not evading the defence, it is outside it - which is why one high
-  drone in the flight takes the mount's score to exactly zero and
-  keeps it there. Its 100% column is a ceiling and carries no
+  drone in the flight takes the mount's score to almost exactly zero
+  and keeps it there. Its 100% column is a ceiling and carries no
   information; the quads-lost column beside it is the live one.
 
   The right pair is the question FINDINGS 18 was asking. The Autocannon

@@ -1,17 +1,18 @@
 
 SENSORS - what a turret can find, and what finding it is worth
 four test-only mounts, identical to the Gun Mount except for the sensor
-fit; all four carry the real 85 m barrel (FINDINGS 2)
-the assault is three FPV Teams arriving one every 3 s from 1,200 m
-  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
+fit; all four carry the Gun Mount's real 1,000 m barrel
+the assault is three FPV Teams, one tap every 3 s of play, from a pad
+5,400 m out
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 21600 m (team 1 west / team 2 east), imagery granted over each side's own ground
 
                              finds a quad at     vs tank    mount survives
   fitted with                 day     night        day      day     night
   ----------------------------------------------------------------------------
-  optics only                  127 m      25 m      520 m      63%        0%
-  acoustic only                 48 m      96 m      320 m      72%       71%
-  optics + acoustic            127 m      96 m      520 m      76%       71%
-  optics + acoustic + thermal  127 m     127 m      520 m      76%       71%
+  optics only                 1527 m     305 m     6235 m      71%       67%
+  acoustic only                576 m    1152 m     3840 m      72%       79%
+  optics + acoustic           1527 m    1152 m     6235 m      73%       79%
+  optics + acoustic + thermal 1527 m    1521 m     6235 m      73%       79%
 
   A mount's reach is set by its gun and its envelope by whichever sensor
   finds the target first, and against a small electric quadcopter that

@@ -1,10 +1,10 @@
 
 STACKING - more turrets covering the same approach
 a cluster of mounts all covering one defended point, 450 Materiel each
-  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 1550 m (team 1 west / team 2 east), imagery granted over each side's own ground
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 21600 m (team 1 west / team 2 east), imagery granted over each side's own ground
 
-  each cell: share of 40 trials in which the attack destroyed the lead
-  mount. FPV Teams, 200 Materiel each, from a pad at 1,200 m. The last
+  each cell: share of 100 trials in which the attack destroyed the lead
+  mount. FPV Teams, 200 Materiel each, from a pad 5,400 m out. The last
   column is rounds fired per trial by each mount, lead first, averaged
   over every trial in the row.
 
@@ -12,24 +12,53 @@ a cluster of mounts all covering one defended point, 450 Materiel each
 
   turrets  3 drones 4 drones 5 drones 6 drones   needed   rounds fired per trial
   ----------------------------------------------------------------------------------------
-        1       60%     100%     100%     100%        4   1.78
-        2       60%     100%     100%     100%        4   1.78 | 0.06
-        3       60%     100%     100%     100%        4   1.78 | 0.11 | 0.00
-        4       60%     100%     100%     100%        4   1.79 | 0.16 | 0.00 | 0.00
+        1       41%      76%      99%     100%        5   4.95
+        2       42%      78%      96%      99%        5   4.98 | 1.10
+        3       41%      74%      95%      98%        5   4.98 | 1.08 | 1.07
+        4       41%      73%      95%      98%        5   4.98 | 1.08 | 1.07 | 0.26
 
   one drone every 3 s:
 
   turrets  3 drones 4 drones 5 drones 6 drones   needed   rounds fired per trial
   ----------------------------------------------------------------------------------------
-        1       40%      67%      95%     100%        5   4.98
-        2       30%      65%      92%     100%        5   5.00 | 3.27
-        3       27%      62%      97%     100%        5   5.00 | 3.36 | 3.31
-        4       25%      60%      92%     100%        5   5.00 | 3.35 | 3.29 | 1.86
+        1       17%      37%      67%      96%        6   7.90
+        2       22%      48%      71%      90%        6   8.12 | 4.57
+        3       16%      36%      56%      84%   over 6   8.34 | 4.59 | 4.58
+        4       11%      32%      57%      84%   over 6   8.41 | 4.55 | 4.56 | 1.79
 
-  A mount is bought to service an engagement. A flight that arrives in
-  one instant offers exactly one, and the rounds column says what that
-  costs: against a wave the third and fourth mounts in a cluster fire
-  nothing at all, because by the time a drone is 70 m from them it is
-  already on top of the mount it was sent at. Against a stream the same
-  four mounts all shoot, the lead one empties its five-round belt in
-  nearly every trial, and the stack starts to be worth its money.
+  A mount is bought to service an engagement, and the rounds column
+  is where the money goes. Two things changed with the rescale and
+  they are worth separating.
+
+  The supporting mounts now shoot in both arms. In compressed units
+  the third and fourth mounts of a cluster fired 0.00 rounds against a
+  wave; here they fire about one each. Two causes, and only one of
+  them is the scale: a 1,000 m kill ring covers the whole cluster
+  where an 85 m one covered only the mount being attacked, and pad
+  egress - now wired, four ticks per airframe - means a tap is no
+  longer one instant. 'Launched together' is a tap, not a wave.
+
+  Against a tap the stack still does not pay. Four mounts read within
+  a couple of points of one mount in every column, for 450 Materiel
+  each, and the rounds column says why: the lead fires its whole belt
+  either way and each supporting mount gets about one round, because
+  it commits to a target that is already being engaged and the
+  engagement is over before it can commit to another.
+
+  Against a stream it does. Four mounts take six points off the
+  attack at three drones and twelve at six, and every supporting
+  mount fires four and a half rounds rather than one. That is the
+  whole content of FINDINGS 13's structural argument and it is the
+  first table in this project to show it, because it is the first one
+  to offer a second engagement for a second mount to service.
+
+  One row does not fit and is left standing rather than smoothed. In
+  the stream arm TWO mounts are worse for the defence than one, in
+  all four columns - 22 against 17, 48 against 37, 71 against 67, 90
+  against 96 - while three and four are better than either. The cells
+  share seeds, so the comparison is paired and the standard error is
+  smaller than the five points 100 trials would suggest, but four
+  cells one way is suggestive rather than settled. If it is real it is
+  about engagement commitment - a supporting mount that kills the
+  drone the lead had committed to costs the lead an acquisition - and
+  it is worth a probe rather than a paragraph.
