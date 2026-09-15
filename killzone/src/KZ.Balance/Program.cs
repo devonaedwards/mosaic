@@ -82,11 +82,88 @@ namespace KZ.Balance
         const WeatherState DefaultWeather = WeatherState.Clear;
         const GroundState DefaultGround = GroundState.Firm;
 
-        // Every attacker-vs-gun-mount experiment below places the attacker's
-        // infrastructure west of this line and the defended position east of it,
-        // just in front of the gun at x=1650 - so the last stretch of any
-        // approach is contested ground, not the attacker's own rear.
-        const int StandardBorderMetres = 1550;
+        // Where the line is, and why it is no longer in front of the objective.
+        //
+        // Real metres, like everything else in this file since docs/SCALE.md's
+        // "content in real metres and real seconds" landed in the catalogue.
+        // Every distance below was 12:1 compressed and the harness did not move
+        // with the catalogue, so for one session every experiment here was fought
+        // inside a 2.4 km box with a mount whose kill ring is 1 km and a mast
+        // that reaches 16.8 km. Nine of the ten drifted and none of the drift
+        // meant anything.
+        //
+        // This one is not a straight twelve times, and the reason is the most
+        // consequential thing the rescale did to this harness. The old line sat
+        // 100 compressed metres in front of the gun so that the last stretch of
+        // any approach was contested ground. Twelve times over that is 1,200 m,
+        // and with the neutral band it puts 1,968 m of denied ground between the
+        // attacker's own territory and the objective. An FPV Team is
+        // NavAid.DeadReckoning and OneWay, NavigationSystem adds
+        // SimConstants.NavDriftRateInertial - three percent of distance flown -
+        // for every metre of that, and World.ApplyDamage throws the warhead away
+        // past SimConstants.MunitionMissRadiusMetres. Measured through Spawn and
+        // Step: the drone arrives with 66 m of error against a 40 m radius, so
+        // every single FPV strike in every gun-mount experiment missed and the
+        // mount was immortal at every drone count. The budget is 1,333 m of
+        // denied flight and the old geometry spends 1,968.
+        //
+        // That is a real interaction and a large one - it says a cheap
+        // dead-reckoning airframe cannot strike two kilometres past the line,
+        // which is exactly what navigation-denied.md argues should be true - but
+        // it is not what any experiment below is measuring, and left in place it
+        // pins six of them to a fresh ceiling in the FINDINGS 32 shape. Nothing
+        // in the catalogue lets an attacker buy his way out of it either: scene
+        // matching needs NavAid.SceneMatching, which an FPV Team does not have,
+        // so granting imagery does nothing for it.
+        //
+        // So the line moves behind the objective instead of in front of it, and
+        // the scenario changes with it: the defended mount is a forward
+        // strongpoint inside ground the attacker holds, being reduced, rather
+        // than a rear-area battery being raided. That is one of docs/SCALE.md's
+        // own three border relations rather than an invented setting, it removes
+        // the confound by construction rather than by leaving a thin margin
+        // against a constant, and it keeps every territory and imagery wire live
+        // and printed. The interaction itself is not lost: REACH (c) still
+        // measures it, because the flat control world has no owner at all and
+        // every warhead on it lands on empty grass for precisely this reason.
+        //
+        // 21,600 m: 1,800 m past the mount at 19,800, so the attacker's rear, his
+        // pads, the whole approach and the objective are all on his own ground
+        // and the line is still on the map with an owner and imagery either side.
+        const int StandardBorderMetres = 21600;
+
+        /// <summary>
+        /// Every world this file builds, checked against the one hard limit the
+        /// move to real metres introduced.
+        ///
+        /// Detection and weapon tests compare *squared* distances, so the
+        /// simulation cannot compare anything beyond
+        /// <c>SimConstants.MaxComparableRangeMetres</c> - past it Fix.MulRaw
+        /// wraps and a sensor silently sees nothing at all (docs/SCALE.md,
+        /// "What robust looks like"). A map whose own diagonal is past that
+        /// limit is therefore a map on which a long-ranged sensor can fail in
+        /// silence, which is the worst failure mode available: no exception, no
+        /// zero, just a mast that reports nothing and an experiment that reads
+        /// it as a balance result.
+        ///
+        /// Cheap enough to run on every world construction, and it is a
+        /// construction-time check rather than a comment because a comment does
+        /// not fire when somebody types a bigger number. The two map sizes this
+        /// file uses - 28,800 x 19,200 and 24,576 x 24,576 - have diagonals of
+        /// 34.6 km and 34.8 km against a 45 km limit, so both clear it with
+        /// about a quarter to spare.
+        /// </summary>
+        static void CheckMapFitsTheComparableRange(int widthMetres, int heightMetres)
+        {
+            long limit = SimConstants.MaxComparableRangeMetres.RoundToInt();
+            long diagSq = (long)widthMetres * widthMetres + (long)heightMetres * heightMetres;
+            if (diagSq > limit * limit)
+                throw new InvalidOperationException(string.Format(
+                    "map {0} x {1} m has a diagonal past SimConstants.MaxComparableRangeMetres "
+                  + "({2} m) - squared-distance comparisons would wrap and sensors would go "
+                  + "silently blind. See docs/SCALE.md's ceiling correction.",
+                    widthMetres, heightMetres, limit));
+        }
 
         /// <summary>
         /// Lays open ground with a road, a treeline and a stretch of rubble across
@@ -128,6 +205,7 @@ namespace KZ.Balance
             int tetherCapacity, ulong seed, int playerCount, int startTick,
             int borderMetres, byte westTeam, byte eastTeam)
         {
+            CheckMapFitsTheComparableRange(widthMetres, heightMetres);
             Terrain t = new Terrain(widthMetres, heightMetres);
             PaintMixedTerrain(t);
 
@@ -135,7 +213,7 @@ namespace KZ.Balance
             w.Weather = DefaultWeather;
             w.Ground = DefaultGround;
 
-            const int neutralMetres = 64; // two Territory cells (CellMetres=32) either side of the line
+            const int neutralMetres = 768; // two Territory cells (CellMetres=384) either side of the line
             w.Territory.SetVerticalBorder(borderMetres, westTeam, eastTeam, neutralMetres);
             GrantHomeImagery(w, westTeam, true, borderMetres - neutralMetres);
             GrantHomeImagery(w, eastTeam, false, borderMetres + neutralMetres);
@@ -154,6 +232,7 @@ namespace KZ.Balance
         static World MakeFlatControlWorld(int widthMetres, int heightMetres, int entityCapacity,
             int tetherCapacity, ulong seed, int playerCount, int startTick)
         {
+            CheckMapFitsTheComparableRange(widthMetres, heightMetres);
             Terrain t = new Terrain(widthMetres, heightMetres);
             t.Fill(TileClass.Open);
             return new World(t, entityCapacity, tetherCapacity, seed, playerCount, startTick);
@@ -203,8 +282,11 @@ namespace KZ.Balance
         static void SaturationExperiment()
         {
             Console.WriteLine();
-            Console.WriteLine("SATURATION - simultaneous drones against one gun mount");
-            Console.WriteLine("launched together from 1,200 m, gun's real range is 85 m (FINDINGS 2)");
+            Console.WriteLine("SATURATION - one tap's worth of drones against one gun mount");
+            Console.WriteLine("launched on one tap from a pad 5,400 m out; the gun's kill ring is");
+            Console.WriteLine("1,000 m (point-defence.md Q2) and its camera finds a quad at 1,527 m.");
+            Console.WriteLine("'together' is now one tap: pad egress walks them off 4 ticks apart, so");
+            Console.WriteLine("the 24-drone row is spread over nearly three of the mount's cooldowns");
             PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
             Console.WriteLine("  drones   arrived   gun killed   materiel spent   per kill");
@@ -220,7 +302,7 @@ namespace KZ.Balance
                 for (int trial = 0; trial < trials; trial++)
                 {
                     int arrived;
-                    bool killed = RunAssault(n, F(1200), (ulong)(trial + 1), out arrived);
+                    bool killed = RunAssault(n, F(14400), (ulong)(trial + 1), out arrived);
                     arrivedTotal += arrived;
                     if (killed) gunKilled++;
                 }
@@ -246,13 +328,14 @@ namespace KZ.Balance
         ///
         /// <para><b>What it used to measure, and why that question was already
         /// answered.</b> Eight drones launched together against "Test Long Mount"
-        /// with its barrel swept from 550 m down to 85 m. It read 7.6 arrived at
-        /// 550 m and 7.8 at 85 m, and 100% gun killed at every rung - twenty-five
-        /// seconds of nominal exposure and three point nine producing the same
+        /// with its barrel swept from 550 to 85 of the old compressed metres
+        /// (6,600 m to 1,020 m real). It read 7.6 arrived at the top and 7.8 at
+        /// the bottom, and 100% gun killed at every rung - twenty-five seconds
+        /// of nominal exposure and three point nine producing the same
         /// result. FINDINGS 31 explains why, and the explanation makes the sweep
-        /// a question with a known and boring answer: above about 70 m the barrel
-        /// is not what stops the mount shooting, because 70 m is where it first
-        /// holds a track and the whole engagement is over 3.2 seconds later. A
+        /// a question with a known and boring answer: above about 840 m the
+        /// barrel is not what stops the mount shooting, because 840 m is where
+        /// it first holds a track. A
         /// sweep of a variable that is not binding is a flat line by
         /// construction.</para>
         ///
@@ -285,8 +368,9 @@ namespace KZ.Balance
         {
             Console.WriteLine();
             Console.WriteLine("REACH - what limits a mount's output, the barrel or the seeing");
-            Console.WriteLine("'Test Long Mount' (Defs.cs, test-only), four FPV Teams one every 3 s");
-            Console.WriteLine("from 1,200 m. Each sweep varies one of the mount's own numbers and");
+            Console.WriteLine("'Test Long Mount' (Defs.cs, test-only), four FPV Teams one tap every");
+            Console.WriteLine("3 s of play from a pad 5,400 m out. Each sweep varies one of the mount's");
+            Console.WriteLine("own numbers and");
             Console.WriteLine("holds the other fixed - see the comment on this method for why this is");
             Console.WriteLine("no longer run on the flat control world.");
             PrintWorldConfig(StandardBorderMetres, 1, 2);
@@ -294,12 +378,24 @@ namespace KZ.Balance
             const int trials = 100;
 
             Console.WriteLine();
-            Console.WriteLine("  (a) the barrel, with the mount's 600 m optics held fixed");
+            Console.WriteLine("  (a) the barrel, with the mount's 7,200 m optics held fixed");
             Console.WriteLine();
-            Console.WriteLine("  barrel   seconds under fire   arrived   mount survives");
-            Console.WriteLine("  " + new string('-', 60));
+            Console.WriteLine("  barrel   real s under fire   arrived   mount survives");
+            Console.WriteLine("  " + new string('-', 62));
 
-            int[] ranges = { 550, 450, 350, 250, 180, 120, 85 };
+            // Retuned, not just multiplied. Twelve times the old rungs is 6,600 m
+            // down to 1,020 m, and six of those seven sit above anything this
+            // mount can see: its 7,200 m camera finds an FPV Team at 1,527 m
+            // after the aperture law and the signature table are applied, and the
+            // head only latches a track around 840 m of that. A rung at 4 km and
+            // a rung at 6 km are the same mount with the same engagement and
+            // differ only in a number nothing reads - the flat line FINDINGS 31
+            // predicts, printed five times. The band that can bind is either side
+            // of the seeing, so the sweep runs from well inside it to just above
+            // it. 6,600 m is kept as the top rung, unchanged, so the old
+            // conclusion stays checkable against its own figure; 1,000 m is the
+            // Gun Mount's deployed kill ring (point-defence.md §Q2).
+            int[] ranges = { 6600, 3000, 2000, 1500, 1200, 1000, 700, 400 };
             for (int r = 0; r < ranges.Length; r++)
             {
                 int arrivedTotal = 0, survived = 0;
@@ -310,30 +406,41 @@ namespace KZ.Balance
                                        MountTweak.Range(F(ranges[r])))) survived++;
                     arrivedTotal += arrived;
                 }
-                // A drone crosses the gun's reach at 22 m/s.
-                double exposure = ranges[r] / 22.0;
+                // 33 m/s, the FPV Team's catalogue speed in real metres per
+                // real second (ground-force.md §3.3(a)). Real seconds, not
+                // seconds of play, because this column is a physical exposure
+                // and the mount's cooldown it wants reading against - four
+                // seconds - is a real one too. Divide by TimeMultiplier for what
+                // the player watches.
+                double exposure = ranges[r] / 33.0;
                 Console.WriteLine(string.Format("  {0,6}   {1,18}   {2,7}   {3,14}{4}",
                     ranges[r] + " m",
                     exposure.ToString("0.0") + " s",
                     (arrivedTotal / (double)trials).ToString("0.0"),
                     (survived * 100 / trials) + "%",
-                    ranges[r] == 85 ? "   <- the deployed barrel" : ""));
+                    ranges[r] == 1000 ? "   <- the deployed barrel" : ""));
             }
 
             Console.WriteLine();
-            Console.WriteLine("  (b) the optics, with the barrel held at 550 m");
+            Console.WriteLine("  (b) the optics, with the barrel held at 6,600 m");
             Console.WriteLine();
             Console.WriteLine("  optics   finds a quad at      arrived   mount survives");
             Console.WriteLine("  " + new string('-', 60));
 
-            int[] optics = { 600, 450, 300, 200, 120, 60 };
+            // A straight twelve times the old rungs, and unlike (a) this one
+            // needed nothing else: 7,200 m of nominal camera comes out at
+            // 1,527 m against a quadcopter and 720 m comes out at 153, so the
+            // sweep already brackets both the 1,000 m kill ring and the 840 m
+            // the head latches at. The "finds a quad at" column is the one to
+            // read - the nominal figure is quoted against a 7 m vehicle.
+            int[] optics = { 7200, 5400, 3600, 2400, 1440, 720 };
             for (int o = 0; o < optics.Length; o++)
             {
                 int arrivedTotal = 0, survived = 0;
                 for (int trial = 0; trial < trials; trial++)
                 {
                     int arrived;
-                    MountTweak t = MountTweak.Range(F(550));
+                    MountTweak t = MountTweak.Range(F(6600));
                     t.Optical = F(optics[o]);
                     if (!RunRangeSweep(4, (ulong)(trial + 1), out arrived, t)) survived++;
                     arrivedTotal += arrived;
@@ -343,7 +450,7 @@ namespace KZ.Balance
                     OpticalReachVsFPV(optics[o]).RoundToInt() + " m",
                     (arrivedTotal / (double)trials).ToString("0.0"),
                     (survived * 100 / trials) + "%",
-                    optics[o] == 600 ? "   <- the deployed optics" : ""));
+                    optics[o] == 7200 ? "   <- the deployed optics" : ""));
             }
 
             Console.WriteLine();
@@ -356,9 +463,9 @@ namespace KZ.Balance
                 for (int trial = 0; trial < trials; trial++)
                 {
                     int arrived;
-                    World w = MakeFlatControlWorld(2400, 1600, 256, 32, (ulong)(trial + 1), 2, 0);
-                    if (!RunAssaultScenario(w, "Test Long Mount", MountTweak.Range(F(550)),
-                                            4, F(1200), Sec(3), out arrived)) survived++;
+                    World w = MakeFlatControlWorld(28800, 19200, 256, 32, (ulong)(trial + 1), 2, 0);
+                    if (!RunAssaultScenario(w, "Test Long Mount", MountTweak.Range(F(6600)),
+                                            4, F(14400), Sec(3), out arrived)) survived++;
                     arrivedTotal += arrived;
                 }
                 Console.WriteLine(string.Format("  {0,-33}  {1,7}   {2,14}",
@@ -405,10 +512,10 @@ namespace KZ.Balance
         /// </summary>
         static Fix OpticalReachVsFPV(int nominalOptical)
         {
-            World w = MakeRealisticWorld(2048, 2048, 64, 4, 1, 2, 0, 1100, 1, 2);
-            EntityHandle gun = w.Spawn(Catalog.IdOf("Test Long Mount"), 1, P(1000, 1000));
+            World w = MakeRealisticWorld(24576, 24576, 64, 4, 1, 2, 0, 13200, 1, 2);
+            EntityHandle gun = w.Spawn(Catalog.IdOf("Test Long Mount"), 1, P(12000, 12000));
             w.Entities.Sensor[gun.Index].Optical = F(nominalOptical);
-            EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1200, 1000));
+            EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(14400, 12000));
             w.Step();
             return w.DetectionRangeFor(gun.Index, drone.Index, SensorChannel.Optical);
         }
@@ -416,20 +523,54 @@ namespace KZ.Balance
         /// <summary>
         /// How much launching from closer helps. This is what a forward position
         /// buys you, and it is the lever a player actually has.
+        ///
+        /// <para><b>Retuned, and it was already known to need it.</b> FINDINGS 31
+        /// recorded that this experiment's pads were chosen to bracket the Gun
+        /// Mount's old, wrong 550-metre reach and did not resolve the real edge -
+        /// "only the last row or two above actually land inside the real
+        /// envelope", printed by the experiment itself. The rescale made that
+        /// worse rather than better: twelve times the old pads is 4,800 m to
+        /// 19,200 m against a mount at 19,800 m whose kill ring is 1,000 m, so
+        /// five of the six rows launch from entirely outside the envelope and
+        /// differ only in how much empty sky the flight crosses first. A sweep
+        /// with one informative row is the ceiling problem of FINDINGS 32 wearing
+        /// a distance label.</para>
+        ///
+        /// <para>The pads below are therefore set by distance from the mount
+        /// rather than by map coordinate, and they bracket the two edges that
+        /// actually exist: the 1,000 m kill ring, and the ~840 m at which a
+        /// 120-degree head sweeping at 70 deg/s first latches a track on a
+        /// quadcopter (FINDINGS 31's 70 m, in real metres). The old 5,400 m pad
+        /// is kept as the first row so every other experiment in this file, all
+        /// of which launch from it, has a row here to be read against.</para>
+        ///
+        /// <para>The force is four drones and not eight. SATURATION puts eight
+        /// at 100% against this mount at every pad distance worth testing, so an
+        /// eight-drone sweep prints a column of hundreds and measures nothing -
+        /// FINDINGS 32's ceiling, arrived at from the other direction now that
+        /// the mount is much stronger than it was in compressed units. Four is
+        /// the force SATURATION reads at 67%, which leaves room either way.</para>
         /// </summary>
         static void ApproachExperiment()
         {
             Console.WriteLine();
-            Console.WriteLine("APPROACH - eight drones, varying where they launch from");
-            Console.WriteLine("gun at 1,650 m reaching its real 85 m (FINDINGS 2), so its edge is at 1,565 m");
-            Console.WriteLine("(the launch pads below were chosen to bracket the old, wrong 550 m edge at");
-            Console.WriteLine(" 1,100 m; they do not resolve the much closer real edge - see notes below)");
+            Console.WriteLine("APPROACH - four drones, varying where they launch from");
+            Console.WriteLine("gun at 19,800 m with a 1,000 m kill ring, so its edge is at 18,800 m and");
+            Console.WriteLine("it latches a track on a quad at about 840 m (FINDINGS 31 in real metres)");
+            Console.WriteLine("pads retuned this session to bracket that edge - the old set bracketed");
+            Console.WriteLine("the wrong one and FINDINGS 31 said so; the 5,400 m row is the pad every");
+            Console.WriteLine("other experiment in this file launches from");
             PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
-            Console.WriteLine("  launch at   arrived   gun killed");
-            Console.WriteLine("  " + new string('-', 38));
+            Console.WriteLine("  launch at   out from gun   arrived   gun killed");
+            Console.WriteLine("  " + new string('-', 54));
 
-            int[] pads = { 400, 800, 1100, 1300, 1500, 1600 };
+            // Distance from the mount at x = 19,800, converted to a pad
+            // coordinate below. 5,400 is the standard pad; the rest step across
+            // the kill ring and the track-latch distance.
+            int[] standoffs = { 5400, 2400, 1600, 1200, 900, 600, 300 };
+            int[] pads = new int[standoffs.Length];
+            for (int i = 0; i < standoffs.Length; i++) pads[i] = 19800 - standoffs[i];
             for (int p = 0; p < pads.Length; p++)
             {
                 int arrivedTotal = 0, gunKilled = 0;
@@ -438,21 +579,24 @@ namespace KZ.Balance
                 for (int trial = 0; trial < trials; trial++)
                 {
                     int arrived;
-                    bool killed = RunAssault(8, F(pads[p]), (ulong)(trial + 1), out arrived);
+                    bool killed = RunAssault(4, F(pads[p]), (ulong)(trial + 1), out arrived);
                     arrivedTotal += arrived;
                     if (killed) gunKilled++;
                 }
 
-                Console.WriteLine(string.Format("  {0,9}   {1,7}   {2,10}",
+                Console.WriteLine(string.Format("  {0,9}   {1,12}   {2,7}   {3,10}",
                     pads[p] + " m",
+                    standoffs[p] + " m" + (standoffs[p] == 1200 ? " *" : ""),
                     (arrivedTotal / (double)trials).ToString("0.0"),
                     (gunKilled * 100 / trials) + "%"));
             }
             Console.WriteLine();
-            Console.WriteLine("  Launching from inside the gun's reach means the drones are under");
-            Console.WriteLine("  fire from the moment they exist, but for far less time. Only the last");
-            Console.WriteLine("  row or two above actually land inside the real 85 m envelope - a");
-            Console.WriteLine("  pad set re-tuned around that edge would resolve this transition better.");
+            Console.WriteLine("  * the row that straddles the 1,000 m kill ring. Above it the flight");
+            Console.WriteLine("  crosses the whole envelope; below it the drones are inside the ring");
+            Console.WriteLine("  from the tick they exist, under fire from the start but for far less");
+            Console.WriteLine("  of it. That transition is what a forward pad buys, and it is the");
+            Console.WriteLine("  thing the old pad set - chosen around the mount's long-since-corrected");
+            Console.WriteLine("  550 m reach - could not show at all.");
         }
 
         /// <summary>
@@ -489,10 +633,10 @@ namespace KZ.Balance
                 for (int trial = 0; trial < trials; trial++)
                 {
                     int a;
-                    if (RunAssault(n, F(1200), (ulong)(trial + 1), out a, 0)) dayKilled++;
+                    if (RunAssault(n, F(14400), (ulong)(trial + 1), out a, 0)) dayKilled++;
                     dayArrived += a;
                     // Well into the night phase of the cycle.
-                    if (RunAssault(n, F(1200), (ulong)(trial + 1), out a, 8000)) nightKilled++;
+                    if (RunAssault(n, F(14400), (ulong)(trial + 1), out a, 8000)) nightKilled++;
                     nightArrived += a;
                 }
 
@@ -510,10 +654,10 @@ namespace KZ.Balance
         /// <summary>The gun's best detection channel against an FPV Team, day or night.</summary>
         static Fix GunOpticalReachVsFPV(bool night)
         {
-            World w = MakeRealisticWorld(2400, 1600, 8, 1, 1, 2, night ? 8000 : 0,
+            World w = MakeRealisticWorld(28800, 19200, 8, 1, 1, 2, night ? 8000 : 0,
                 StandardBorderMetres, 1, 2);
-            EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(1650, 780));
-            EntityHandle target = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(1200, 780));
+            EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(19800, 9360));
+            EntityHandle target = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(14400, 9360));
             w.Step();
             return w.BestDetectionRange(gun.Index, target.Index);
         }
@@ -554,7 +698,7 @@ namespace KZ.Balance
             Console.WriteLine("every number below is read off a vehicle driving through a live field,");
             Console.WriteLine("not computed from the damage table; a + means the first mine killed it");
             Console.WriteLine("outright, so the observed bite is a lower bound on the warhead");
-            PrintWorldConfig(900, 2, 1); // the convoy's own rear (west) vs. the ambush ground it drives into (east)
+            PrintWorldConfig(10800, 2, 1); // the convoy's own rear (west) vs. the ambush ground it drives into (east)
             Console.WriteLine();
             Console.WriteLine("  vehicle             health off   survives a mine   field stops");
             Console.WriteLine("  " + new string('-', 60));
@@ -606,21 +750,21 @@ namespace KZ.Balance
                                  out bool damageWasClamped)
         {
             damageWasClamped = false;
-            World w = MakeRealisticWorld(2400, 1600, 128, 8, 4242, 2, 8000, 900, 2, 1);
+            World w = MakeRealisticWorld(28800, 19200, 128, 8, 4242, 2, 8000, 10800, 2, 1);
 
             // The robot in this list is radio-controlled, so without something to
             // talk to it stops of its own accord and the experiment measures the
             // wrong thing entirely. One post per side, so a team-1 vehicle is no
             // worse connected than a team-2 one and the two rows differ only in
             // whose field it is.
-            w.Spawn(Catalog.IdOf("Command Post"), 2, P(700, 900));
-            w.Spawn(Catalog.IdOf("Command Post"), 1, P(700, 660));
+            w.Spawn(Catalog.IdOf("Command Post"), 2, P(8400, 10800));
+            w.Spawn(Catalog.IdOf("Command Post"), 1, P(8400, 7920));
 
-            EntityHandle vehicle = w.Spawn(Catalog.IdOf(vehicleName), vehicleTeam, P(600, 780));
+            EntityHandle vehicle = w.Spawn(Catalog.IdOf(vehicleName), vehicleTeam, P(7200, 9360));
             for (int m = 0; m < 4; m++)
-                w.SpawnMine(1, P(1000 + m * SimConstants.MineSpacingMetres, 780), F(600));
+                w.SpawnMine(1, P(12000 + m * SimConstants.MineSpacingMetres, 9360), F(600));
 
-            w.Enqueue(Command.MoveTo(vehicleTeam, vehicle, P(1800, 780)));
+            w.Enqueue(Command.MoveTo(vehicleTeam, vehicle, P(21600, 9360)));
 
             Fix lastHp = w.Entities.Hp[vehicle.Index];
             Fix biggestBite = Fix.Zero;
@@ -656,7 +800,7 @@ namespace KZ.Balance
                     damagePerMine = biggestBite.RoundToInt();
                     return true;
                 }
-                if (w.Entities.Position[vehicle.Index].X > F(1700)) break;
+                if (w.Entities.Position[vehicle.Index].X > F(20400)) break;
             }
 
             damagePerMine = biggestBite.RoundToInt();
@@ -698,8 +842,9 @@ namespace KZ.Balance
             Console.WriteLine();
             Console.WriteLine("SENSORS - what a turret can find, and what finding it is worth");
             Console.WriteLine("four test-only mounts, identical to the Gun Mount except for the sensor");
-            Console.WriteLine("fit; all four carry the real 85 m barrel (FINDINGS 2)");
-            Console.WriteLine("the assault is three FPV Teams arriving one every 3 s from 1,200 m");
+            Console.WriteLine("fit; all four carry the Gun Mount's real 1,000 m barrel");
+            Console.WriteLine("the assault is three FPV Teams, one tap every 3 s of play, from a pad");
+            Console.WriteLine("5,400 m out");
             PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
             Console.WriteLine("                             finds a quad at     vs tank    mount survives");
@@ -741,9 +886,9 @@ namespace KZ.Balance
         /// <summary>The best channel one spawned mount has against one target.</summary>
         static Fix MountReach(string mountDefName, string targetName, bool night)
         {
-            World w = MakeRealisticWorld(2048, 2048, 64, 4, 1, 2, night ? 8000 : 0, 1100, 1, 2);
-            EntityHandle gun = w.Spawn(Catalog.IdOf(mountDefName), 1, P(1000, 1000));
-            EntityHandle target = w.Spawn(Catalog.IdOf(targetName), 2, P(1200, 1000));
+            World w = MakeRealisticWorld(24576, 24576, 64, 4, 1, 2, night ? 8000 : 0, 13200, 1, 2);
+            EntityHandle gun = w.Spawn(Catalog.IdOf(mountDefName), 1, P(12000, 12000));
+            EntityHandle target = w.Spawn(Catalog.IdOf(targetName), 2, P(14400, 12000));
             w.Step();
             return w.BestDetectionRange(gun.Index, target.Index);
         }
@@ -763,10 +908,10 @@ namespace KZ.Balance
             int survived = 0;
             for (int trial = 0; trial < trials; trial++)
             {
-                World w = MakeRealisticWorld(2400, 1600, 256, 32, (ulong)(trial + 1), 2,
+                World w = MakeRealisticWorld(28800, 19200, 256, 32, (ulong)(trial + 1), 2,
                     night ? 8000 : 0, StandardBorderMetres, 1, 2);
                 int arrived;
-                if (!RunAssaultScenario(w, mountDefName, MountTweak.None, 3, F(1200), Sec(3), out arrived))
+                if (!RunAssaultScenario(w, mountDefName, MountTweak.None, 3, F(14400), Sec(3), out arrived))
                     survived++;
             }
             return survived * 100 / trials;
@@ -808,7 +953,7 @@ namespace KZ.Balance
             PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
             Console.WriteLine("  each cell: share of 40 trials in which the attack destroyed the lead");
-            Console.WriteLine("  mount. FPV Teams, 200 Materiel each, from a pad at 1,200 m. The last");
+            Console.WriteLine("  mount. FPV Teams, 200 Materiel each, from a pad 5,400 m out. The last");
             Console.WriteLine("  column is rounds fired per trial by each mount, lead first, averaged");
             Console.WriteLine("  over every trial in the row.");
 
@@ -874,7 +1019,7 @@ namespace KZ.Balance
         static bool RunStacked(int gunCount, int droneCount, ulong seed, int spacingTicks,
                                int[] shotsByMount)
         {
-            World w = MakeRealisticWorld(2400, 1600, 512, 32, seed, 2, 0, StandardBorderMetres, 1, 2);
+            World w = MakeRealisticWorld(28800, 19200, 512, 32, seed, 2, 0, StandardBorderMetres, 1, 2);
             BuildAttackerRear(w);
 
             // A fixed cluster, so the lead mount - the one the attack is aimed at
@@ -892,7 +1037,7 @@ namespace KZ.Balance
             // That is a real and interesting fact about siting, and a confound in
             // a table whose one variable is supposed to be how many mounts there
             // are.
-            Fix2[] positions = { P(1650, 780), P(1695, 735), P(1695, 825), P(1720, 780) };
+            Fix2[] positions = { P(19800, 9360), P(20340, 8820), P(20340, 9900), P(20640, 9360) };
 
             EntityHandle first = EntityHandle.None;
             int[] gunIdx = new int[4];
@@ -905,7 +1050,7 @@ namespace KZ.Balance
                 if (g == 0) first = gun;
             }
 
-            List<Arrival> plan = PlanFlight(1, Catalog.IdOf("FPV Team"), F(1200), F(780), 12,
+            List<Arrival> plan = PlanFlight(1, Catalog.IdOf("FPV Team"), F(14400), F(9360), 144,
                                             first, droneCount, spacingTicks, 0);
             int next = 0;
             int lastLaunchTick = plan[plan.Count - 1].Tick;
@@ -971,12 +1116,12 @@ namespace KZ.Balance
         {
             Console.WriteLine();
             Console.WriteLine("VERTICAL - three Multirole Quads, split between altitudes");
-            Console.WriteLine("arriving one every 3 s, because a band change is only charged between");
+            Console.WriteLine("one tap every 3 s of play, because a band change is only charged between");
             Console.WriteLine("engagements and a simultaneous wave only ever offers one");
             PrintWorldConfig(StandardBorderMetres, 1, 2);
             Console.WriteLine();
-            Console.WriteLine("                          Gun Mount (85 m,           Autocannon Mount");
-            Console.WriteLine("                          cannot reach high)         (280 m, reaches high)");
+            Console.WriteLine("                          Gun Mount (1,000 m,        Autocannon Mount");
+            Console.WriteLine("                          cannot reach high)         (3,360 m, reaches high)");
             Console.WriteLine("  attack                  quads lost   mount killed  quads lost   mount killed");
             Console.WriteLine("  " + new string('-', 78));
 
@@ -1035,10 +1180,10 @@ namespace KZ.Balance
         static bool RunSplitAssault(int low, int high, ulong seed, string mountDefName,
                                     int spacingTicks, out int quadsLost)
         {
-            World w = MakeRealisticWorld(2400, 1600, 512, 32, seed, 2, 0, StandardBorderMetres, 1, 2);
+            World w = MakeRealisticWorld(28800, 19200, 512, 32, seed, 2, 0, StandardBorderMetres, 1, 2);
             BuildAttackerRear(w);
 
-            EntityHandle gun = w.Spawn(Catalog.IdOf(mountDefName), 2, P(1650, 780));
+            EntityHandle gun = w.Spawn(Catalog.IdOf(mountDefName), 2, P(19800, 9360));
 
             int total = low + high;
             // Spread the high drones through the order rather than sending the
@@ -1047,7 +1192,7 @@ namespace KZ.Balance
             bool[] goesHigh = new bool[total];
             for (int k = 0; k < high; k++) goesHigh[(k * total) / high] = true;
 
-            List<Arrival> plan = PlanFlight(1, Catalog.IdOf("Multirole Quad"), F(1200), F(780), 12,
+            List<Arrival> plan = PlanFlight(1, Catalog.IdOf("Multirole Quad"), F(14400), F(9360), 144,
                                             gun, total, spacingTicks, 0);
             int next = 0;
             int lastLaunchTick = plan[plan.Count - 1].Tick;
@@ -1158,7 +1303,7 @@ namespace KZ.Balance
             Console.WriteLine();
             Console.WriteLine("DECOY ESCORT - about 2,500 Materiel of strike package against one battery");
             Console.WriteLine("heavy strike drone 800, decoy drone 130; the battery defends the radar");
-            Console.WriteLine("mast 100 m behind it, and the package is aimed at the mast (two warheads");
+            Console.WriteLine("mast 1,200 m behind it, and the package is aimed at the mast (two warheads");
             Console.WriteLine("on target destroy it)");
             Console.WriteLine("arrivals spaced 2 s apart, so the battery's belt and its cooldown both bind");
             PrintWorldConfig(StandardBorderMetres, 1, 2);
@@ -1221,7 +1366,7 @@ namespace KZ.Balance
         static bool RunDecoyStrike(int real, int decoys, ulong seed,
                                    out int through, out int decoysShot, out int rounds)
         {
-            World w = MakeRealisticWorld(2400, 1600, 512, 32, seed, 2, 0, StandardBorderMetres, 1, 2);
+            World w = MakeRealisticWorld(28800, 19200, 512, 32, seed, 2, 0, StandardBorderMetres, 1, 2);
             BuildAttackerRear(w);
 
             // A Radar Mast, not a Command Post. The post has 5,000 hit points and
@@ -1239,14 +1384,14 @@ namespace KZ.Balance
             // table returns to being a constant for a reason that has nothing to
             // do with decoys. That interaction is real and worth its own
             // experiment; it is a confound in this one.
-            GrantHomeImagery(w, 1, true, 2400);
+            GrantHomeImagery(w, 1, true, 28800);
 
-            EntityHandle post = w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(1750, 780));
-            EntityHandle battery = w.Spawn(Catalog.IdOf("Interceptor Battery"), 2, P(1650, 780));
+            EntityHandle post = w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(21000, 9360));
+            EntityHandle battery = w.Spawn(Catalog.IdOf("Interceptor Battery"), 2, P(19800, 9360));
 
-            List<Arrival> plan = PlanFlight(1, Catalog.IdOf("Heavy Strike Drone"), F(900), F(780), 30,
+            List<Arrival> plan = PlanFlight(1, Catalog.IdOf("Heavy Strike Drone"), F(10800), F(9360), 360,
                                             post, real, Sec(2), 0);
-            List<Arrival> escort = PlanFlight(1, Catalog.IdOf("Decoy Drone"), F(900), F(760), 22,
+            List<Arrival> escort = PlanFlight(1, Catalog.IdOf("Decoy Drone"), F(10800), F(9120), 264,
                                               post, decoys, Sec(2), real);
             // Interleave by tick so the escort flies with the package rather than
             // behind it; a decoy that arrives after the warheads is not an escort.
@@ -1343,8 +1488,8 @@ namespace KZ.Balance
         static void ApertureExperiment()
         {
             Console.WriteLine();
-            Console.WriteLine("APERTURE - the same 600 m camera, spread over different arcs");
-            PrintWorldConfig(1100, 1, 2);
+            Console.WriteLine("APERTURE - the same 7,200 m camera, spread over different arcs");
+            PrintWorldConfig(13200, 1, 2);
             Console.WriteLine();
             Console.WriteLine("  The law. Reach scales as the square root of how narrow the arc is;");
             Console.WriteLine("  this is the formula evaluated, not a fight, and it moves only when a");
@@ -1368,7 +1513,7 @@ namespace KZ.Balance
 
             Console.WriteLine();
             Console.WriteLine("  What it is worth. Four mounts differing only in their head, against");
-            Console.WriteLine("  three FPV Teams arriving one every 3 s from the west.");
+            Console.WriteLine("  three FPV Teams, one tap every 3 s of play, from the west.");
             Console.WriteLine();
             Console.WriteLine("  head                                         reach on axis   mount survives");
             Console.WriteLine("  " + new string('-', 76));
@@ -1413,7 +1558,7 @@ namespace KZ.Balance
             Console.WriteLine("  the cheap way to know something is out there and the useless way to");
             Console.WriteLine("  know where it is. It is also why the narrow heads below are not as");
             Console.WriteLine("  blind as their arc suggests: these mounts carry the Gun Mount's");
-            Console.WriteLine("  200 m array as well, and it does not care which way the camera is");
+            Console.WriteLine("  2,400 m array as well, and it does not care which way the camera is");
             Console.WriteLine("  pointed.");
             Console.WriteLine();
             Console.WriteLine("  Worth reading against the law above it: the 30-degree head sees three");
@@ -1435,16 +1580,16 @@ namespace KZ.Balance
         /// </summary>
         static Fix ApertureReach(int arcDegrees)
         {
-            World w = MakeRealisticWorld(2048, 2048, 64, 4, 1, 2, 0, 1100, 1, 2);
+            World w = MakeRealisticWorld(24576, 24576, 64, 4, 1, 2, 0, 13200, 1, 2);
 
-            EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(1000, 1000));
+            EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 12000));
             SensorSuite s = w.Entities.Sensor[gun.Index];
             s.DirectionalArcDegrees = arcDegrees;
             s.ScanDegreesPerSecond = 0;
             s.Facing = 0;
             w.Entities.Sensor[gun.Index] = s;
 
-            EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(1200, 1000));
+            EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(14400, 12000));
             w.Step();
             return w.DetectionRangeFor(gun.Index, drone.Index, SensorChannel.Optical);
         }
@@ -1452,10 +1597,10 @@ namespace KZ.Balance
         /// <summary>Optical reach of one spawned mount against a quadcopter to its west.</summary>
         static Fix ApertureMountReach(string mountDefName, bool aimWest)
         {
-            World w = MakeRealisticWorld(2048, 2048, 64, 4, 1, 2, 0, 1100, 1, 2);
-            EntityHandle gun = w.Spawn(Catalog.IdOf(mountDefName), 1, P(1000, 1000));
+            World w = MakeRealisticWorld(24576, 24576, 64, 4, 1, 2, 0, 13200, 1, 2);
+            EntityHandle gun = w.Spawn(Catalog.IdOf(mountDefName), 1, P(12000, 12000));
             if (aimWest) AimWest(w, gun);
-            EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(800, 1000));
+            EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(9600, 12000));
             w.Step();
             return w.DetectionRangeFor(gun.Index, drone.Index, SensorChannel.Optical);
         }
@@ -1479,11 +1624,11 @@ namespace KZ.Balance
             int survived = 0;
             for (int trial = 0; trial < trials; trial++)
             {
-                World w = MakeRealisticWorld(2400, 1600, 256, 32, (ulong)(trial + 1), 2, 0,
+                World w = MakeRealisticWorld(28800, 19200, 256, 32, (ulong)(trial + 1), 2, 0,
                     StandardBorderMetres, 1, 2);
                 int arrived;
                 if (!RunAssaultScenario(w, mountDefName,
-                        aimWest ? MountTweak.Aimed() : MountTweak.None, 3, F(1200), Sec(3), out arrived))
+                        aimWest ? MountTweak.Aimed() : MountTweak.None, 3, F(14400), Sec(3), out arrived))
                     survived++;
             }
             return survived * 100 / trials;
@@ -1494,7 +1639,7 @@ namespace KZ.Balance
         //
         // Every experiment in this file used to launch its whole flight on tick
         // zero. A mount therefore got exactly one engagement window per trial:
-        // it holds a track at about 70 m, lays on one drone, fires once, and the
+        // it holds a track at about 840 m, lays on one drone, fires once, and the
         // rest of the flight arrives together (FINDINGS 31). In one window a
         // five-round belt cannot bind, a second turret adds nothing it would not
         // have added in the same instant, and an attack split between two
@@ -1510,11 +1655,44 @@ namespace KZ.Balance
         // rather than being replaced. What was wrong is that it was the only
         // tactic any experiment could express.
         //
-        // The simulation has its own staggered-departure field
-        // (SortieState.EgressUntilTick, written by SortieSystem.Launch from the
-        // launchIndex every call below already passes) and nothing anywhere
-        // reads it - AUDIT-UNWIRED F19, still open, and not this harness's to
-        // fix. So spacing is done the one honest way available from outside the
+        // AUDIT-UNWIRED F19 is now closed and the two mechanisms compound, so
+        // what follows is what they add up to rather than a note that one of
+        // them is missing.
+        //
+        // SortieState.EgressUntilTick used to be written by SortieSystem.Launch
+        // from the launchIndex every call below already passes, and read by
+        // nothing. MovementSystem now holds an airframe on its pad until that
+        // tick elapses, so a launch carries a departure delay of
+        // SortiePadEgressBaseTicks + launchIndex * SortiePadEgressPerIndexTicks
+        // - 8 + 4i ticks, measured on a flight of eight: departures at ticks
+        // 8, 12, 16 ... 36 for a flight enqueued all on tick zero, and at
+        // 8, 108, 208 ... for one enqueued a hundred ticks - sorry, ninety-six
+        // ticks - apart.
+        //
+        // Two consequences, and they pull in opposite directions.
+        //
+        // The engine's spacing is NOT a substitute for the scheduling below, so
+        // the scheduling stays. Four ticks per airframe is half a real second.
+        // The Gun Mount's cooldown is 32 ticks (four real seconds) and its
+        // reload is twenty, so an eight-drone flight leaves the pad inside a
+        // single cooldown and the mount still gets one engagement window - which
+        // is the exact condition FINDINGS 31's amendment says makes the belt
+        // unreachable. It is pad de-confliction, which is what its own doc
+        // comment claims for it ("so a flight does not spawn stacked"), and it
+        // is about a twenty-fourth of the stagger the belt needs.
+        //
+        // But it is not nothing either, and it is no longer possible to express
+        // a genuinely simultaneous wave from out here. A flight of 24 - the top
+        // of SATURATION's ladder - is now spread over 92 ticks, which is nearly
+        // three of the mount's cooldowns. So "launched together" means "tapped
+        // together" from this session on, and the rows where it matters say so.
+        // It also inflates every deliberate spacing by four ticks per airframe:
+        // "one every 3 s" is one tap every 3 s of play and one departure every
+        // 3.1. That is left uncorrected on purpose - subtracting an engine
+        // constant from a player's tap schedule would model a player who taps
+        // faster to compensate for his own pad, and nobody does that.
+        //
+        // So spacing is still done the one honest way available from outside the
         // simulation: each launch command is enqueued on the tick it is meant to
         // be issued on, which is also exactly what a player tapping a card eight
         // times over eight seconds produces.
@@ -1522,8 +1700,12 @@ namespace KZ.Balance
 
         /// <summary>
         /// A flight of <paramref name="count"/> airframes leaving the same pad
-        /// area, one every <paramref name="spacingTicks"/> ticks. Spacing zero is
-        /// the old simultaneous wave.
+        /// area, one tap every <paramref name="spacingTicks"/> ticks - the pad
+        /// itself then adds four ticks per airframe on top (see above), so this
+        /// is the interval between orders and not quite the interval between
+        /// departures. Spacing zero is the simultaneous wave, which since pad
+        /// egress was wired is a wave only in the sense that one tap produces
+        /// it.
         /// </summary>
         static List<Arrival> PlanFlight(byte team, int defId, Fix padX, Fix padY, int spreadY,
                                         EntityHandle target, int count, int spacingTicks,
@@ -1577,10 +1759,10 @@ namespace KZ.Balance
         static void BuildAttackerRear(World w)
         {
             w.Player(1).Materiel = Fix.FromInt(200000);
-            w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
-            for (int q = 0; q < 6; q++) w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(300 + q * 40, 900));
-            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1000, 780));
-            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1450, 1150));
+            w.Spawn(Catalog.IdOf("Command Post"), 1, P(4800, 9360));
+            for (int q = 0; q < 6; q++) w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(3600 + q * 480, 10800));
+            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(12000, 9360));
+            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(17400, 13800));
         }
 
         // ------------------------------------------------------------------
@@ -1599,7 +1781,7 @@ namespace KZ.Balance
         /// </summary>
         static bool RunAssault(int droneCount, Fix padX, ulong seed, out int arrived, int startTick)
         {
-            World w = MakeRealisticWorld(2400, 1600, 256, 32, seed, 2, startTick,
+            World w = MakeRealisticWorld(28800, 19200, 256, 32, seed, 2, startTick,
                 StandardBorderMetres, 1, 2);
             return RunAssaultScenario(w, "Gun Mount", null, droneCount, padX, out arrived);
         }
@@ -1613,9 +1795,9 @@ namespace KZ.Balance
         /// </summary>
         static bool RunRangeSweep(int droneCount, ulong seed, out int arrived, MountTweak tweak)
         {
-            World w = MakeRealisticWorld(2400, 1600, 256, 32, seed, 2, 0,
+            World w = MakeRealisticWorld(28800, 19200, 256, 32, seed, 2, 0,
                 StandardBorderMetres, 1, 2);
-            return RunAssaultScenario(w, "Test Long Mount", tweak, droneCount, F(1200),
+            return RunAssaultScenario(w, "Test Long Mount", tweak, droneCount, F(14400),
                                       Sec(3), out arrived);
         }
 
@@ -1665,29 +1847,29 @@ namespace KZ.Balance
                                        int droneCount, Fix padX, int spacingTicks, out int arrived)
         {
             w.Player(1).Materiel = Fix.FromInt(100000);
-            w.Spawn(Catalog.IdOf("Command Post"), 1, P(400, 780));
+            w.Spawn(Catalog.IdOf("Command Post"), 1, P(4800, 9360));
             // Enough crews that the experiment measures the gun, not the crew cap.
-            for (int q = 0; q < 6; q++) w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(300 + q * 40, 900));
-            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1000, 780));
+            for (int q = 0; q < 6; q++) w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(3600 + q * 480, 10800));
+            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(12000, 9360));
             // Far enough back that the experiment measures the gun against
             // drones, and not the gun against a relay mast.
-            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(1450, 1150));
+            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(17400, 13800));
 
-            EntityHandle gun = w.Spawn(Catalog.IdOf(gunDefName), 2, P(1650, 780));
+            EntityHandle gun = w.Spawn(Catalog.IdOf(gunDefName), 2, P(19800, 9360));
             if (tweak.WeaponRange.HasValue)
                 w.Entities.Weapon[gun.Index].RangeMetres = tweak.WeaponRange.Value;
             if (tweak.Optical.HasValue)
                 w.Entities.Sensor[gun.Index].Optical = tweak.Optical.Value;
             if (tweak.AimSensorWest) AimWest(w, gun);
 
-            List<Arrival> plan = PlanFlight(1, Catalog.IdOf("FPV Team"), padX, F(780), 14,
+            List<Arrival> plan = PlanFlight(1, Catalog.IdOf("FPV Team"), padX, F(9360), 168,
                                             gun, droneCount, spacingTicks, 0);
             int next = 0;
             int lastLaunchTick = plan[plan.Count - 1].Tick;
 
             bool[] struck = new bool[w.Entities.Capacity];
             int reached = 0;
-            Fix strikeRange = Catalog.Get(Catalog.IdOf("FPV Team")).WeaponRangeMetres + F(4);
+            Fix strikeRange = Catalog.Get(Catalog.IdOf("FPV Team")).WeaponRangeMetres + F(48);
 
             for (int tick = 0; tick < 200 * SimConstants.TicksPerSecond; tick++)
             {
