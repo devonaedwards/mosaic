@@ -275,17 +275,6 @@ namespace KZ.Sim
         public static readonly Fix InterceptLeadOpticalTrack = Fix.FromDoubleContentOnly(0.55);
 
         /// <summary>
-        /// How much of the lead a track could not resolve that a pair of
-        /// interceptors straddles. Designer estimate: no source prices bracketing,
-        /// and the point of it being under one is that two airframes cover the
-        /// error rather than guaranteeing one of them sits exactly on the truth.
-        /// A radar track leaves no residual, so a bracket over one buys nothing -
-        /// which is the correct answer and is why this is a fraction of the
-        /// residual rather than a fixed offset.
-        /// </summary>
-        public static readonly Fix InterceptBracketSpread = Fix.FromDoubleContentOnly(0.60);
-
-        /// <summary>
         /// The longest flight time an intercept solution is computed over. Beyond
         /// this the extrapolation is fantasy - a target twenty seconds out will have
         /// manoeuvred - and the solution is recomputed every tick anyway, so the cap

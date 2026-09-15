@@ -107,9 +107,22 @@ namespace KZ.Sim
                     // Gated on HasLeftHome so that a munition ordered at a point
                     // inside its own pad's landing ring is not destroyed on the
                     // tick its egress hold expires, before it has flown anywhere.
+                    //
+                    // And gated on the seeker being laid on nothing, which is the
+                    // one that took measuring. A munition arrives with its warhead
+                    // pointed at something or it does not, and CombatSystem has
+                    // already answered that: a target inside the 96 m weapon
+                    // envelope is in Acquiring or CommittedTarget several ticks
+                    // before the 24 m arrival ring. The first version of this
+                    // expended on arrival flat, which destroyed every raiding
+                    // airframe one tick into a fifteen-tick acquisition and turned a
+                    // strike that should have taken a relay mast off the map into a
+                    // warhead in an empty field - the exact failure the log already
+                    // had a line for.
                     if (w.Entities.Has(i, ComponentMask.Sortie)
                         && w.Entities.Sortie[i].OneWay
-                        && w.Entities.Sortie[i].HasLeftHome)
+                        && w.Entities.Sortie[i].HasLeftHome
+                        && !StillHunting(w, i))
                         w.Kill(w.Entities.HandleAt(i), EntityHandle.None);
                 }
                 return;
@@ -152,6 +165,19 @@ namespace KZ.Sim
             w.Entities.Position[i] = next;
             w.Entities.Velocity[i] = velocity;
             w.Entities.Mover[i] = mover;
+        }
+
+        /// <summary>
+        /// Whether this airframe's own seeker currently has something. Read off the
+        /// weapon rather than re-scanned here, because CombatSystem's answer is the
+        /// one that decides whether a shot happens and two answers that could
+        /// disagree would be worse than one.
+        /// </summary>
+        static bool StillHunting(World w, int i)
+        {
+            if (!w.Entities.Has(i, ComponentMask.Weapon)) return false;
+            WeaponState wp = w.Entities.Weapon[i];
+            return w.Entities.IsAlive(wp.Acquiring) || w.Entities.IsAlive(wp.CommittedTarget);
         }
 
         /// <summary>
@@ -220,50 +246,30 @@ namespace KZ.Sim
                 default: return targetPos;
             }
 
-            Fix2 aim = targetPos + fullLead * flown;
-
-            // Two airframes on one track are not two rolls of the same dice. They
-            // straddle the part of the lead the track could not resolve, which is
-            // how a pair of optically-cued interceptors buys back most of what a
-            // radar would have given one of them - and why the answer to a fast
-            // inbound is a second crew, not a second belt of ammunition. Ordinal by
-            // entity index so that two machines bracket the same way round; a lone
-            // interceptor gets ordinal 0 of 1 and no offset at all.
-            int ordinal, flight;
-            CoIntercept(w, i, target, out ordinal, out flight);
-            if (flight > 1)
-            {
-                Fix2 residual = fullLead * (Fix.One - flown) * SimConstants.InterceptBracketSpread;
-                // -1 at the near end of the bracket, +1 at the far end.
-                Fix across = Fix.FromInt(2 * ordinal) / Fix.FromInt(flight - 1) - Fix.One;
-                aim = aim + residual * across;
-            }
-
-            return aim;
-        }
-
-        /// <summary>
-        /// This interceptor's place in the flight vectored onto one target: how many
-        /// friendly interceptors currently hold it as their order target, and which
-        /// of them this one is by index. Both are pure functions of the entity table
-        /// so neither needs storing or hashing.
-        /// </summary>
-        static void CoIntercept(World w, int i, EntityHandle target, out int ordinal, out int flight)
-        {
-            ordinal = 0;
-            flight = 0;
-            byte team = w.Entities.Team[i];
-            for (int j = 1; j < w.Entities.HighWater; j++)
-            {
-                if (!w.Entities.IsSlotAlive(j)) continue;
-                if (w.Entities.Team[j] != team) continue;
-                if (!w.Entities.Has(j, ComponentMask.Weapon)) continue;
-                if (!w.Entities.Weapon[j].IsInterceptor) continue;
-                if (!w.Entities.Has(j, ComponentMask.Mover)) continue;
-                if (w.Entities.Mover[j].OrderTarget != target) continue;
-                if (j < i) ordinal++;
-                flight++;
-            }
+            // Deliberately no bracketing term, and this is worth stating because it
+            // is the obvious next thing and the obvious version of it would be
+            // wrong. A second interceptor is not a second sample of a noisy
+            // estimate, to be spread over a variance radius; the meeting point is
+            // uncertain because the target is somebody making choices - it dives, it
+            // breaks, it flies a line chosen in anticipation of exactly this - and a
+            // pair of interceptors is worth buying because it covers two of those
+            // branches, not because it covers a blob.
+            //
+            // This game has no evasion, so its targets have no branches, so a second
+            // interceptor here is honestly worth one more terminal roll and nothing
+            // else. Building a spread and calling it bracketing would have measured
+            // as an improvement and meant nothing. The pieces for the real version
+            // are all present and are recorded rather than guessed at: Autonomy
+            // Classifier.IsPilotedOnLiveFeed already separates the airframes that
+            // could break - a person is watching the feed and can see the
+            // interceptor coming - from the autonomous ones that cannot, and the
+            // catalogue already prices how many branches an airframe has, with the
+            // Jet Strike Drone turning at 22 degrees a second against an FPV's 180.
+            // Fast means few options, each displacing the meeting point a long way;
+            // nimble means many, each displacing it a little. When that exists,
+            // interceptors should be spread across branches and the second crew
+            // should buy a cut-off, not a re-roll.
+            return targetPos + fullLead * flown;
         }
 
         /// <summary>

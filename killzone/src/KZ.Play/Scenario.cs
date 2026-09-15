@@ -131,6 +131,27 @@ namespace KZ.Play
             // The defence, in three belts. The jammer and the tank sit shallow,
             // inside fiber's reach and inside the relay's radio range. The
             // command post sits deep, behind the power line and outside both.
+            // The defender's own relay, and the reason it can hit anything.
+            //
+            // Without it the defence had a launch pad 25 km back and no radio past
+            // 12 km, so every airframe it sent west went black halfway and finished
+            // on a remembered coordinate - and the only thing it could send that did
+            // not care about a link was autonomous, which is worse: team 2 holds
+            // reference imagery only east of the border, so an autonomous munition
+            // over the player's ground has no scene-matching lock, accumulates
+            // navigation error, and NavMissedAimpoint fires instead of a warhead
+            // every time. Measured: sixteen defender sorties in seven minutes, three
+            // explicit misses on empty ground, and not one hit point taken off
+            // anything the player owns.
+            //
+            // So this mast is what makes the opposition able to hurt you, and it is
+            // placed where killing it is worth doing: 12 km of radio from here
+            // covers the player's pad, relay and forward teams and stops dead short
+            // of the command post and the crew quarters. The defence can take the
+            // player's forward half apart and cannot touch the rear, which is the
+            // same three-rung ladder the scenario already teaches going east, now
+            // running both ways.
+            w.Spawn(Catalog.IdOf("Relay Mast"), 2, P(19200, 9360));
             w.Spawn(Catalog.IdOf("EW Post"), 2, P(18000, 9200));
             w.Spawn(Catalog.IdOf("Main Tank"), 2, P(16800, 9600));
             w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(19000, 8400));
