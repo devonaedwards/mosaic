@@ -13,7 +13,6 @@
 # about lines that no longer match anything, so the ledger only goes down.
 # Regenerate with: python3 tools/check_dead_symbols.py --update-baseline
 
-sim-event       SimEventKind.SalvageCollected
 sim-event       SimEventKind.TetherFound
 component-flag  ComponentMask.Producer
 component-flag  ComponentMask.Tethered
@@ -41,7 +40,6 @@ unitdef-single  UnitDef.MinesCarried
 unitdef-single  UnitDef.NightOnly
 unitdef-single  UnitDef.SensorAcoustic
 unitdef-single  UnitDef.SpoolLengthMetres
-test-only       AutonomyClassifier.IsPilotedWithClearFeed
 test-only       CrewPool.SetHomeQuarters
 test-only       DetRandom.ChancePercent
 test-only       EventRing.CountOf
@@ -71,7 +69,6 @@ write-only      MoverState.RadiusClass
 write-only      SalvageState.CreatedTick
 write-only      SimEvent.A
 write-only      SimEvent.B
-write-only      SortieState.EgressUntilTick
 write-only      SortieState.SpawnTick
 write-only      Tether.Anchor
 write-only      TetherNode.Tile
@@ -86,7 +83,6 @@ sim-public      MeshGraph.MaxNeighbourCandidates
 sim-public      SignalGrid.EmitterCount
 sim-public      SignalGrid.GetEmitter
 sim-public      SignalGrid.JamAtCell
-sim-public      SortieSystem.Recover
 sim-public      Terrain.BlocksGroundSight
 sim-public      TetherSystem.LiveCount
 sim-public      Trig.BamPerEntry
