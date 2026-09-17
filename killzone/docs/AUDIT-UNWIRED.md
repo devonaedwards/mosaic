@@ -286,6 +286,36 @@ features.
   "free design value sitting in the physics" does not exist, because there is no
   off switch and nothing to hide from.
 
+### Two of the three are WIRED; the log-power conversion is not, and is the one that is blocked
+
+**Done.** `CommandKind.SetEmitting` exists, is ownership-checked like the two
+upgrade orders, and `EmitterState.Active` is in `StateHash()`. The emitter
+component is granted off a new `UnitDef.EmitsWhileActive` rather than off
+`JamStrength`, so the Radar Mast has one — it takes the existing
+`SignatureWhileEmitting` default of 85 in place of its static 25, and it can be
+told to stop. A radar that has been told to stop cannot detect on its radar
+channel (`World.IsRadiating`, read by `DetectionRangeFor` and `ComputeDetection`)
+and therefore cannot hand an interceptor a `TrackQuality.Radar` solution, while
+every passive channel it owns is untouched. Measured in FINDINGS 37.
+
+**Deliberately not done: the log-power conversion of the radio column.** It means
+re-deriving every radio value in the catalogue and it is blocked on research
+queue brief M, which has not run. So the 85 the Radar Mast now takes is worth
+1.84× ESM reach against it under the √ law rather than the order of magnitude
+`radar-rf.md` §3.6 asks for, and measured against the scenario it changed nothing
+at all. **The signature magnitudes were not touched**, and this entry stays open
+for that reason.
+
+**Also not done, deliberately: `JamEmitter.Team` is still not read by the
+simulation.** This entry did not name it, but the obvious reading of "the jammer
+sits on its owner's launch corridor" is to exempt your own side. Jamming is kept
+fully team-blind; emission control is the mitigation instead, because a reduced
+own-side coefficient is a number nothing measures and brief M question 4 is what
+would give us one. One correction to the record while it is open: the field is
+not unread. `KZ.Play/Snapshot.cs:185` reads it, to decide whether a jamming dome
+is drawn at all and whether it is labelled as the viewer's own. It is unread *by
+the simulation*, which is the part that matters and the part that stays true.
+
 ## F9. An ESM bearing is treated as a firing solution
 
 - **Research:** `radar-rf.md` finding 8 and §4 — *"Passive RF gives you a

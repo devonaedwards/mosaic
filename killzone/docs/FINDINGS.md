@@ -1912,6 +1912,20 @@ is *fun* still wants a human at a keyboard.
    first thing on the objective list is also the thing protecting you. It is either
    the best thing in the build or it reads as the opposition being broken, and that
    is a judgement a play-test makes, not a measurement.
+
+   **Amended — answered in finding 37, and not the way this entry expected.** The
+   judgement it was waiting for turned out not to be needed: the defence was never
+   supposed to be standing in its own bubble with no way out of it. It has an off
+   switch now, jamming stays team-blind, and the same thirty-four sorties for zero
+   hit points became seventeen for seven hundred and seventeen. The sentence above
+   about the objective list still holds and is now a schedule rather than a trap:
+   the jammer protects the defence for forty play-seconds in every eighty, and the
+   window it opens for itself is the same window the player's own radio flies in.
+
+   It is worth keeping this entry's framing because it was right about the shape
+   and wrong about the remedy. "Either the best thing in the build or the
+   opposition being broken" assumed the choice was to tune the jammer or leave it.
+   There was a third option and it was an order that did not exist yet.
 3. **Autonomous deep strikes always miss.** Team 2 holds reference imagery only
    east of the border, so anything autonomous over the player's ground has no
    scene-matching lock and `NavMissedAimpoint` fires every time. The entire
@@ -1934,3 +1948,165 @@ in prose. Generation 14 is recorded.
 The cost of settling it was one worktree and four minutes. The cost of not settling
 it would have been an amendment to a correct finding, which is the failure mode
 item 30 is named after: **the error looks like a fix.**
+
+## 37. Emission control: the off switch, and the price of not having one
+
+KILL ZONE is a video game. Everything below is measured inside a fictional
+simulation against fictional factions; the numbers are the game's, not anyone's.
+
+FINDINGS 36 closed with three things still wrong and undressed. The second was
+this: *"with the jammer alive, the defence hits nothing. Thirty-four sorties, zero
+hit points taken off the player."* Its own EW Post at x=18,000 throws a 5,400 m
+bubble and its forward pad at x=19,800 sits 1,800 m inside it, so every raid it
+flew went black off the pad and finished on a remembered coordinate.
+
+The underlying gap is one line wide. `JamEmitter` carries a `Team` field and
+`SignalGrid.SampleFor` takes no team, so a bubble denies everybody standing in it.
+
+### The obvious fix was declined, and the reason is the whole entry
+
+Reading the `Team` field and exempting your own side is one line. So is a reduced
+own-side penalty. Both were declined.
+
+Electronic fratricide is a real phenomenon and a reduced-penalty coefficient is a
+number nothing in this repository measures — research queue brief M, question 4,
+is the brief that would give us one, and it has not run. So jamming stays fully
+team-blind and **the mitigation is emission control**: the cost of a jammer is
+paid in a decision about when to radiate rather than in a coefficient with a story
+attached. `EmitterState.Active`'s own doc comment has claimed since it was written
+that *"switching off is a real option"*, and until now the only thing in the entire
+repository that could take it was one line of `SimTests.cs`.
+
+That is the same declination as FINDINGS 36's bracketing model, for the same
+stated reason, and it is worth having the pair on the record: **the second
+coefficient is the one to refuse.**
+
+### What it is worth, measured
+
+Same scenario, same seed, ten play-minutes, nobody at the keyboard.
+
+| | before | after |
+|---|---|---|
+| defender sorties | 34 | 17 |
+| of which finished on a drifted coordinate | **34** | 11 |
+| hit points taken off the player | **0** | **717** |
+| things of the player's destroyed | 0 | 1 |
+
+Six of seventeen connect where none of thirty-four did. The defence flies half as
+many sorties and stops being a fireworks display.
+
+**Read each of those as one sample rather than a mean, and know why it can be.**
+Three seeds — 20260917, 11111, 22222 — give *identical* counts on both sides of
+the change, to the hit point, while their state hashes differ. The randomness is
+live and simply does not reach these outcomes: in a passive match nobody rolls
+for anything that decides them. So the comparison is clean and it is also narrow,
+and a player doing things would move it.
+
+### The half that is the player's, and it is the larger number
+
+The same bubble is across the player's approach too, and the window is theirs to
+use. The player's raid, flown by the probe rather than by a person — one FPV Team
+at the defence's forward tank every ten play-seconds, from the relay mast:
+
+| | jammer always on | with emission control |
+|---|---|---|
+| sorties flown | 59 | 22 |
+| hit points taken off the defence | **0** | **2,251** |
+| its own links going black | 55 | 14 |
+| finishing on a drifted coordinate | 11 | 2 |
+
+Fifty-nine sorties for nothing, against a tank killed in twenty-two — the raid
+stops at twenty-two because there is nothing left to aim at. **The thing that was
+defeating the player's shallow strike was the defence's jammer being switched on,
+and the thing that beats it is the defence switching it off.** That is the design
+thesis arriving as a schedule the player can read off the log and plan against,
+which is what `SimEventKind.EmissionsChanged` is for.
+
+### A radar that is switched off cannot see
+
+The half that needed no new numbers. An emitter with `Active` false is dark on the
+**radar** channel only — `World.IsRadiating`, read by `DetectionRangeFor` and by
+`ComputeDetection` — and keeps every passive channel it owns.
+
+Twenty trials, a 140 m/s jet crossing, an Interceptor FPV launched off a pad
+1,500 m off the target's track, the player's Radar Mast the only thing holding it:
+
+| | intercepted |
+|---|---|
+| radar radiating | **8/20** |
+| radar switched off by order | **0/20** |
+
+`TrackQualityOf` reads `Radar` → `None` → `Radar` across the order and back, while
+`IsDetectedBy` stays true throughout: the mast still hears the contact on its ESM,
+it just cannot measure its velocity any more, so the interceptor flies pure
+pursuit against a 140 m/s target at 85 m/s and never closes.
+
+That is the same shape as FINDINGS 36's 7/20-with-radar against 3/20-without, and
+the gap is wider here for a stated reason rather than a mysterious one: 36 killed
+the mast, which left the player an optical track worth 0.55 of the lead. Switching
+it off leaves **no** track — the Radar Mast carries no optics — so the lead
+fraction is 0.00. Killing the radar and silencing it are not the same event, and
+the difference is legible in the number.
+
+### Pressure did not go away, but the pressure *metric* moved, and it is worth saying which
+
+FINDINGS 36 recorded 97% of five-second samples with an enemy airframe in sight
+and a longest empty stretch of five seconds. The same measurement now:
+
+| | before | after |
+|---|---|---|
+| samples with an enemy airframe **in sight** | 117/120 (97%) | 112/120 (93%) |
+| samples with an enemy airframe **airborne at all** | 120/120 | 120/120 |
+| longest stretch with nothing in sight | 5 s | 15 s |
+
+So this is a small regression on 36's stated number and not a regression in the
+thing 36's number was measuring. The sky is never empty in either run; the raid
+now arrives in bursts of five rather than as a continuous drip, and the gaps
+between bursts are where the five samples went. Against FINDINGS 35's original
+complaint — ninety seconds of nothing — fifteen is not the same problem wearing a
+hat. It is recorded rather than tuned away because tuning the cycle to recover
+four percentage points would be fitting the doctrine to the instrument.
+
+### Two things that came out of probing and would not have come out of reading
+
+**The brief for this work said `JamEmitter.Team` is never read. It is.**
+`KZ.Play/Snapshot.cs:185` reads it, to decide whether a jamming dome is drawn at
+all and whether it is labelled as the viewer's own. The substantive claim — that
+nothing in the *simulation* reads it — survives, and the interface was quietly
+depending on a field the audit had written off. Cost of checking: one grep.
+
+**The defence's reconnaissance flies off the same pad, inside the same bubble.**
+Six cycle lengths were measured before one was chosen, and the two built on a
+60-second cycle — one with a 40-second quiet period and one with 30 — produced
+*zero* damage and only seven or eight sorties, worse than doing nothing. The cause
+is not the raid. It is that the Recon Wing launches on its own 45-second clock,
+and when that clock lands while the post is radiating the scout goes black off the
+pad, the defence sees nothing, and there is nothing for the raid to be launched
+at. Everything the defence does downstream of its own eyes is gated by its own
+jammer, which is the same finding as the headline arriving one level up.
+
+Gating the scout's launch on the quiet window as well was tried and **reverted**:
+at the chosen 80/40/20 cycle it produces a bit-identical state hash, so it is a
+branch that never fires, which is the failure item 30 is named after. The
+coupling is recorded here instead, where anyone changing those three numbers will
+find it.
+
+### What was deliberately not done
+
+The radio signature column is **not** converted to log power. AUDIT F8 asks for it
+and it is correct and it is blocked on brief M, because it means re-deriving every
+radio value in the catalogue. So one consequence of the decoupling should be read
+with that in mind: the Radar Mast now takes the existing `SignatureWhileEmitting`
+default of 85 in place of its static 25, which under the √ law is 1.84× ESM reach
+against it — and measured against the scenario, with everything else held, it
+changed **nothing**: 34 sorties, 0 hit points, 117/120 samples, identical to the
+digit. Only the state hash moved. The boost is arithmetically real and tactically
+nothing, which is brief M's own argument, now with a measurement under it.
+
+### FINDINGS 36 is amended, not replaced
+
+Item 36's third open problem — autonomous deep strikes always missing, because
+team 2 holds imagery only east of the border — is untouched and still open. Its
+second is answered: the answer was not to tune the jammer down, and it was not to
+move the pad. It was to give the defence the decision it was always supposed to
+have and let the bubble keep hurting whoever is standing in it.
