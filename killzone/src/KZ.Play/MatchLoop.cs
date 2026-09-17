@@ -326,6 +326,22 @@ namespace KZ.Play
                 case SimEventKind.MinesLaid: return "mines laid";
                 case SimEventKind.MineDetonated: return "a mine went off";
                 case SimEventKind.SalvageCollected: return "salvage recovered";
+                // Emission control, from both sides of the map. Theirs is the
+                // window the player is waiting for; ours is the price of the
+                // one the player just opened. Visible() already decides whether
+                // the player would know - an enemy mast going quiet only
+                // reaches this log while the player is holding it as a contact,
+                // which is the same rule the jamming dome is drawn by.
+                case SimEventKind.EmissionsChanged:
+                {
+                    string what = world.Entities.IsAlive(e.A)
+                                ? NameOf(world.Entities.DefId[e.A.Index]) : "an emitter";
+                    if (e.Team == Scenario.PlayerTeam)
+                        return e.Param != 0 ? "our " + what + " is transmitting again"
+                                            : "our " + what + " has gone quiet";
+                    return e.Param != 0 ? what + " is transmitting"
+                                        : what + " has stopped transmitting";
+                }
                 default: return null;
             }
         }

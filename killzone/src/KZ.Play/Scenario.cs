@@ -58,6 +58,34 @@ namespace KZ.Play
         public const int DefenderPadX = 19800;
 
         /// <summary>
+        /// The defence's emission-control cycle, in play-seconds, and the whole
+        /// of its doctrine about its own jammer.
+        ///
+        /// The EW Post at x=18,000 throws a 5,400 m bubble and the pad at
+        /// x=19,800 is 1,800 m inside it. Jamming is team-blind - see
+        /// Command.SetEmitting for why that is kept rather than fixed - so
+        /// every raid the defence flew went black off the pad and finished on a
+        /// remembered coordinate: thirty-four sorties for zero hit points,
+        /// FINDINGS 36. The answer is not a coefficient, it is a decision about
+        /// when to radiate, and this is the defence making it.
+        ///
+        /// Three numbers, all designer estimates and none of them tuned: they
+        /// are geometry read off the map. An FPV Team at 33 m/s needs about
+        /// 4,800 m to get clear of the effective bubble - the jam falls below
+        /// its robustness of 40 at roughly 3,000 m from the post - which is
+        /// about thirty-six play-seconds. So the quiet period is forty and the
+        /// raid goes out in the first twenty of it, leaving the last flight of
+        /// the window the time it needs to get out from under its own side.
+        /// The radiating period is the same forty, because a square wave is
+        /// something a player can read off the log and count on, and an
+        /// opposition whose posture cannot be predicted cannot be played
+        /// against.
+        /// </summary>
+        const int EmissionCyclePlaySeconds = 80;
+        const int EmissionQuietPlaySeconds = 40;
+        const int EmissionLaunchWindowPlaySeconds = 20;
+
+        /// <summary>
         /// What the player can put in the air. A subset of the catalogue rather
         /// than all of it, because a hangar bar is a row of cards and the
         /// interface spec's one-second rule does not survive forty of them.
@@ -227,6 +255,32 @@ namespace KZ.Play
                     w.Enqueue(Command.FitThermalBlanket(2, truck));
             }
 
+            // Emission control, and the reason the defence can hit anything at
+            // all. The post radiates for the first part of every cycle and goes
+            // quiet for the last part; the raid below flies in the quiet.
+            //
+            // It is issued on the two transition ticks rather than restated
+            // every tick, so the command log a replay is made of stays a record
+            // of decisions rather than of a clock. World.SetEmitting would
+            // swallow the repeats anyway.
+            //
+            // What the player gets out of it is the other half of the mechanic:
+            // for forty play-seconds in every eighty their own radio-linked
+            // drones can cross the same ground, and the log says when. The
+            // window is the defence's cost, paid where the cost is real.
+            int emissionPhase = tick % SimConstants.PlaySeconds(EmissionCyclePlaySeconds);
+            int quietFrom = SimConstants.PlaySeconds(
+                EmissionCyclePlaySeconds - EmissionQuietPlaySeconds);
+            if (emissionPhase == 0 || emissionPhase == quietFrom)
+            {
+                EntityHandle post = FindFirst(w, 2, "EW Post");
+                if (!post.IsNone)
+                    w.Enqueue(Command.SetEmitting(2, post, emissionPhase == 0));
+            }
+            bool quiet = emissionPhase >= quietFrom;
+            bool inLaunchWindow = quiet
+                && emissionPhase - quietFrom < SimConstants.PlaySeconds(EmissionLaunchWindowPlaySeconds);
+
             // The defender buys its own information, and this is the order that
             // turns it from a target range into an opponent.
             //
@@ -282,7 +336,7 @@ namespace KZ.Play
             // The launch index rotates 0-3 rather than carrying the tick: it is
             // spacing within a flight, worth at most a dozen ticks, and it is not a
             // clock.
-            if (tick > 0 && tick % SimConstants.PlaySeconds(4) == 0)
+            if (tick > 0 && tick % SimConstants.PlaySeconds(4) == 0 && inLaunchWindow)
             {
                 EntityHandle prey = NearestSeen(w, 2, P(25200, 9360));
                 if (!prey.IsNone)
