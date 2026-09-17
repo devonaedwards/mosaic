@@ -41,8 +41,11 @@ var CHANNEL_LETTER = { Optical: 'O', Thermal: 'T', Acoustic: 'A', Radar: 'R', Es
 // to know before deciding whether an interceptor is worth launching at it. A
 // radar track measures the target's velocity and buys a computed meeting point;
 // an optical one is inferred from image scale and sends the interceptor short.
-var TRACK_MARK = { Radar: '◎', Optical: '○', None: '·' };
-var TRACK_COLOUR = { Radar: '#46d17a', Optical: '#ffb02e', None: '#8a8f94' };
+// A bearing is one listener hearing a transmitter: a direction with no range on
+// it, which nothing on this side is allowed to shoot at and which is drawn as an
+// arc rather than a ring because that is honestly all of it that is known.
+var TRACK_MARK = { Radar: '◎', Optical: '○', Bearing: '⌒', None: '·' };
+var TRACK_COLOUR = { Radar: '#46d17a', Optical: '#ffb02e', Bearing: '#6f8fd0', None: '#8a8f94' };
 
 // Anything of theirs that is off the ground and not a structure. This is the
 // only category of contact that needs answering inside the next ninety seconds,
