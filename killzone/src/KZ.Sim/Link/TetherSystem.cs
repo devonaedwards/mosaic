@@ -35,7 +35,6 @@ namespace KZ.Sim
         {
             public TetherState State;
             public EntityHandle Drone;
-            public EntityHandle Anchor;
             public Fix2 AnchorPosition;
             public Fix Spooled;
             public Fix SpoolMax;
@@ -45,6 +44,15 @@ namespace KZ.Sim
             public int CutTick;
             public int RoundRobinCursor;
             public byte Team;
+
+            /// <summary>
+            /// Which teams have already walked over this thread, one bit each.
+            /// A filament is found once and stays found: without this the same
+            /// vehicle sitting on the same line raises the same event four times
+            /// a second for as long as it is parked there, which is a log full of
+            /// one discovery rather than a discovery.
+            /// </summary>
+            public byte FoundByTeams;
         }
 
         readonly Tether[] tethers;
@@ -74,7 +82,7 @@ namespace KZ.Sim
         }
 
         /// <summary>Spool out a new thread from an anchor. Returns -1 if none are free.</summary>
-        public int Create(EntityHandle drone, EntityHandle anchor, Fix2 anchorPos, Fix spoolMax, byte team, int tick)
+        public int Create(EntityHandle drone, Fix2 anchorPos, Fix spoolMax, byte team, int tick)
         {
             for (int i = 0; i < tethers.Length; i++)
             {
@@ -83,7 +91,6 @@ namespace KZ.Sim
 
                 t.State = TetherState.Live;
                 t.Drone = drone;
-                t.Anchor = anchor;
                 t.AnchorPosition = anchorPos;
                 t.Spooled = Fix.Zero;
                 t.SpoolMax = spoolMax;
@@ -95,6 +102,7 @@ namespace KZ.Sim
                 t.CutTick = 0;
                 t.RoundRobinCursor = 0;
                 t.Team = team;
+                t.FoundByTeams = 0;
                 return i;
             }
             return -1;

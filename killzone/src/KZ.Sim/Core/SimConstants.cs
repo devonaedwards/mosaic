@@ -223,6 +223,46 @@ namespace KZ.Sim
         /// <summary>Each tether checks its newest segment plus one older one per tick.</summary>
         public const int TetherSegmentsPerTick = 2;
 
+        /// <summary>
+        /// How close a ground unit has to pass to a filament to find it, real
+        /// metres. No research document gives a figure - a designer estimate,
+        /// anchored on docs/spec-technical.md §4.4's "within 24 m of a live
+        /// segment", which is written on the map-metre scale that document was
+        /// authored at and scales by twelve exactly as TetherNodeSpacingMetres
+        /// above does (12 -> 144). It is a thread on the ground, so the number is
+        /// really "how wide is the strip a crew searches", not how far a sensor
+        /// reaches, and at 288 m a vehicle driving a lane finds a thread laid
+        /// across it and one laid a quarter-kilometre away stays lost.
+        /// </summary>
+        public static readonly Fix TetherDiscoveryRangeMetres = Fix.FromInt(288);
+
+        /// <summary>
+        /// How often the search runs, in ticks. Once a play-second, which is the
+        /// dwell spec-technical.md §4.4 asks for expressed as a scan rate rather
+        /// than as a per-pair timer: a vehicle that is still there next scan is
+        /// the same thing as one that stayed a second, and it costs one byte per
+        /// thread instead of one per thread per finder. Nothing that can find a
+        /// thread covers more than about eighty metres between scans against a
+        /// 288 m strip, so the sampling cannot step over a filament. Per-tick it
+        /// cost about seven percent of the tick budget; this is the same mechanic
+        /// at a quarter of that.
+        /// </summary>
+        public const int TetherDiscoveryInterval = 32;
+
+        /// <summary>
+        /// How far around the launch point a found thread gives its finder a
+        /// bearing-grade contact, real metres. spec-technical.md §4.4's 90 m disc
+        /// on the same twelve-to-one scale as the discovery range above.
+        /// </summary>
+        public static readonly Fix TetherFoundRevealRadiusMetres = Fix.FromInt(1080);
+
+        /// <summary>
+        /// How long the finder holds it. Twenty seconds of play, spec-technical.md
+        /// §4.4, and in play-seconds for the same reason TetherLingerTicks is: it
+        /// is how long the player has to react, which is a pacing number.
+        /// </summary>
+        public static readonly int TetherFoundRevealTicks = PlaySeconds(20);
+
         // ---- crews and sorties ---------------------------------------------
 
         // Crew timers are pacing, and deliberately so. A crew turning a sortie

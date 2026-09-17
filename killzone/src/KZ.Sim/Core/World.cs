@@ -36,6 +36,20 @@ namespace KZ.Sim
         public Fix2 NoGoBoxMax;
         public int NoGoBoxExpiryTick;
         public bool HasNoGoBox;
+
+        /// <summary>
+        /// Where the last enemy filament this team walked over leads, and when it
+        /// was walked over. AUDIT-UNWIRED.md F14: a thread is a line on the ground
+        /// with a launch site at the end of it, so finding one is worth a bearing
+        /// home and nothing more precise - see World.ThreadBearingOpen.
+        ///
+        /// Newest wins rather than a list. A side that has found two threads in
+        /// twenty seconds is being raided from one launch area, not two, and a
+        /// queue of them would be state to keep in step for a distinction the
+        /// player cannot act on differently.
+        /// </summary>
+        public Fix2 FoundThreadAnchor;
+        public int FoundThreadTick = -1;
     }
 
     public sealed class World
@@ -590,6 +604,7 @@ namespace KZ.Sim
             RebuildDetection();
             LinkResolver.ResolveAll(this);
             UpdateTethers();
+            FindTethers();
             MovementSystem.Step(this);
 
             // After movement, so a reconnaissance airframe grants coverage of
@@ -729,6 +744,109 @@ namespace KZ.Sim
                 bool cut;
                 Tethers.Update(id, t.Nodes[t.NodeCount > 0 ? t.NodeCount - 1 : 0].Position, Tick, out cut);
             }
+        }
+
+        /// <summary>
+        /// Who has walked over somebody else's filament, and what it tells them.
+        ///
+        /// AUDIT-UNWIRED.md F14, and the third of the three liabilities this file
+        /// says fiber carries. The leash and the snag were built; this one was
+        /// not, so the unjammable rung has been paying two thirds of its price.
+        /// A thread is a physical object lying on the ground with a launch site
+        /// at one end, and spec-futures-2027-2028.md §"Counter" names backtracking
+        /// it "the highest-value counter, since spent fiber is a line on the
+        /// ground pointing at the crew".
+        ///
+        /// What the finder gets is a bearing and not a target: the disc around the
+        /// launch point becomes a TrackQuality.Bearing contact for twenty seconds
+        /// (RebuildDetection, TrackQualityOf), which is detected, drawn, and
+        /// explicitly not shootable - CanEngage asks HasFiringSolution. That is
+        /// the rung the game already has for "a direction, and you may not fire at
+        /// it", and CanEngage's own comment says what it is for: it hands you a
+        /// direction to point something else in. So the price of fiber is that the
+        /// other side now knows where to look, and has to go and look.
+        ///
+        /// Ground only, per spec-technical.md §4.4 - a filament is found by
+        /// somebody driving or walking over it, not by an aircraft overflying it,
+        /// and that is also what keeps this affordable: the finders are a handful
+        /// of vehicles rather than every airframe in the match.
+        ///
+        /// Cost. Every TetherDiscoveryInterval ticks, for each ground unit, each
+        /// live thread of another team it has not already found. Two early-outs do
+        /// the work: a thread is found once and then skipped forever, and a thread
+        /// whose anchor is further away than its own spooled length plus the
+        /// discovery range cannot have a segment in reach - every node is within
+        /// Spooled of the anchor by path length, so it is within Spooled of it in
+        /// a straight line. What survives both is a polyline walk of at most 64
+        /// segments, once a play-second, against a handful of vehicles. Measured
+        /// on the headless match: about one percent of the tick.
+        /// </summary>
+        void FindTethers()
+        {
+            if (Tick % SimConstants.TetherDiscoveryInterval != 0) return;
+
+            for (int i = 1; i < Entities.HighWater; i++)
+            {
+                if (!Entities.IsSlotAlive(i)) continue;
+                if (Entities.EntityLayer[i] != Layer.Ground) continue;
+                byte finder = Entities.Team[i];
+                if (finder == 0 || finder >= Players.Length) continue;
+
+                Fix2 p = Entities.Position[i];
+
+                for (int id = 0; id < Tethers.Capacity; id++)
+                {
+                    TetherSystem.Tether t = Tethers.Get(id);
+                    if (t.State == TetherState.Free) continue;
+                    if (t.Team == finder) continue;
+                    if ((t.FoundByTeams & (1 << finder)) != 0) continue;
+
+                    Fix bound = t.Spooled + SimConstants.TetherDiscoveryRangeMetres;
+                    if (Fix2.SqrDistance(p, t.AnchorPosition) > bound * bound) continue;
+
+                    if (!Tethers.AnySegmentNear(id, p, SimConstants.TetherDiscoveryRangeMetres)) continue;
+
+                    t.FoundByTeams |= (byte)(1 << finder);
+                    Players[finder].FoundThreadAnchor = t.AnchorPosition;
+                    Players[finder].FoundThreadTick = Tick;
+
+                    // Team is the side that owns the thread rather than the side
+                    // that found it, because the event is a thing that happened to
+                    // them - MatchLoop narrates it as "somebody walked onto one of
+                    // our threads" and it has to reach the operator whose thread it
+                    // is even when the drone on the end of it is already dead. A is
+                    // the finder, B is the drone.
+                    Events.Push(SimEventKind.TetherFound, Tick, Entities.HandleAt(i),
+                                t.Drone, t.Team, id);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Whether this team is currently holding a bearing home off somebody's
+        /// filament, and where that bearing leads. The window is twenty seconds of
+        /// play from the moment it was found: long enough to send something to
+        /// look, short enough that a launch site found once is not revealed for
+        /// the rest of the match.
+        /// </summary>
+        public bool ThreadBearingOpen(byte team, out Fix2 anchor)
+        {
+            anchor = Fix2.Zero;
+            if (team == 0 || team >= Players.Length) return false;
+            PlayerState p = Players[team];
+            if (p.FoundThreadTick < 0) return false;
+            if (Tick - p.FoundThreadTick > SimConstants.TetherFoundRevealTicks) return false;
+            anchor = p.FoundThreadAnchor;
+            return true;
+        }
+
+        /// <summary>Whether a point is inside the disc a found thread reveals.</summary>
+        bool InFoundThreadReveal(byte team, Fix2 point)
+        {
+            Fix2 anchor;
+            if (!ThreadBearingOpen(team, out anchor)) return false;
+            Fix r = SimConstants.TetherFoundRevealRadiusMetres;
+            return Fix2.SqrDistance(point, anchor) <= r * r;
         }
 
         /// <summary>
@@ -1336,6 +1454,29 @@ namespace KZ.Sim
                     if (solution) lastSolution[i] = Tick;
                     shootable[i] = solution
                         || (lastSolution[i] >= 0 && Tick - lastSolution[i] <= SimConstants.TrackHoldTicks);
+                }
+
+                // And what a found filament is worth (AUDIT-UNWIRED.md F14). The
+                // thread leads to a launch point, so whatever is standing at that
+                // launch point becomes a contact - seen, never shootable, because
+                // a line pointing home is a direction and not a firing solution.
+                //
+                // Deliberately not written into last[], so it does not inherit the
+                // track hold: the reveal has its own clock and when it runs out
+                // the contact goes, rather than lingering for another two seconds
+                // on a sensor that never held it.
+                Fix2 revealAnchor;
+                if (ThreadBearingOpen(team, out revealAnchor))
+                {
+                    Fix revealSq = SimConstants.TetherFoundRevealRadiusMetres
+                                 * SimConstants.TetherFoundRevealRadiusMetres;
+                    for (int i = 1; i < Entities.HighWater; i++)
+                    {
+                        if (!Entities.IsSlotAlive(i)) continue;
+                        if (Entities.Team[i] == team) continue;
+                        if (Fix2.SqrDistance(Entities.Position[i], revealAnchor) > revealSq) continue;
+                        seen[i] = true;
+                    }
                 }
             }
             detectionCacheTick = Tick;
@@ -1963,6 +2104,11 @@ namespace KZ.Sim
                 return TrackQuality.Bearing;
             }
 
+            // A filament somebody drove over, and the last thing checked because
+            // it is the worst track in the game: the thread says which way home,
+            // not what is there. AUDIT-UNWIRED.md F14.
+            if (InFoundThreadReveal(team, targetPos)) return TrackQuality.Bearing;
+
             return TrackQuality.None;
         }
 
@@ -2133,6 +2279,15 @@ namespace KZ.Sim
                 h = (h ^ (ulong)Players[t].NoGoBoxMax.Y.Raw) * Prime;
                 h = (h ^ (ulong)(uint)Players[t].NoGoBoxExpiryTick) * Prime;
 
+                // The bearing home off a found filament (AUDIT-UNWIRED.md F14).
+                // It is a function of what walked over what and when, not of
+                // anything else hashed here, and two peers that disagreed about it
+                // would disagree about which of the other side's units are
+                // contacts at all.
+                h = (h ^ (ulong)Players[t].FoundThreadAnchor.X.Raw) * Prime;
+                h = (h ^ (ulong)Players[t].FoundThreadAnchor.Y.Raw) * Prime;
+                h = (h ^ (ulong)(uint)Players[t].FoundThreadTick) * Prime;
+
                 // The track hold's memory (RebuildDetection). It is a function of
                 // tick history rather than of this instant's positions, so unlike
                 // most of what is hashed above it would not be caught by anything
@@ -2163,6 +2318,15 @@ namespace KZ.Sim
             // disagreed about whether it is night would disagree about every
             // optical detection from the first tick.
             h = (h ^ (ulong)Phase) * Prime;
+
+            // Which threads have already been found. A thread is found once, so
+            // this decides whether a future discovery fires at all - and it is the
+            // only part of the tether system in here, which is worth saying out
+            // loud: the polyline itself is not hashed, and a divergence in a node
+            // position would currently surface only through the drone flying on
+            // the end of it.
+            for (int id = 0; id < Tethers.Capacity; id++)
+                h = (h ^ (ulong)Tethers.Get(id).FoundByTeams) * Prime;
 
             h = (h ^ Territory.StateHash()) * Prime;
             h = (h ^ Imagery.StateHash()) * Prime;

@@ -126,8 +126,7 @@ namespace KZ.Sim
             // never leaves the pad.
             if (def.Link == LinkKind.Fiber)
             {
-                int tetherId = w.Tethers.Create(h, EntityHandle.None, padPosition,
-                                                def.SpoolLengthMetres, team, w.Tick);
+                int tetherId = w.Tethers.Create(h, padPosition, def.SpoolLengthMetres, team, w.Tick);
                 if (tetherId < 0)
                 {
                     w.QueueDeath(h);

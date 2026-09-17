@@ -62,7 +62,10 @@ namespace KZ.Sim
         Sensor = 1u << 5,
         Weapon = 1u << 6,
         Emitter = 1u << 7,
-        Tethered = 1u << 8,
+        // Bit 8 was Tethered, and it was never set on anything. Whether an
+        // airframe is on a thread is TetherId >= 0, which every system that
+        // cares already reads; a flag beside it would be a second answer to the
+        // same question, free to disagree with the first.
         Autonomy = 1u << 9,
         Producer = 1u << 10,
         Salvage = 1u << 11,

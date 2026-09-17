@@ -476,7 +476,7 @@ namespace KZ.Tests
                 Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 TetherSystem ts = new TetherSystem(8, t, new DetRandom(1));
-                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(1200, 1200), F(16800), 1, 0);
+                int id = ts.Create(new EntityHandle(1, 1), P(1200, 1200), F(16800), 1, 0);
 
                 // Fly out, then turn the corner and fly across.
                 bool cut;
@@ -494,7 +494,7 @@ namespace KZ.Tests
                 Terrain t = new Terrain(49152, 49152);
                 t.Fill(TileClass.Open);
                 TetherSystem ts = new TetherSystem(8, t, new DetRandom(1));
-                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(1200, 1200), F(3600), 1, 0);
+                int id = ts.Create(new EntityHandle(1, 1), P(1200, 1200), F(3600), 1, 0);
 
                 bool cut = false;
                 int tick = 0;
@@ -517,7 +517,7 @@ namespace KZ.Tests
                 Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 TetherSystem ts = new TetherSystem(8, t, new DetRandom(1));
-                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(1200, 1200), F(2400), 1, 0);
+                int id = ts.Create(new EntityHandle(1, 1), P(1200, 1200), F(2400), 1, 0);
 
                 bool cut;
                 int tick = 0;
@@ -557,7 +557,7 @@ namespace KZ.Tests
                 Terrain t = new Terrain(24576, 24576);
                 t.Fill(TileClass.Open);
                 TetherSystem ts = new TetherSystem(8, t, new DetRandom(1));
-                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(1200, 1200), F(16800), 1, 0);
+                int id = ts.Create(new EntityHandle(1, 1), P(1200, 1200), F(16800), 1, 0);
 
                 bool cut;
                 int tick = 0;
@@ -574,7 +574,191 @@ namespace KZ.Tests
                     ts.Update(id, P(4800, 1200), ++tick, out cut);
                 Assert.True(ts.Get(id).State == TetherState.Free, "gone after thirty seconds");
             });
+
+            // ---- AUDIT-UNWIRED.md F14: the thread is findable ----------------
+            //
+            // Everything below goes through Spawn, Enqueue and Step. The launch is
+            // a queued LaunchSortie, so the thread is created by SortieSystem where
+            // a real sortie creates it, and the finder is a vehicle standing where
+            // the drone flies over. Nothing writes a tether, a component or a
+            // detection cache by hand: the whole point of F14 is that
+            // AnySegmentNear had a passing test and no production caller.
+
+            r.Run("a vehicle that drives over a filament gets a bearing home", delegate
+            {
+                World w = MakeWorld(4014);
+                w.Player(1).Materiel = Fix.FromInt(100000);
+
+                // What sits at the launch point. This is what the bearing is worth:
+                // the operator, not the drone.
+                EntityHandle site = w.Spawn(Catalog.IdOf("Drone Workshop"), 1, Pad);
+
+                // The finder, astride the route six kilometres out - too far from
+                // the workshop to see it with anything it owns, which is what makes
+                // the assertion below about the thread rather than about optics.
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(9000, 12000));
+                // And what the sortie is aimed at, beyond the tank, so the drone
+                // flies over it rather than at it.
+                EntityHandle prey = w.Spawn(Catalog.IdOf("Relay Mast"), 2, P(15000, 12000));
+
+                w.Step();
+                Assert.False(w.IsDetectedBy(2, site),
+                             "sanity: the defence cannot see the launch site to begin with");
+
+                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Fiber FPV Team"), Pad, prey, 0));
+
+                int found = 0;
+                for (int n = 0; n < 32 * 120 && found == 0; n++)
+                {
+                    w.Step();
+                    for (int e = 0; e < w.Events.Count; e++)
+                    {
+                        if (w.Events[e].Kind != SimEventKind.TetherFound) continue;
+                        found++;
+                        Assert.True(w.Events[e].A == tank, "the finder is the vehicle that drove over it");
+                        Assert.Equal(1, w.Events[e].Team, "and the event belongs to whoever owns the thread");
+                    }
+                }
+
+                Assert.Equal(1, found, "somebody found the filament");
+
+                // One more tick, because detection is rebuilt at the top of a tick
+                // and the thread is found further down it. The bearing a finder
+                // holds is therefore a tick old, which is the same latency every
+                // other contact in the game is served at.
+                w.Step();
+
+                Fix2 anchor;
+                Assert.True(w.ThreadBearingOpen(2, out anchor), "and the finder is holding a bearing home");
+                Assert.Near(Pad.X.ToDoubleForDisplay(), anchor.X.ToDoubleForDisplay(), 1.0,
+                            "which leads to the launch point");
+
+                Assert.True(w.IsDetectedBy(2, site), "the launch site is a contact now");
+                Assert.True(w.TrackQualityOf(2, site) == TrackQuality.Bearing,
+                            "a direction and not a position");
+                Assert.False(w.HasFiringSolution(2, site),
+                             "so nothing may be fired at it - the thread says where to look, not what to hit");
+            });
+
+            r.Run("a filament is found once, and the bearing lapses", delegate
+            {
+                World w = MakeWorld(4015);
+                w.Player(1).Materiel = Fix.FromInt(100000);
+
+                EntityHandle site = w.Spawn(Catalog.IdOf("Drone Workshop"), 1, Pad);
+                w.Spawn(Catalog.IdOf("Main Tank"), 2, P(9000, 12000));
+                EntityHandle prey = w.Spawn(Catalog.IdOf("Relay Mast"), 2, P(15000, 12000));
+
+                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Fiber FPV Team"), Pad, prey, 0));
+
+                int found = 0, firstFoundTick = -1;
+                bool seenWhileOpen = false;
+                for (int n = 0; n < 32 * 200; n++)
+                {
+                    w.Step();
+                    for (int e = 0; e < w.Events.Count; e++)
+                        if (w.Events[e].Kind == SimEventKind.TetherFound)
+                        {
+                            found++;
+                            if (firstFoundTick < 0) firstFoundTick = w.Tick;
+                        }
+
+                    if (firstFoundTick >= 0 && w.Tick == firstFoundTick + 8) seenWhileOpen = w.IsDetectedBy(2, site);
+                    if (firstFoundTick >= 0 && w.Tick > firstFoundTick + SimConstants.TetherFoundRevealTicks + 8) break;
+                }
+
+                // The tank does not move, so it is sitting on that thread for every
+                // scan after the first. Once is the whole of the assertion: a
+                // discovery that re-fires four times a second is a log, not an event.
+                Assert.Equal(1, found, "a thread found is found once");
+                Assert.True(seenWhileOpen, "sanity: the contact was there while the window was open");
+
+                Fix2 anchor;
+                Assert.False(w.ThreadBearingOpen(2, out anchor), "twenty seconds later the bearing is stale");
+                Assert.False(w.IsDetectedBy(2, site), "and the launch site goes dark again");
+            });
+
+            r.Run("a dead man's thread still leads home", delegate
+            {
+                // The Lingering state, which the audit entry says is already there
+                // to support this: the drone is gone, the line is still on the
+                // ground, and driving over it is worth the same bearing.
+                World w = MakeWorld(4017);
+                w.Player(1).Materiel = Fix.FromInt(100000);
+
+                EntityHandle site = w.Spawn(Catalog.IdOf("Drone Workshop"), 1, Pad);
+                EntityHandle rider = w.Spawn(Catalog.IdOf("Motorcycle Squad"), 2, P(5400, 12900));
+                EntityHandle prey = w.Spawn(Catalog.IdOf("Relay Mast"), 2, P(15000, 12000));
+
+                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Fiber FPV Team"), Pad, prey, 0));
+                for (int n = 0; n < 32 * 30; n++) w.Step();
+
+                EntityHandle drone = FirstOfTeam(w, 1, "Fiber FPV Team");
+                Assert.True(w.Entities.IsAlive(drone), "sanity: it is airborne and laying line");
+                w.Kill(drone, EntityHandle.None);
+                w.Step();
+
+                // Now drive across where it went, and read the *grade* of what the
+                // rider ends up holding rather than only whether it holds
+                // something: a bearing cannot have come from the camera, whatever
+                // the camera can reach from there.
+                w.Enqueue(Command.MoveTo(2, rider, P(5400, 11400)));
+
+                int found = 0;
+                for (int n = 0; n < SimConstants.TetherLingerTicks && found == 0; n++)
+                {
+                    w.Step();
+                    found += w.Events.CountOf(SimEventKind.TetherFound);
+                }
+
+                Assert.Equal(1, found, "the line is still findable with nobody on the end of it");
+                w.Step();
+                Assert.True(w.TrackQualityOf(2, site) == TrackQuality.Bearing,
+                            "and it still points at the launch site - as a bearing, not as a sighting");
+            });
+
+            r.Run("an aircraft overflying a filament finds nothing", delegate
+            {
+                // spec-technical.md §4.4 says a *ground* unit finds a thread. It is
+                // a line lying on the ground, and it is also what keeps the scan
+                // affordable - the finders are a handful of vehicles rather than
+                // every airframe in the match.
+                //
+                // Both halves are run, rather than only the zero: a test whose
+                // whole assertion is "nothing happened" passes just as well when
+                // the mechanic does not exist, which is the failure this file is
+                // named after twice over.
+                Assert.Equal(1, FindsWithWatcherAt("Main Tank"), "a vehicle finds it");
+                Assert.Equal(0, FindsWithWatcherAt("Recon Wing"), "an aircraft over the same ground does not");
+            });
         }
+
+        /// <summary>
+        /// One fiber sortie flown past one watching unit of the other side, through
+        /// Spawn/Enqueue/Step, counting how many times its thread is found.
+        /// </summary>
+        static int FindsWithWatcherAt(string watcher)
+        {
+            World w = MakeWorld(4016);
+            w.Player(1).Materiel = Fix.FromInt(100000);
+
+            w.Spawn(Catalog.IdOf("Drone Workshop"), 1, Pad);
+            w.Spawn(Catalog.IdOf(watcher), 2, P(9000, 12000));
+            EntityHandle prey = w.Spawn(Catalog.IdOf("Relay Mast"), 2, P(15000, 12000));
+
+            w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Fiber FPV Team"), Pad, prey, 0));
+
+            int found = 0;
+            for (int n = 0; n < 32 * 120; n++)
+            {
+                w.Step();
+                found += w.Events.CountOf(SimEventKind.TetherFound);
+            }
+            return found;
+        }
+
+        /// <summary>Where the fiber sorties in the F14 tests launch from.</summary>
+        static Fix2 Pad { get { return P(3000, 12000); } }
 
         static int CountCuts(TileClass tile, int trials)
         {
@@ -584,7 +768,7 @@ namespace KZ.Tests
                 Terrain t = new Terrain(24576, 24576);
                 t.Fill(tile);
                 TetherSystem ts = new TetherSystem(4, t, new DetRandom((ulong)(trial + 1)));
-                int id = ts.Create(new EntityHandle(1, 1), EntityHandle.None, P(1200, 1200), F(24000), 1, 0);
+                int id = ts.Create(new EntityHandle(1, 1), P(1200, 1200), F(24000), 1, 0);
 
                 bool cut = false;
                 int tick = 0;
