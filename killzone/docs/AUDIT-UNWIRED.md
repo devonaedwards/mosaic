@@ -256,6 +256,43 @@ features.
   without the notch, "low and slow is hard" is not modelled at all, so hovering
   and tangential flight are not tactics.
 
+### WIRED. Measured in FINDINGS 38.
+
+**Done, and the entry's diagnosis held.** Probed first: a Radar Mast against a
+Main Tank read `SigRadar` 0, radar reach 0 m and `IsDetectedBy` false at every
+range on the map, exactly as claimed. The line numbers had moved (`World.cs:857`
+is a mine's trigger radius now) but both gates were where the entry said.
+
+The layer gate is gone from `ComputeDetection` and from `DetectionRangeFor`, and
+what replaces it is `World.RadarDetectionScale` — §2B.3's radial-velocity table,
+read straight: under 1.5 m/s no contact at all, 1.5–4 m/s reach ×0.40 and
+reliability ×0.30, 4–10 m/s ×0.80 and ×0.70, full above that. `Reaches` takes a
+reliability scale so the second column is not folded into the first, because a
+target barely clear of the clutter is intermittent as well as short. Ground
+targets take a third altitude band at ×0.40, which is §4's nap-of-the-earth
+figure applied to the layer that is definitionally in the clutter.
+
+Seven ground units get a radar signature. Only the tank has a published figure —
+§5's 94 moving, and §5's "0 stationary" is the notch doing it rather than a second
+field — and the other six say in the comment that they are designer estimates
+stepped off it. The two dismounted teams keep a zero on purpose: they walk at
+1.5 m/s, which is the floor of the notch, so a signature for them would be data
+nothing could ever read.
+
+**One correction to the entry, and one to the brief.** `Entities.Velocity` is not
+"read by nothing" — `MovementSystem.InterceptPoint` has read it since FINDINGS 36.
+And `radar-rf.md` §5's table is on `2 × dBsm + 60` while `RadarReachTable`'s doc
+comment says `2 × dBsm + 80`; the catalogue follows §5, so the tank is written at
+94 to stay consistent with the fifteen airframes already in it. FINDINGS 38 has
+the arithmetic and says why that mismatch is AUDIT F25's to close, not this one's.
+
+**Measured, and the honest part: in the shipped scenario it changes nothing.**
+The player's Radar Mast is 11,402 m from the nearest defender vehicle and reaches
+8,044 m against a moving tank, so contact counts across ten play-minutes are
+identical to the digit. The mechanic is live and tested through `Spawn`/`Step`;
+the scenario's geometry does not reach it. A forward radar the player has to push
+up and defend is a scenario change, and it is the next thing to try.
+
 ## F8. Radiating radars are invisible on the ESM channel, jammers nearly so, and nothing can switch off
 
 - **Research:** `radar-rf.md` §3.6 — *"This is the strongest and best-sourced
@@ -334,6 +371,56 @@ the simulation*, which is the part that matters and the part that stays true.
   deflates the radar mast's cueing role, which is the exact asset
   `FINDINGS.md` §25 concluded was the missing piece ("what is actually missing is
   a cued launch").
+
+### WIRED, including the cross-fix. Measured in FINDINGS 38.
+
+**Done, and the entry understated its own case.** It says an RF detection was
+treated as equivalent to a radar track. It was treated as equivalent to an
+*optical* one, which is worse: `TrackQualityOf`'s second pass asked
+`BestDetectionRange`, which includes the ESM channel, so a drone held on nothing
+but its own transmitter read as `TrackQuality.Optical` — and an interceptor sent
+at it flew 0.55 of a lead computed from a velocity nobody had measured, off a
+contact whose range was never known, then rolled at the 0.60 optical cue rather
+than the 0.30 for firing blind.
+
+`TrackQuality` gains a rung below `Optical`: `None 0 · Bearing 1 · Optical 2 ·
+Radar 3`. Both existing switches on it — `MovementSystem.InterceptPoint`'s lead
+table and `CombatSystem.CueMultiplier` — name `Radar` and `Optical` and default
+the rest, so a bearing-only track flies no lead and rolls at 0.30 with no change
+to either number. That was checked before the member was added and is the only
+reason inserting a middle rung was safe.
+
+`CanEngage` now asks `World.HasFiringSolution` rather than `IsDetectedBy`. The
+answer is computed once per team per target per tick alongside detection and held
+for the same `TrackHoldTicks`, because `CanEngage` is asked once per candidate per
+weapon per tick and a walk of the entity table in there would have made the whole
+thing cubic. `lastSolutionTick` is persistent state and is in `StateHash()`.
+
+**The cross-fix is built.** §3A.3's two-baseline rule: `World.EsmCrossFix`
+promotes a bearing to a fix when two listeners hold the same emitter and their
+bearings cross by more than `SimConstants.EsmCrossFixBam` (20°, which is §3A.3's
+sin > 0.35). It reports as `Optical` rather than taking a rung of its own, because
+the rung means "a position and no measured velocity" and that is exactly what two
+crossed bearings deliver. It is geometry only — no edge roll — so a crossing does
+not flicker thirty-two times a second. Cost is bounded: it is reached only for a
+contact held on ESM and nothing else, and only by a side that owns two listeners,
+counted once per tick.
+
+**Measured:** an Interceptor Battery that used to empty its belt at a crossing
+transmitting quad anywhere inside its 3,840 m envelope now cannot engage it at
+any range. At night, a Gun Mount backed by a Command Post 2.4 km behind it fired
+5 rounds at a quad at 700 m and 4 at 900 m; it now fires none, because its own
+camera reaches 305 m and its microphone 576 m. FINDINGS 37's interception pair
+(8/20 radiating, 0/20 silenced) reproduces to the trial.
+
+**And the honest part: like F7, it is inert in the shipped scenario.** 340 of the
+3,631 contact-seconds team 1 holds across ten play-minutes are now bearing-only —
+9% of what the player sees is no longer shootable — and the player owns nothing
+that shoots. Team 2's only listener is a Command Post eight kilometres behind the
+fight, so it holds zero bearing-only contacts. The cross-fix never fires either:
+both of team 1's listeners sit on the same line of latitude 1,800 m apart, which
+crosses at under a degree against anything east of them. The branch is reachable,
+tested and unused by this scenario's layout.
 
 ## F10. Three altitude modifiers have the sign the research says is wrong
 

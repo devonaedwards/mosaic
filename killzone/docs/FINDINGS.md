@@ -2132,3 +2132,295 @@ team 2 holds imagery only east of the border — is untouched and still open. It
 second is answered: the answer was not to tune the jammer down, and it was not to
 move the pad. It was to give the defence the decision it was always supposed to
 have and let the bubble keep hurting whoever is standing in it.
+
+## 38. The Doppler notch, and a bearing that stopped being a firing solution
+
+KILL ZONE is a video game. Everything below is measured inside a fictional
+simulation against fictional factions; the numbers are the game's, not anyone's.
+
+Two audit items, AUDIT F7 and F9, done together because they are the same
+sentence read twice: **detection is not one thing**. What a sensor reaches, what
+a sensor measures, and what a weapon may be pointed at were all the same boolean,
+and the research says they are three different questions.
+
+### Both audit entries survived contact with the code, and one line of each did not
+
+Probed before building, which is the house style and earned its keep again:
+
+- **F7's claim that a radar sees nothing on the ground is exactly right.** A
+  Radar Mast against a Main Tank at any range on the map: `SigRadar` 0, radar
+  reach 0 m, best reach across all five channels 0 m, `IsDetectedBy` false. The
+  entry's line numbers have moved — `World.cs:857` is now a mine's trigger radius
+  — but both gates were where it said, in `ComputeDetection` and in
+  `DetectionRangeFor`.
+- **F7's claim that `Entities.Velocity` is "read by nothing" is out of date**, as
+  the brief already said: `MovementSystem.InterceptPoint` has read it since
+  FINDINGS 36.
+- **F9 understated its own case.** The entry says an ESM detection is treated as
+  equivalent to a radar track. It was treated as equivalent to an *optical* one,
+  which is worse than it sounds: `TrackQualityOf`'s second pass asked
+  `BestDetectionRange`, which includes the ESM channel, so a drone held on
+  nothing but its own video transmitter read as `TrackQuality.Optical` — and an
+  interceptor sent at it flew **0.55 of a lead computed from a velocity nobody
+  had measured, off a contact whose range was never known at all**, and then
+  rolled its terminal chance at the 0.60 optical cue multiplier rather than the
+  0.30 for firing blind. Measured, before the change: a Command Post at 6,000 m
+  of ESM against an FPV Team 4,000 m away — optical reach 587 m, thermal 0,
+  acoustic 0, ESM 5,019 m — reads `detected=True, track=Optical`.
+
+### The scale the research is on is not quite the scale the catalogue is on
+
+Worth recording because the next person to add a signature will hit it.
+
+`radar-rf.md` §5's table is built on `radar_sig = 2 × dBsm + 60`. The code's
+`RadarReachTable` is documented as `10^((S−80)/80)` with "signature 80 is one
+square metre", which is `S = 2 × dBsm + 80`. The two are twenty points apart —
+ten decibels, 1.78× of reach.
+
+The catalogue follows **§5's** scale, not its own doc comment: §5 gives a small
+quad 18 and the game has 22; §5 gives a Shahed 48 and the game gives the Heavy
+Strike Drone 52; §5 gives a reflector decoy 90 and the game gives 92. So the tank
+is written at **94, straight off §5**, because consistency with the fifteen
+airframes already in the catalogue is what decides whether the decoy still reads
+three times louder than the thing it escorts. Translating 94 through the code's
+own documented anchor instead would have put an MBT at 5 m² rather than §5's 50,
+and translating it the other way would have run off the top of the table.
+
+The anchor mismatch is real and is not this item's to fix — it is absorbed by the
+Radar Mast's reference reach of 16,800 m, which AUDIT F25 already says is too
+long by about the same factor. Two errors covering for each other is a thing to
+write down, not a thing to be pleased about.
+
+### What the radar sees now
+
+`SimConstants` carries §2B.3's table as a radial-velocity gate on the radar
+channel only — under 1.5 m/s no contact at all, 1.5–4 m/s reach ×0.40 and
+reliability ×0.30, 4–10 m/s ×0.80 and ×0.70, above that full — and a third
+altitude band for the ground at ×0.40, which is §4's nap-of-the-earth figure
+applied to the layer that is definitionally in the clutter.
+
+A Radar Mast's reach, everything closing at its own speed:
+
+| | signature | speed | radar reach |
+|---|---|---|---|
+| FPV Team / Scout Quad | 22 | 33 / 17 m/s | 2,532 m |
+| Recon Wing | 40 | 25 m/s | 6,375 m |
+| Jet Strike Drone | 50 | 140 m/s | 8,501 m |
+| Heavy Strike Drone | 52 | 50 m/s | 9,005 m |
+| Decoy Drone | 92 | 50 m/s | 28,477 m |
+| **Main Tank** | **94** | 8 m/s | **8,044 m** |
+| **IFV** | 90 | 9 m/s | 7,169 m |
+| **Supply Truck** | 88 | 14 m/s | 8,460 m |
+| **Motorcycle Squad** | 64 | 17 m/s | 4,240 m |
+| **Logistics UGV** | 76 | 5 m/s | 2,396 m |
+| Designator Team | 0 | 1.5 m/s | 0 m |
+
+Every bold row was zero before. The one worth reading twice is the Supply Truck:
+a soft-skinned lorry is **seen further than a main battle tank**, because it is
+six decibels quieter and twice as fast, and speed is what buys a clean return.
+That is the mechanic doing its job rather than a bug, and it is a better sentence
+than anything a signature column alone could have produced.
+
+The two foot teams keep a zero deliberately. §2.7 says radars classify "human"
+alongside "vehicle", so a number would be defensible — but both walk at 1.5 m/s,
+the floor of the notch, so their radial component is under it in almost every
+geometry. A signature nothing can ever read is the disease WIRING-SPEC exists to
+cure.
+
+### A tank that stops disappears, and that is the whole of it
+
+Through the production path — spawned, ordered to drive, ordered to stop, no
+field written by hand:
+
+| | radar reach | detected |
+|---|---|---|
+| parked | 0 m | no |
+| driving at the mast | 8,044 m | yes, `TrackQuality.Radar` |
+| driving across its face | 0 m | no |
+| stopped again, past the track hold | 0 m | no |
+
+### Hovering and tangential flight are now tactics, and against a jet they are a poor one
+
+Finding 12 says the notch "makes hovering and tangential flight into real
+tactics". It does, and the size of the effect is the interesting part, because it
+is not the same for everything.
+
+Two identical Heavy Strike Drones 7,000 m from the mast, one running in and one
+running across: **9,005 m of reach against 3,602 m**, and the crossing one is out
+of contact entirely at a range where the inbound one is a radar track.
+
+But across a whole pass the notch costs an air-defence radar very little against
+anything fast, because at 140 m/s a target has to be within about four degrees of
+tangential to fall inside 10 m/s of radial. Ticks of a crossing pass held as a
+radar track, mast offset from the target's track:
+
+| offset | jet, 140 m/s | heavy strike, 50 m/s |
+|---|---|---|
+| 0 m (head-on) | 972 → 972 | 2,881 → 2,880 |
+| 1,500 m | 956 → 954 | 2,841 → 2,826 |
+| 4,000 m | 858 → 845 | 2,581 → 2,478 |
+| 7,000 m | 552 → **494** | 1,813 → **1,634** |
+
+Ten percent at the worst offset measured, nothing head-on. **The notch is brutal
+against things that move slowly and barely touches things that do not**, which is
+§2B.3's own stated reason for existing — "why radar handles Shaheds far better
+than FPVs" — arriving as a measurement rather than as a claim.
+
+### What can no longer shoot, quantified
+
+`CanEngage` used to ask `IsDetectedBy`. It now asks `HasFiringSolution`, which is
+true of every channel except a lone ESM bearing. `TrackQuality` gains a rung
+below `Optical`:
+
+```
+None = 0  ·  Bearing = 1  ·  Optical = 2  ·  Radar = 3
+```
+
+`Bearing` falls through to the `default` arm of both existing switches, so an
+interceptor vectored at a bearing-only contact flies **no** lead (it used to fly
+0.55) and rolls at 0.30 rather than 0.60. Those two switches were checked before
+the member was added, which is what the brief asked for and is the only reason
+adding a middle rung was safe: both list `Radar` and `Optical` explicitly and
+default the rest.
+
+**The audit's claim that this inflates every ESM-carrying unit is true, and here
+is the size of it.** An Interceptor Battery against a transmitting FPV quad: it
+hears it at 6,024 m, sees it on thermal at 547 m, holds it on radar at 1,447 m
+and only while it is closing, and its missiles reach 3,840 m.
+
+| quad's range | crossing, before | crossing, after | closing, before | closing, after |
+|---|---|---|---|---|
+| 1,200–3,600 m | shoots at every range | **never shoots** | shoots | shoots |
+
+And the audit's exact sentence — a Command Post's ESM makes a transmitting drone
+shootable by anything on the team — measured at night, where a Gun Mount's own
+camera reaches 305 m and its microphone 576 m against a quad, and its barrel
+reaches 1,000 m. Rounds it spends on a crossing quad in forty play-seconds:
+
+| quad's range | gun alone | gun + a Command Post 2.4 km behind it |
+|---|---|---|
+| 300 m | 1 | 1 → 1 |
+| 500 m | 1 | 1 → 1 |
+| 700 m | 0 | **5 → 0** |
+| 900 m | 0 | **4 → 0** |
+
+The outer half of every gun's envelope on the team was being filled in by a
+building two kilometres behind it hearing a video transmitter. It is not any
+more.
+
+### The cross-fix was built, because it is the better game
+
+`radar-rf.md` §3A.3's two-baseline rule: a bearing becomes a fix when two
+listeners hold the same emitter and the bearings cross by more than about 20°,
+because the fix error goes as 1/sin(crossing angle) — 131 m at 90°, 1,500 m at 5°.
+
+Two Command Posts, one quad, same range, twice; the only thing that changes is
+where the second listener stands:
+
+| | track | may a weapon engage it |
+|---|---|---|
+| listeners 2 km apart, both on the target's bearing | `Bearing` | no |
+| listeners 6 km apart, across it | `Optical` | yes |
+
+A cross-fixed contact reports as `Optical` rather than getting a rung of its own,
+and that is deliberate: the rung means "a position, and no measured velocity",
+which is exactly what two crossed bearings deliver. A parallel concept would have
+been a second thing to keep in step with `InterceptPoint`'s lead table.
+
+**It does not fire in the shipped scenario, and that is stated rather than
+hidden.** Team 1 owns two listeners (Command Post at x=3,600 and Radar Mast at
+x=5,400, both on y=9,360) and team 2 owns one. Two listeners 1,800 m apart on the
+same line of latitude cross at under a degree against anything east of them, so
+the player's pair is geometrically one listener. The branch is live, reachable
+and tested through `Spawn`/`Step` — a player who builds a second Command Post
+somewhere other than next to the first gets a firing solution out of it — but
+nothing in the scenario as laid out uses it. Whether that is content or a
+placement puzzle nobody has been given a reason to solve is a scenario question,
+and it is the next thing to try.
+
+### Nothing regressed, and here is what was checked rather than assumed
+
+- **FINDINGS 37's interception pair reproduces to the trial**: a 140 m/s jet
+  crossing, an Interceptor FPV off a pad 1,500 m off its track, twenty trials —
+  **8/20 radar radiating, 0/20 switched off**, before and after, identical.
+- **Head-on interception, twenty trials each, unchanged**: FPV 10/20 → 10/20, jet
+  8/20 → 8/20. (These are FINDINGS 36's rows at a different pad offset; the point
+  is the pair, not the absolute.)
+- **The play scenario is bit-for-bit unmoved in everything but its hash**: 17
+  defender sorties, 13 link-blacks, 11 drifted aimpoints, **717 hit points off the
+  player**, 1 unit lost, 112/120 five-second samples with an enemy airframe in
+  sight, longest empty stretch 15 s. Identical on seeds 20260917, 11111 and
+  22222. Only `StateHash()` moved, because the firing solution's track hold is
+  persistent state and is now in it.
+- **The player's raid is unmoved too**: 23 sorties, 2,250 hit points off the
+  defence, 23 things destroyed. Of the 3,631 contact-seconds team 1 holds across
+  ten play-minutes, **340 are now bearing-only** — 9% of everything the player
+  sees is no longer shootable — and it changes nothing, because the player owns
+  nothing that shoots. Team 2 holds **zero** bearing-only contact-seconds.
+- **Cost: about 5%.** 6,090 → 5,765 ticks per second on the headless match, three
+  runs each. The radial component needs one square root per radar-carrying sensor
+  per target per tick; the square-free form does not exist, because the dot
+  product of a 45 km baseline with a 140 m/s closure is seven figures and its
+  square leaves Q31.32 an order of magnitude behind — `SCALE.md`'s 46,340 m
+  ceiling arriving from the other side. An ESM-only contact also stops
+  short-circuiting, because "is there anything better than a bearing" cannot be
+  answered by the first bearing.
+
+### The thing that did not happen, said plainly
+
+**In the shipped scenario, neither change does anything at all.**
+
+F7 gives the player's Radar Mast nothing, because of where it is standing: it
+sits at x=5,400 and the defence's nearest vehicle is a tank at x=16,800, which is
+11,402 m away against 8,044 m of reach. Contact-seconds across ten play-minutes
+are identical to the digit before and after. The mechanic exists, the tests
+exercise it, and the scenario's geometry does not reach it — a Radar Mast is a
+rear-area building and ground search is a forward job, so the interesting version
+of this is a forward radar the player has to push up and defend, which is a
+scenario change and not a simulation one.
+
+F9 gives the defence nothing either, because team 2's only listener is a Command
+Post at x=25,200, eight kilometres behind the tank everything is shot at.
+
+So the honest summary is: **two mechanics, both measured, both correct, both
+inert where the game is actually played.** That is not an argument for reverting
+them — the audit items were real and the old behaviour was wrong in ways the
+Interceptor Battery table above makes obvious — but it is the difference between
+"this changes the game" and "this stops the game being wrong when somebody
+eventually builds the unit that cares", and the record should say which.
+
+### Two experiments drifted, and both are the notch landing where it should
+
+Reported, not acknowledged: `--update-baseline` was not run.
+
+- **`decoys`.** The warhead and mast-killed columns, which are what FINDINGS 34's
+  decoy conclusion rests on, **did not move in any row**. What moved is decoys
+  shot in the 1-real-13-decoy package, 13.0 → 12.3, and rounds per kill, 21.2 →
+  26.6 and 41.5 → 56.3. The defender is an Interceptor Battery, which carries the
+  only radar in that experiment, and the package flies past it at a target 1,200 m
+  behind it — so the radial component swings through the notch on the way past.
+  FINDINGS 34's conclusion is unaffected and is not amended.
+- **`vertical`.** 4.21 → 4.20 quads lost and 31% → 32% mount killed, in the
+  **Autocannon Mount** columns only. The Gun Mount columns beside them are
+  identical to the digit, which is the attribution: the autocannon is the one with
+  `SensorRadar`. FINDINGS 18's conclusion is unaffected.
+
+### Four tests were passing by construction, and the notch caught them
+
+The first run after the notch landed broke four tests, and every one of them was
+asserting something about radar against a target that was **hovering**: a fiber
+quad placed and never ordered anywhere, two Multirole Quads compared across
+altitude bands with neither of them moving, a decoy and a strike drone side by
+side, and FINDINGS 37's own emission-control test, which launched a jet with no
+target and left it parked in mid-air for the whole test.
+
+None of them was wrong about the thing it was testing. All four were reading a
+radar reach that, under the research the game is built on, should never have
+existed. They are repaired by giving each target an order and a heading rather
+than by relaxing the rule, and each repair says in a comment why the order is
+there — because the next person to read "w.Step()" and a stationary drone will
+otherwise put it back.
+
+That is the WIRING-SPEC opening rule turning up from the other direction. The
+tests did not build the state they asserted on; they inherited a *default* they
+asserted on, and the default was zero velocity.
