@@ -15,8 +15,8 @@ arrivals spaced 2 s apart, so the battery's belt and its cooldown both bind
   ------------------------------------------------------------------------------------------------
   3 real + 0 decoy       2400            0.43 of 3           20%      0.0 of 0      6.1
   3 real + 1 decoy       2530            0.75 of 3           35%      0.8 of 1      7.3
-  2 real + 6 decoy       2380            0.43 of 2            7%      5.6 of 6     21.2
-  1 real + 13 decoy      2490            0.08 of 1            0%    13.0 of 13     41.5
+  2 real + 6 decoy       2380            0.43 of 2            7%      5.6 of 6     26.6
+  1 real + 13 decoy      2490            0.08 of 1            0%    12.3 of 13     56.3
 
   Nothing special-cases a decoy here. A defence picks targets by how
   much of one it can remove per shot, and a decoy dies to one round

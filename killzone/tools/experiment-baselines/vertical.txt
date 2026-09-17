@@ -9,7 +9,7 @@ engagements and a simultaneous wave only ever offers one
   attack                  quads lost   mount killed  quads lost   mount killed
   ------------------------------------------------------------------------------
   all low                       0.08           100%        4.71            10%
-  three low, two high           0.01           100%        4.21            31%
+  three low, two high           0.01           100%        4.20            32%
   two low, three high           0.00           100%        4.04            34%
   all high                      0.00           100%        4.15            29%
 

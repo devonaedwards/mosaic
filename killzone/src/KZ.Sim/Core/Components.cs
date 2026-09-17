@@ -163,10 +163,22 @@ namespace KZ.Sim
         /// <summary>Size and contrast against the ground. This is the one darkness ruins.</summary>
         public byte Visual;
         /// <summary>
-        /// Radar cross-section, in decibels rather than as a linear index:
-        /// <c>S = 2 x RCS_dBsm + 80</c>, so 80 is one square metre and two points
-        /// is one decibel. Reach goes as the fourth root of cross-section, which
-        /// works out to <c>10^((S-80)/80)</c>.
+        /// Radar cross-section, in decibels rather than as a linear index: two
+        /// points is one decibel, and reach goes as the fourth root of
+        /// cross-section, which works out to <c>10^((S-80)/80)</c>.
+        ///
+        /// The anchor is the trap, and it has already cost one brief. This said
+        /// "80 is one square metre" for months. The catalogue is not on that
+        /// scale: radar-rf.md §5, which every airframe signature here was
+        /// transcribed from, defines <c>radar_sig = 2 x dBsm + 60</c> - so a
+        /// square metre is 60, and the 80 this table is anchored at is ten square
+        /// metres. Twenty points, ten decibels, 1.78x of reach.
+        ///
+        /// It is left alone deliberately. The mismatch is absorbed by the Radar
+        /// Mast's 16,800 m reference reach, which AUDIT F25 says is too long by
+        /// about the same factor, and correcting one without the other would move
+        /// every radar range in the game. FINDINGS 38 records both. Add a new
+        /// signature on §5's scale, matching the airframes already here.
         ///
         /// A decibel scale rather than a linear one because the real spread is
         /// enormous - a plastic quadcopter and a corner reflector are three orders
