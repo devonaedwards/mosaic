@@ -530,6 +530,42 @@ tested and unused by this scenario's layout.
   currently cheaper than the design says, which affects every conclusion about
   the unjammable rung.
 
+### WIRED. Measured in FINDINGS 39.
+
+**Done, and the entry's own diagnosis held to the line.** Probed first:
+`AnySegmentNear` had exactly one caller and it was `SimTests.cs:569`,
+`TetherFound` had zero pushes, and `TetherLingerTicks` was indeed already
+carrying a thread that outlives its drone.
+
+`World.FindTethers` runs once a play-second over the ground units of each side
+against the live and lingering threads of the other, and what it grants is a
+**`TrackQuality.Bearing` contact on the disc around the launch point** for twenty
+seconds — seen, drawn, and explicitly not shootable, because `CanEngage` asks
+`HasFiringSolution`. That reuses F9's rung rather than inventing a parallel one,
+and it makes the thread do what `CanEngage`'s own comment says a bearing is for:
+hand you a direction to point something else in. The numbers are
+`spec-technical.md` §4.4's (24 m and 90 m on the map-metre scale that document
+was written at, ×12 like `TetherNodeSpacingMetres`), marked as designer estimates
+because no research document gives a figure.
+
+**Two of the three symbols this entry and the dead-symbol ledger name are gone
+rather than wired, and that is a correction to both.** `Tether.Anchor` is an
+`EntityHandle` that production code could only ever set to `None` — a pad is a
+point, not an entity, so `SortieSystem` passed `EntityHandle.None` at every
+launch. The launch point it was supposed to be is `AnchorPosition`, which was
+already read by `ConstrainVelocity` and is what the bearing now reads. And
+`ComponentMask.Tethered` is a second name for `TetherId >= 0`, which every system
+that cares already reads; wiring it would have created two answers to one
+question. Both deleted; the ledger is four lines shorter.
+
+**Measured, and it fires where the game is played.** A fiber raid flown from the
+interface's own default pad is found seven to nine times in ten play-minutes, and
+the price is 234 → **600** hit points off the player and the forward Relay Mast
+destroyed, on three seeds. Flown from the player's rear instead, the same thread
+is found just as often and costs nothing, because the defence cannot reach
+15 km to the launch site — which is a real tactical choice rather than an
+inert mechanic, and FINDINGS 39 says why it is one and not the other.
+
 ## F15. Four structures do nothing, and one of them gates a whole link tier
 
 - **Research:** `economics.md` §"Concrete recommendations" 4-5 — the fiber spool
@@ -639,7 +675,7 @@ than tidiness.
 | `CrewState.Reserved` | `Enums.cs:75` | DEAD | the player cannot hold a crew back |
 | `SortiePhase.Engaged/Terminal/Returning` | `Enums.cs:83-86` | DEAD | `Terminal` ("committed, ignores new orders, cannot be recalled") is never entered; commitment is driven only by link pip |
 | `ComponentMask.Producer`, `ComponentMask.Tethered` | `Entities.cs:65,67` | DEAD | never set, never tested |
-| `SimEventKind.SalvageCollected`, `SimEventKind.TetherFound` | `SimEvents.cs:24,33` | DEAD | see **F3**, **F14** |
+| `SimEventKind.SalvageCollected` | `SimEvents.cs:33` | DEAD | see **F3**. `TetherFound` was here too and is pushed now — **F14** |
 | `Entities.Rank`, `Entities.HpMax`, `MoverState.RadiusClass`, `SensorSuite.Quality`, `DecoyState.Mimics`, `JamEmitter.Team`, `JamEmitter.Source` | various | DEAD | all written, never read. `JamEmitter.Team` is the interesting one: it is captured at `World.cs:421` and ignored by `SignalGrid`, so **a jammer jams its own side's drones identically to the enemy's**. That may be intended, but nothing says so |
 | `UnitDef.Faction`, `UnitDef.Tier`, `UnitDef.BuildTicks`, `UnitDef.FootprintTiles`, `UnitDef.IsFlyingDecoy`, `UnitDef.Id` | `Defs.cs` | DEAD | zero readers outside `Defs.cs`. **`Faction` means faction restrictions are unenforced** — `PlayerState.Faction` is set in `KZ.Headless/Program.cs:75-76` and only ever printed. Either side can field Kestrel and Obsidian units simultaneously. `BuildTicks` means there is no build queue; `Tier` means no tech gating |
 | `SortieSystem.LaunchableCount` | `SortieSystem.cs:158` | DEAD | UI-facing; expected until there is a UI |

@@ -2424,3 +2424,201 @@ otherwise put it back.
 That is the WIRING-SPEC opening rule turning up from the other direction. The
 tests did not build the state they asserted on; they inherited a *default* they
 asserted on, and the default was zero velocity.
+
+## 39. The filament is a line on the ground, and now it points at you
+
+KILL ZONE is a video game. Everything below is measured inside a fictional
+simulation against fictional factions; the numbers are the game's, not anyone's.
+
+AUDIT F14. Fiber's design has always been three liabilities paying for one
+privilege: a leash, a snag risk, and a thread lying across the map that an enemy
+can find and follow home. Two were built. The third was three unconnected pieces
+— a geometry function with one caller in the test file, an event kind nothing
+pushed, and a launch point recorded on every thread and read by nothing — so the
+unjammable rung has been shipping at two thirds of its stated price.
+
+### The entry held, and two of the three symbols were wrong to wire at all
+
+Probed before building. `AnySegmentNear` had exactly one call site and it was
+`SimTests.cs:569`; `TetherFound` had zero pushes; `TetherLingerTicks` was already
+keeping a dead man's thread on the map for thirty seconds, as the entry said.
+
+Then the part that did not survive contact. **`Tether.Anchor` cannot hold the
+bearing home, because production code can only ever set it to nothing.**
+`SortieSystem.Launch` takes a pad as a `Fix2` — a point, not an entity — and
+passes `EntityHandle.None` at every launch. The launch point the mechanic needed
+is `AnchorPosition`, a different field, already read by `ConstrainVelocity`. So
+`Anchor` is deleted rather than wired: a field that only a test can fill is the
+same failure as a function only a test can call.
+
+**`ComponentMask.Tethered` is separate from F14 and is also deleted.** Whether an
+airframe is on a thread is `TetherId >= 0`, which `UpdateTethers`,
+`MovementSystem` and `LinkResolver` all already read. A mask flag beside it would
+be a second answer to one question, free to disagree with the first. That is one
+audit item (F20) closed by subtraction, and the dead-symbol ledger is four lines
+shorter: 60 known findings down to 56, 0 new.
+
+### What finding one buys, and why it is a bearing
+
+The option list ran from a log line to surfacing the launch site as a contact.
+It is the strong end, with the game's existing vocabulary doing the limiting:
+
+- `World.FindTethers` runs once a play-second over each side's **ground** units
+  against the other side's live and lingering threads. Ground only, per
+  `spec-technical.md` §4.4 — a filament is found by driving over it — which is
+  also what keeps the scan cheap.
+- Finding one gives the finder a **`TrackQuality.Bearing`** contact on everything
+  inside a 1,080 m disc around the launch point, for twenty play-seconds. Seen,
+  drawn, narrated, and **not shootable**: `CanEngage` asks `HasFiringSolution`,
+  and FINDINGS 38's rung means "a direction and not a position".
+- No roll. Discovery is geometry — `AnySegmentNear` against the polyline — so no
+  stream gains a draw and no recorded result reorders.
+
+The rung is doing real work here rather than being reused for tidiness.
+`CanEngage`'s own comment says what a bearing is for: *it hands them a direction
+to point something else in.* The defence's answer is to send the one sensor it
+owns that moves — an FPV with a camera — which converts the bearing into a
+position by arriving. The drone that was unjammable on the way in is what told
+the other side where its operator sits, and it still cannot be shot at off the
+thread alone.
+
+**Numbers and their provenance.** 288 m to find a thread and 1,080 m of reveal
+are `spec-technical.md` §4.4's 24 m and 90 m on the map-metre scale that document
+was written at, scaled by twelve exactly as `TetherNodeSpacingMetres` was
+(12 → 144). No research document in the corpus gives a figure for either, so both
+say **designer estimate** in the comment and name what they are anchored on. The
+twenty-second window is §4.4's, in play-seconds for the reason `TetherLingerTicks`
+is: it is how long the player has to react, which is pacing.
+
+### It fires in the shipped scenario, and here is how often
+
+The scenario's own geometry does the work, which is the opposite of FINDINGS 38's
+problem. The player's fiber targets sit on the defence's forward belt, and the
+defence's Main Tank patrols across the lane the threads are dragged down — so the
+vehicle being struck is the vehicle standing on the cable.
+
+Ten play-minutes, the interface's own default pad, a fiber sortie at the forward
+tank every ten play-seconds, nobody at the keyboard:
+
+| | seed 20260917 | 11111 | 22222 |
+|---|---|---|---|
+| threads found | **7** | **9** | **8** |
+| hit points off the player, before | 234 | 234 | 234 |
+| hit points off the player, after | **600** | **600** | **600** |
+| things of the player's destroyed, before → after | 0 → **1** | 0 → **1** | 0 → **1** |
+| defender sorties, before → after | 20 → 26 | 20 → 31 | 20 → 28 |
+
+The one destroyed is the forward **Relay Mast**, every time. In the run before
+the change it ends the match at 366/600 and alive; after it, the defence stops
+chasing drones for a few sorties and finishes it.
+
+### Does fiber's advantage narrow? Partly, and it is now a choice about where you launch
+
+FINDINGS 37's baseline for what fiber is worth is 59 radio sorties for nothing
+against 22 through an emission-control window. In the scenario as it stands
+today — the window exists, so radio works in it — the same ten minutes:
+
+| | radio FPV raid | fiber raid |
+|---|---|---|
+| hit points off the defence | 4,202 | 2,250–3,500 |
+| things of the defence's destroyed | 2 | 1–2 |
+| hit points off the player | **0** | **600** |
+| things of the player's destroyed | 0 | **1** |
+
+Fiber was already the worse buy in this scenario on offence — 420 materiel
+against the FPV Team's 200, so a 12,000 balance buys 28 sorties instead of the
+clock's 59 — and it now also costs the player their forward relay. That is the price
+arriving; it is not a claim that fiber is beaten, because the run where the
+jammer never switches off is the run fiber exists for and this scenario no longer
+contains one.
+
+**And the price is escapable, deliberately.** The same raid flown from the
+player's rear pad at (4,560, 8,400) instead of the forward one:
+
+| | forward pad | rear pad |
+|---|---|---|
+| threads found | 7 | 7 |
+| sorties launched at the revealed site | 6 | 6 |
+| hit points off the player | **600** | **0** |
+
+The thread is found just as often and the defence raids the launch site just as
+promptly, and not one of those six sorties takes a hit point off anything: the
+rear site is 15.2 km from the defence's pad while its radio reaches 12 km from a
+relay at x=19,200, so the raid goes black short of the target and finishes on a
+remembered coordinate. Nineteen drifted aimpoints in that run say so. So fiber's third liability is real
+and it is **a decision about where you launch**: forward, and 16.8 km of spool
+buys you a short flight and a found cable that gets your relay killed; from the
+rear, you spend most of the spool to put the launch site outside the enemy's
+reach and the found cable is a log line. That is the mechanic being interesting
+rather than either inert or unavoidable, and it is the thing to check first if
+anyone moves the defence's pad west.
+
+### The scenario change, and what it cost
+
+One branch, in the defender's standing orders: while the defence holds a thread
+bearing, its four-second raid goes at the **structure** it can see at the launch
+site instead of the nearest contact. Two things about it are worth recording.
+
+**It still reads the world through `IsDetectedBy`**, like the line below it, so
+the opposition is not being handed the entity table — it is being handed a
+contact the simulation gave it.
+
+**The first version picked the nearest *contact* to the anchor and was worth
+nothing**: 7 threads found, 234 hit points off the player, unchanged to the
+digit. The nearest contact to a launch pad is almost always one of that pad's own
+drones two seconds after launch, which is what the doctrine would have picked
+anyway. Measured, noticed, fixed by asking for a structure. A mechanic whose
+consumer looks at it and chooses the same thing it always chose is indistinguish-
+able from FINDINGS 38's inert pair, and this one was that for an hour.
+
+### Nothing regressed, and here is what was checked rather than assumed
+
+- **The passive scenario is identical on every counter, on three seeds:** 17
+  defender sorties, 13 link-blacks, 11 drifted aimpoints, **717** hit points off
+  the player, 1 unit lost, 112/120 five-second samples with an enemy airframe in
+  sight. Only `StateHash()` moved, because the per-team bearing and the per-thread
+  found-flag are persistent state and are now in it.
+- **The radio raid is identical too**, before and after, on three seeds: 59
+  sorties, 4,202 hit points off the defence, 2 things destroyed, 0 off the player,
+  116/120 samples. With no thread on the map there is nothing to find, and the
+  measurement says so rather than the argument.
+- **FINDINGS 37's interception pair reproduces to the trial**: a 140 m/s jet
+  crossing, an Interceptor FPV off a pad 1,500 m off its track, twenty trials —
+  **8/20 radar radiating, 0/20 switched off**, before and after, identical. Pad on
+  the track: 8/20 and 6/20, before and after.
+- **The ten balance experiments: 0 drift.** `--update-baseline` was not run and
+  did not need to be. The seven "suspected inert" warnings are the same seven that
+  were there before and are FINDINGS 32's, not this change's.
+- **137 tests pass**, four of them new.
+
+### Cost: about five percent, and the polyline walk is not where it went
+
+Twelve interleaved headless runs, six each: **5,492 → 5,212 ticks per second**,
+5.1% down. The scan was the suspect and is not the answer. Isolated — the scan
+present and the two detection-path lines removed — it is **about 1%**, which is
+what the early-outs are for: a thread is found once and then skipped forever, and
+a thread whose anchor is further away than its own spooled length plus the
+discovery range cannot have a segment in reach, because every node is within
+`Spooled` of the anchor by path length and therefore within it in a straight line.
+
+The other four percent is the two lines added to the detection path — the reveal
+branch inside `RebuildDetection`'s team loop and the `InFoundThreadReveal` tail on
+`TrackQualityOf` — and I could not make that attribution convincing, because each
+of them is a comparison against a `-1`. Turning the scan off does not recover it;
+removing the whole diff does. It may well be code layout in a 2,300-line file
+where two functions dominate the tick. It is recorded as a measurement I cannot
+explain rather than explained badly.
+
+### Two things that came out of probing and would not have come out of reading
+
+**The brief's description of the third dead piece was wrong, and so was the
+ledger's.** Both name `Tether.Anchor` as "the launch point recorded on every
+thread and read by nothing". The launch point is `AnchorPosition` and it is read;
+`Anchor` is a handle that is structurally always `None`. One grep, and it changed
+the work from "wire three things together" to "wire two and delete two".
+
+**The mechanic's first honest run produced no change at all in the outcome
+column**, with the event firing seven times. That is the FINDINGS 38 shape
+exactly — correct, reachable, and not touching the game — and the only reason it
+is not this entry's conclusion is that the measurement was run before the write-up
+rather than after it.
