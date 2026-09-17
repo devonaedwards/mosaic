@@ -290,7 +290,7 @@ namespace KZ.Play
                 case SimEventKind.LinkFellBack: return "a drone fell back to its alternate link";
                 case SimEventKind.DroneLostToLinkLoss: return "a drone fell out of the sky with nobody flying it";
                 case SimEventKind.TetherCut: return "a fiber thread parted";
-                case SimEventKind.TetherFound: return "somebody found one of our threads";
+                case SimEventKind.TetherFound: return "somebody walked onto one of our threads - they have a bearing to the pad";
                 case SimEventKind.CrewKilled: return "a crew was lost with its quarters";
                 case SimEventKind.CrewPromoted: return "a crew was promoted";
                 // A kill event belongs to whoever made the kill. The defender

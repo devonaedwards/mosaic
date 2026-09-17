@@ -338,7 +338,27 @@ namespace KZ.Play
             // clock.
             if (tick > 0 && tick % SimConstants.PlaySeconds(4) == 0 && inLaunchWindow)
             {
-                EntityHandle prey = NearestSeen(w, 2, P(25200, 9360));
+                // The launch site first, if one of the defence's vehicles has
+                // driven over a fiber filament in the last twenty seconds.
+                //
+                // AUDIT-UNWIRED.md F14. A thread found is a bearing home, and a
+                // bearing is not something the defence can shoot - World grants
+                // the disc around the launch point as a TrackQuality.Bearing
+                // contact and CanEngage refuses it. What it can do is send the
+                // one sensor it has that moves: an FPV with a camera, which
+                // converts the bearing into a position by arriving. That is
+                // CanEngage's own stated use for a bearing - "a direction to
+                // point something else in" - and it is the whole of fiber's
+                // third liability, because the drone that was unjammable on the
+                // way in is what told the defence where its operator sits.
+                //
+                // It still reads the world through IsDetectedBy like the line
+                // below it, so the defence is not being handed the entity table;
+                // it is being handed a contact the simulation gave it.
+                EntityHandle prey = EntityHandle.None;
+                Fix2 anchor;
+                if (w.ThreadBearingOpen(2, out anchor)) prey = SeenStructureNear(w, 2, anchor);
+                if (prey.IsNone) prey = NearestSeen(w, 2, P(25200, 9360));
                 if (!prey.IsNone)
                     w.Enqueue(Command.LaunchSortie(2, Catalog.IdOf("FPV Team"),
                                                    P(DefenderPadX, 9360), prey,
@@ -424,6 +444,35 @@ namespace KZ.Play
                 if (w.Entities.DefId[i] == defId) n++;
             }
             return n;
+        }
+
+        /// <summary>
+        /// What is standing at a revealed launch site: the nearest thing the other
+        /// side has built inside the disc a found filament gives up.
+        ///
+        /// A structure and not merely the nearest contact, because the nearest
+        /// contact to a launch pad is almost always another of that pad's drones
+        /// just airborne - which is what the line below would have picked anyway,
+        /// so the bearing would have bought the defence nothing. The thread leads
+        /// to where the sorties come from, and what is worth raiding there is the
+        /// thing that cannot fly away.
+        /// </summary>
+        static EntityHandle SeenStructureNear(World w, byte team, Fix2 anchor)
+        {
+            EntityHandle best = EntityHandle.None;
+            Fix bestSq = SimConstants.TetherFoundRevealRadiusMetres
+                       * SimConstants.TetherFoundRevealRadiusMetres;
+            for (int i = 1; i < w.Entities.HighWater; i++)
+            {
+                if (!w.Entities.IsSlotAlive(i)) continue;
+                if (w.Entities.Team[i] == team || w.Entities.Team[i] == 0) continue;
+                if (!w.Entities.Has(i, ComponentMask.Structure)) continue;
+                EntityHandle h = w.Entities.HandleAt(i);
+                if (!w.IsDetectedBy(team, h)) continue;
+                Fix d = Fix2.SqrDistance(anchor, w.Entities.Position[i]);
+                if (d <= bestSq) { bestSq = d; best = h; }
+            }
+            return best;
         }
 
         /// <summary>
