@@ -395,6 +395,55 @@ so this area has a record of being reasoned about rather than measured.
 
 ---
 
+## M. Electronic warfare: emission control, and who your own jammer hurts
+
+**Why the game needs it.** The game's EW Post carries a comment saying *"a jammer
+is loud. Switching it on paints a permanent mark on the enemy's map, so it is a
+posture you must defend, not a wall."* Neither half is true in the build: its radio
+signature is **25** against a command post's 80, a relay mast's 70 and an airborne
+radio FPV's 60–70 — the transmitting jammer is the quietest radio emitter in the
+game — and nothing in production code can switch it off. Meanwhile jamming is
+team-blind: `JamEmitter` carries a `Team` field that is written every rebuild and
+never read, so a side's own jammer sits on its own launch corridor and puts every
+sortie it flies onto a remembered coordinate. That combination produced a
+measured play-test where the defence flew thirty-four sorties and did zero damage.
+
+**Questions.**
+1. **How loud is a transmitting jammer, relative to other emitters?** The game needs
+   an ordering more than an absolute: jammer against a control-link transmitter,
+   a radar, a relay, a command post. Is a jammer plausibly the loudest thing on the
+   map while it is on?
+2. **Can you find and hit a jammer by its emission**, and what does that take —
+   what class of sensor, how long a look, how good a fix? The game wants this to be
+   a real counter that a player can buy.
+3. **Emission control as a practice.** When is a jammer on and when is it off? Is
+   it duty-cycled, cued by a warning, or run continuously? What does the operator
+   trade when they switch on?
+4. **The one the game most needs: how much does a jammer degrade its own side's
+   links?** Electronic fratricide is well documented as a problem. What is the
+   actual magnitude, and what mitigates it — frequency and time deconfliction,
+   geometry and antenna pattern, power management, or simply planning routes around
+   your own bubble? A rough fraction is enough; the game needs to know whether
+   "your own jammer hurts you" is a footnote or a real constraint.
+5. **What gets flown through a jammed corridor**, given that a side knows where its
+   own bubble is. Fiber, pre-programmed autonomous, frequency-agile links,
+   something else? This is a loadout question and it decides what the game's
+   defence should be built out of.
+6. **Where jamming actually is.** The working assumption in design discussion is
+   that it concentrates in the contact corridor and is largely absent over deep
+   interior, so a one-way munition flying hundreds of kilometres to a city is
+   unaffected by it because it carries no telemetry to jam. Is that the right
+   picture, and where are the exceptions?
+7. **Mobility.** Is a jammer a fixed installation, a vehicle, or both, and how fast
+   can it displace after it has been located? This decides whether "find the
+   emitter" is a durable answer or a temporary one.
+
+**Where it lands.** `docs/research/radar-rf.md` §emission-control, then AUDIT F8,
+the `JamEmitter.Team` gap, and the EW Post's signature row in `Defs.cs`.
+
+
+---
+
 ## How to hand the results back
 
 Each returned document goes in `docs/research/` as markdown with numbered sections,
