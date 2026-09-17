@@ -431,7 +431,7 @@ function drawLegend() {
     '<span class="own">■ yours</span> &nbsp; <span class="foe">◆ contact</span>' +
     ' &nbsp; letter = channel (O T A R E)<br>' +
     'drag pan · wheel/pinch zoom · click select · right-click order<br>' +
-    'card then target = sortie &nbsp; space = pause';
+    'card then target = sortie &nbsp; space = pause &nbsp; e = radiate/quiet';
 }
 
 // ---------------------------------------------------------------------------
@@ -468,6 +468,19 @@ function updatePanels() {
   document.getElementById('obj').textContent = obj.join('  ');
 
   document.getElementById('playbtn').textContent = V.paused ? '▶ play' : '❚❚ pause';
+
+  // Radiate or stay quiet, for the structures that can choose. The button is
+  // only there when the selection can actually do it, because an order you
+  // cannot give should not be a greyed-out button you keep trying.
+  var emitBtn = document.getElementById('emitbtn');
+  var es = selected();
+  if (sel && sel.kind === 'own' && es && es.emitting !== undefined) {
+    emitBtn.style.display = '';
+    emitBtn.textContent = es.emitting ? '◉ radiating' : '○ quiet';
+    emitBtn.classList.toggle('on', !!es.emitting);
+  } else {
+    emitBtn.style.display = 'none';
+  }
 
   var banner = document.getElementById('banner');
   if (V.outcome !== 'playing') {
@@ -732,6 +745,11 @@ document.getElementById('padbtn').onclick = function () {
   setPadMode = !setPadMode;
   this.classList.toggle('on', setPadMode);
 };
+document.getElementById('emitbtn').onclick = function () {
+  var e = selected();
+  if (!sel || sel.kind !== 'own' || !e || e.emitting === undefined) return;
+  command({ kind: 'emitting', subject: e.h, on: e.emitting ? 0 : 1 });
+};
 document.getElementById('sensbtn').onclick = function () {
   showSensors = !showSensors;
   this.classList.toggle('on', showSensors);
@@ -752,6 +770,7 @@ window.addEventListener('keydown', function (ev) {
   if (ev.code === 'Space') { ev.preventDefault(); document.getElementById('playbtn').click(); }
   else if (ev.key === '.') control({ action: 'step' });
   else if (ev.key === 'Escape') { armed = null; setPadMode = false; drawHangar(); }
+  else if (ev.key === 'e' || ev.key === 'E') document.getElementById('emitbtn').click();
   else if (ev.key === '+' || ev.key === '=') { cam.ppm *= 1.3; clampCam(); draw(); }
   else if (ev.key === '-') { cam.ppm /= 1.3; clampCam(); draw(); }
   else if (ev.key >= '1' && ev.key <= '7') {

@@ -230,6 +230,13 @@ namespace KZ.Play
             j.Field("structure", e.Has(i, ComponentMask.Structure));
             j.Field("yaw", Degrees(e.Yaw[i]));
 
+            // Whether this thing is transmitting, for the two structures that
+            // can choose. The player needs to see the state to decide, and the
+            // interface needs to know the order exists at all - a switch nothing
+            // reports the position of is a switch nobody uses.
+            if (e.Has(i, ComponentMask.Emitter))
+                j.Field("emitting", e.Emitter[i].Active);
+
             if (e.Has(i, ComponentMask.Link))
             {
                 LinkState l = e.Link[i];

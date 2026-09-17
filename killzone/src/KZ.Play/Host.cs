@@ -165,6 +165,13 @@ namespace KZ.Play
                     loop.Enqueue(Command.SetAltitude(team, subject,
                                                      (Layer)JsonReader.Int(m, "layer", 1)));
                     break;
+                // Radiate or stay quiet. The opposition runs this on a cycle and
+                // the player owns a Radar Mast that can do the same, so both ends
+                // of the switch are reachable rather than one.
+                case "emitting":
+                    loop.Enqueue(Command.SetEmitting(team, subject,
+                                                     JsonReader.Int(m, "on", 1) != 0));
+                    break;
             }
         }
 
