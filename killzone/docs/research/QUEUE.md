@@ -399,14 +399,33 @@ so this area has a record of being reasoned about rather than measured.
 
 **Why the game needs it.** The game's EW Post carries a comment saying *"a jammer
 is loud. Switching it on paints a permanent mark on the enemy's map, so it is a
-posture you must defend, not a wall."* Neither half is true in the build: its radio
-signature is **25** against a command post's 80, a relay mast's 70 and an airborne
-radio FPV's 60–70 — the transmitting jammer is the quietest radio emitter in the
-game — and nothing in production code can switch it off. Meanwhile jamming is
-team-blind: `JamEmitter` carries a `Team` field that is written every rebuild and
-never read, so a side's own jammer sits on its own launch corridor and puts every
-sortie it flies onto a remembered coordinate. That combination produced a
-measured play-test where the defence flew thirty-four sorties and did zero damage.
+posture you must defend, not a wall."* The build half-delivers this and the half
+that is missing is a content scale, which is what this brief is for.
+
+`World.EffectiveSignature` does raise an active emitter's radio signature to 85,
+and the detection path calls it — so a transmitting jammer is boosted. But the
+radio channel is a **linear** 0–100 index read under a square-root reach law, so
+85 against the jammer's static 25 buys **0.92×** reach, about 1.1× against an FPV
+quad. The boost is arithmetically real and tactically nothing. `radar-rf.md` §3.6
+already asks for a transmitting emitter detectable across effectively the whole
+map, and AUDIT F8 names the fix: convert the radio column to log power, as the
+radar column already is, so that 95 against 70 is seventeen times rather than
+one-point-one. **That conversion means re-deriving every radio value in the
+catalogue, which is why it is blocked on this brief rather than guessed at.**
+
+The Radar Mast is the worse case: it has `JamStrength = 0`, so it gets no emitter
+component and no boost at all. Its radio signature is 25 — quieter than the FPV
+quad it is supposed to be hunting. The building whose stated identity is "the
+loudest building a player owns" is the quietest thing on the map.
+
+Separately, jamming is team-blind: `JamEmitter` carries a `Team` field written
+every rebuild and never read, so a side's own jammer sits across its own launch
+corridor and puts every sortie it flies onto a remembered coordinate. A measured
+play-test had the defence fly thirty-four sorties for zero damage. The game is
+being wired to treat **emission control** as the mitigation — full fratricide plus
+an off switch, so the cost is paid in a decision about when to radiate rather than
+in a coefficient nobody has measured — and question 4 below is what would tell us
+whether that is the right shape.
 
 **Questions.**
 1. **How loud is a transmitting jammer, relative to other emitters?** The game needs
