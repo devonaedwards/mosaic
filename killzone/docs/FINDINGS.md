@@ -2103,6 +2103,28 @@ changed **nothing**: 34 sorties, 0 hit points, 117/120 samples, identical to the
 digit. Only the state hash moved. The boost is arithmetically real and tactically
 nothing, which is brief M's own argument, now with a measurement under it.
 
+### The asymmetry is closed, and it was the right thing to argue about
+
+The build of this entry shipped the order in the simulation with only the
+opposition able to give it: `Host.cs` had no case and the interface had no
+affordance, on the reasoning that a Host branch nothing produces is the dead-code
+pattern this repository polices. The reasoning is sound and the conclusion was
+backwards. A mechanic only the AI can use is worse than a dead branch, because it
+is invisible rather than merely unreachable — and the fix that removes the dead
+branch is to wire the other half, not to leave both out.
+
+So the player has it now: the snapshot reports an own unit's emitting state when
+it has an emitter, `Host` takes `kind: "emitting"`, and a button appears only for
+a selection that can actually radiate. Verified against the running server rather
+than by reading — the Radar Mast flips false and back, radar-held contacts go to
+zero while it is quiet, and the log narrates both transitions.
+
+One thing that cost ten minutes and is worth writing down: **the match starts
+paused at tick 0**, so a command sent before the first resume is enqueued and
+silently never applied. It is not new and it is not a defect, and it looks exactly
+like a broken command. The first attempt at the round-trip test read as a failed
+wire when it was a paused clock.
+
 ### FINDINGS 36 is amended, not replaced
 
 Item 36's third open problem — autonomous deep strikes always missing, because
