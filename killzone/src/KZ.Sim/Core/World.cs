@@ -1154,11 +1154,51 @@ namespace KZ.Sim
             if (detectionCacheTick == Tick && team < detectionCache.Length)
                 return detectionCache[team][ti];
 
-            return ComputeDetection(team, ti);
+            bool ignored;
+            return ComputeDetection(team, ti, out ignored);
+        }
+
+        /// <summary>
+        /// Whether this side's track on that target is good enough to shoot at, as
+        /// opposed to merely good enough to know something is out there.
+        ///
+        /// AUDIT-UNWIRED.md F9. The only thing that separates the two is passive
+        /// RF: a bearing with no range is a cue for another sensor and never a
+        /// weapon (radar-rf.md finding 8, §3.4), unless a second listener crosses
+        /// it into a fix (§3A.3). Everything else that detects anything in this
+        /// game produces a position.
+        ///
+        /// Cached alongside the detection answer rather than recomputed, because
+        /// CanEngage asks it once per candidate per weapon per tick and a walk of
+        /// the entity table in there would make the whole thing cubic. Held for
+        /// the same TrackHoldTicks as detection itself and for the same reason:
+        /// a mount that may fire this tick and not the next, as the edge roll
+        /// flickers, is not a tracker, it is a strobe.
+        /// </summary>
+        public bool HasFiringSolution(byte team, EntityHandle target)
+        {
+            if (!Entities.IsAlive(target)) return false;
+            int ti = target.Index;
+            if (Entities.Team[ti] == team) return true;
+
+            if (detectionCacheTick == Tick && team < solutionCache.Length)
+                return solutionCache[team][ti];
+
+            bool solution;
+            ComputeDetection(team, ti, out solution);
+            return solution;
         }
 
         bool[][] detectionCache;
+        bool[][] solutionCache;
         int detectionCacheTick = -1;
+
+        /// <summary>
+        /// How many listeners each side owns, counted once per tick. A side with
+        /// one cannot cross-fix anything, and this is what lets EsmCrossFix say so
+        /// without walking the entity table to find out.
+        /// </summary>
+        int[] esmSensorCount = new int[0];
 
         /// <summary>
         /// The tick each team last actually reached each entity on any channel, or
@@ -1174,6 +1214,14 @@ namespace KZ.Sim
         /// detectionCache above.
         /// </summary>
         int[][] lastSeenTick;
+
+        /// <summary>
+        /// The same memory for the firing solution, kept apart from it because the
+        /// two lapse independently: a contact that drops from a camera to a bare
+        /// ESM bearing is still detected and has stopped being shootable, and one
+        /// number cannot say that.
+        /// </summary>
+        int[][] lastSolutionTick;
 
         /// <summary>
         /// Work out what each side can see, once per tick.
@@ -1223,27 +1271,51 @@ namespace KZ.Sim
             if (detectionCache == null)
             {
                 detectionCache = new bool[Players.Length][];
+                solutionCache = new bool[Players.Length][];
                 lastSeenTick = new int[Players.Length][];
+                lastSolutionTick = new int[Players.Length][];
+                esmSensorCount = new int[Players.Length];
                 for (int t = 0; t < Players.Length; t++)
                 {
                     detectionCache[t] = new bool[Entities.Capacity];
+                    solutionCache[t] = new bool[Entities.Capacity];
                     lastSeenTick[t] = new int[Entities.Capacity];
-                    for (int i = 0; i < Entities.Capacity; i++) lastSeenTick[t][i] = -1;
+                    lastSolutionTick[t] = new int[Entities.Capacity];
+                    for (int i = 0; i < Entities.Capacity; i++)
+                    {
+                        lastSeenTick[t][i] = -1;
+                        lastSolutionTick[t][i] = -1;
+                    }
                 }
+            }
+
+            // Who owns enough listeners to cross-fix anything. One pass over the
+            // table rather than one per bearing-only contact.
+            for (int t = 0; t < esmSensorCount.Length; t++) esmSensorCount[t] = 0;
+            for (int i = 1; i < Entities.HighWater; i++)
+            {
+                if (!Entities.IsSlotAlive(i)) continue;
+                if (!Entities.Has(i, ComponentMask.Sensor)) continue;
+                if (Entities.Sensor[i].Esm.Raw <= 0) continue;
+                byte t = Entities.Team[i];
+                if (t < esmSensorCount.Length) esmSensorCount[t]++;
             }
 
             for (byte team = 1; team < Players.Length; team++)
             {
                 bool[] seen = detectionCache[team];
+                bool[] shootable = solutionCache[team];
                 int[] last = lastSeenTick[team];
-                for (int i = 1; i < Entities.HighWater; i++) seen[i] = false;
+                int[] lastSolution = lastSolutionTick[team];
+                for (int i = 1; i < Entities.HighWater; i++) { seen[i] = false; shootable[i] = false; }
 
                 for (int i = 1; i < Entities.HighWater; i++)
                 {
                     if (!Entities.IsSlotAlive(i)) continue;
-                    if (Entities.Team[i] == team) { seen[i] = true; continue; }
+                    if (Entities.Team[i] == team) { seen[i] = true; shootable[i] = true; continue; }
 
-                    if (ComputeDetection(team, i))
+                    bool solution;
+                    if (ComputeDetection(team, i, out solution))
                     {
                         seen[i] = true;
                         last[i] = Tick;
@@ -1260,16 +1332,43 @@ namespace KZ.Sim
                         // make one easier to acquire.
                         seen[i] = last[i] >= 0 && Tick - last[i] <= SimConstants.TrackHoldTicks;
                     }
+
+                    if (solution) lastSolution[i] = Tick;
+                    shootable[i] = solution
+                        || (lastSolution[i] >= 0 && Tick - lastSolution[i] <= SimConstants.TrackHoldTicks);
                 }
             }
             detectionCacheTick = Tick;
         }
 
-        bool ComputeDetection(byte team, int ti)
+        /// <summary>
+        /// Whether this side reaches that target on any channel, and - separately -
+        /// whether what it has is good enough to shoot at.
+        ///
+        /// The second answer is F9. radar-rf.md finding 8: "passive RF gives you a
+        /// bearing, not a firing solution", and §3.4 is explicit that a single
+        /// listener produces a line of bearing with the range "unbounded along the
+        /// bearing". Every other channel here produces a position. So a contact
+        /// held only on ESM is detected and is not engageable, unless a second
+        /// listener crosses it (§3A.3, EsmCrossFix below).
+        ///
+        /// Cost note. The channels are now tried position-first rather than
+        /// ESM-first, so the ordinary case - something a camera or a radar or a
+        /// microphone has - returns on the first channel that reaches, exactly as
+        /// it did. What changed is that an *ESM-only* contact no longer short-
+        /// circuits: it costs a full sweep of the side's sensors, because the
+        /// question "is there anything better than a bearing" cannot be answered
+        /// by the first bearing. The reordering itself cannot change any result:
+        /// this is a disjunction, and Reaches' edge roll is keyed to the target,
+        /// the tick and the channel rather than drawn from a stream, so the
+        /// answers do not depend on the order they are asked in.
+        /// </summary>
+        bool ComputeDetection(byte team, int ti, out bool firingSolution)
         {
             Fix2 tp = Entities.Position[ti];
             Layer layer = Entities.EntityLayer[ti];
             SignatureProfile sig = EffectiveSignature(ti);
+            bool heardOnEsm = false;
 
             for (int i = 1; i < Entities.HighWater; i++)
             {
@@ -1282,23 +1381,28 @@ namespace KZ.Sim
 
                 Fix distSq = Fix2.SqrDistance(Entities.Position[i], tp);
 
-                // Passive listening. Unaffected by darkness or altitude - if it is
-                // transmitting, it is transmitting.
-                if (Reaches(s.Esm, sig.Radio, Fix.One, distSq, SensorChannel.Esm, ti)) return true;
-
-                // Active radar. Air only, and better against altitude, where there
-                // is no ground clutter to pick a small return out of. And only
-                // while it is actually transmitting: a radar that has been told
-                // to go quiet is not a passive sensor, it is a switched-off one.
-                // The mask test is per sensor rather than per pair and only
-                // reached by something that has a radar at all, so the cost in
-                // the inner loop is one flag read on a handful of entities.
-                if (layer != Layer.Ground && s.Radar.Raw > 0 && IsRadiating(i))
+                // Active radar. It sees the ground too - radar-rf.md finding 9,
+                // "radar can see ground targets, and the game says it cannot" -
+                // and the constraint that replaces the layer gate is Doppler,
+                // which RadarDetectionScale applies. Better against altitude,
+                // where there is no clutter to pick a small return out of, and
+                // worst against the ground, which is the clutter.
+                //
+                // And only while it is actually transmitting: a radar that has
+                // been told to go quiet is not a passive sensor, it is a
+                // switched-off one. The mask test is per sensor rather than per
+                // pair and only reached by something that has a radar at all, so
+                // the cost in the inner loop is one flag read on a handful of
+                // entities - and so is the square root RadarDetectionScale needs
+                // for the radial component.
+                if (s.Radar.Raw > 0 && IsRadiating(i))
                 {
-                    Fix radarMod = layer == Layer.High
-                        ? Fix.FromDoubleContentOnly(1.20)
-                        : Fix.FromDoubleContentOnly(0.80);
-                    if (Reaches(s.Radar, sig.Radar, radarMod, distSq, SensorChannel.Radar, ti)) return true;
+                    int radarReliability;
+                    Fix radarMod = RadarDetectionScale(i, ti, layer, out radarReliability);
+                    if (radarMod.Raw > 0
+                        && Reaches(s.Radar, sig.Radar, radarMod, distSq, SensorChannel.Radar, ti,
+                                   radarReliability))
+                    { firingSolution = true; return true; }
                 }
 
                 // Thermal, which is a night sensor and a poor day one. Sunlight
@@ -1310,7 +1414,7 @@ namespace KZ.Sim
                 if (layer == Layer.High) thermalMod = thermalMod * SimConstants.ThermalHighScale;
                 if (pointedAtIt
                     && Reaches(s.Thermal, sig.Thermal, thermalMod, distSq, SensorChannel.Thermal, ti))
-                    return true;
+                { firingSolution = true; return true; }
 
                 // Microphones. Not the universal answer the model used to make
                 // them - against a small electric quad a camera still beats them,
@@ -1318,7 +1422,8 @@ namespace KZ.Sim
                 // piston-engined thing at range, and the one that gets better at
                 // night rather than worse.
                 if (Reaches(s.Acoustic, sig.Acoustic, AcousticTimeScale(layer), distSq,
-                            SensorChannel.Acoustic, ti)) return true;
+                            SensorChannel.Acoustic, ti))
+                { firingSolution = true; return true; }
 
                 // Cameras. Long reach in daylight, and after dark this is the line
                 // that stops being true.
@@ -1328,9 +1433,131 @@ namespace KZ.Sim
                     opticalMod = opticalMod * SimConstants.NightOpticalDetectionScale;
                 if (pointedAtIt
                     && Reaches(s.Optical, sig.Visual, opticalMod, distSq, SensorChannel.Optical, ti))
-                    return true;
+                { firingSolution = true; return true; }
+
+                // Passive listening, last. Unaffected by darkness or altitude - if
+                // it is transmitting, it is transmitting - and on its own it is a
+                // direction and nothing else.
+                if (Reaches(s.Esm, sig.Radio, Fix.One, distSq, SensorChannel.Esm, ti))
+                    heardOnEsm = true;
+            }
+
+            firingSolution = heardOnEsm && EsmCrossFix(team, ti, tp);
+            return heardOnEsm;
+        }
+
+        /// <summary>
+        /// Whether two of this side's listeners hold the same emitter from far
+        /// enough apart to have a position rather than two directions.
+        ///
+        /// radar-rf.md §3A.3's implementable rule: promote a bearing-only contact
+        /// to a fix when two or more RF sensors hold it and the bearings cross by
+        /// more than about 20 degrees. The spread is measured against whichever
+        /// listener reached it first, which is exact for the pair that matters -
+        /// if every other listener sits within a narrow cone of the first then no
+        /// pair among them crosses any wider than the widest one does with it.
+        ///
+        /// Geometry only: it asks which listeners are in range, not which of them
+        /// got a return this particular tick. The edge roll in Reaches is about
+        /// whether a marginal contact is held at all, and its caller has already
+        /// answered that - a crossing that flickered with the roll would make a
+        /// contact shootable and unshootable thirty-two times a second, and would
+        /// also put TrackQualityOf and ComputeDetection at odds, because the first
+        /// tests range and the second rolls.
+        ///
+        /// Cost: it is reached only for a contact that is on ESM and on nothing
+        /// else, and only by a side that owns two listeners at all - the count is
+        /// taken once per tick in RebuildDetection rather than per target.
+        /// </summary>
+        bool EsmCrossFix(byte team, int ti, Fix2 tp)
+        {
+            if (team >= esmSensorCount.Length || esmSensorCount[team] < 2) return false;
+
+            bool haveFirst = false;
+            ushort first = 0;
+            int lowest = 0, highest = 0;
+
+            for (int i = 1; i < Entities.HighWater; i++)
+            {
+                if (!Entities.IsSlotAlive(i)) continue;
+                if (Entities.Team[i] != team) continue;
+                if (!Entities.Has(i, ComponentMask.Sensor)) continue;
+
+                if (Entities.Sensor[i].Esm.Raw <= 0) continue;
+
+                Fix2 sp = Entities.Position[i];
+                Fix reach = DetectionRangeFor(i, ti, SensorChannel.Esm);
+                if (reach.Raw <= 0 || Fix2.SqrDistance(sp, tp) > reach * reach) continue;
+
+                ushort bearing = Trig.Atan2(tp.Y - sp.Y, tp.X - sp.X);
+                if (!haveFirst) { haveFirst = true; first = bearing; continue; }
+
+                int off = Trig.Delta(first, bearing);
+                if (off < lowest) lowest = off;
+                if (off > highest) highest = off;
+                if (highest - lowest >= SimConstants.EsmCrossFixBam) return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// What the radar channel's reach is multiplied by against this target,
+        /// and how much of its edge reliability survives.
+        ///
+        /// Two separate things, and the second is why this returns the reliability
+        /// through a parameter rather than folding it into the reach. A target at
+        /// 2 m/s radial is not merely detected closer in; it is detected
+        /// intermittently, which is what SimConstants' 0.30 says. Zero reach means
+        /// the notch: not a weak contact, no contact.
+        /// </summary>
+        Fix RadarDetectionScale(int sensorIndex, int targetIndex, Layer layer,
+                                out int reliabilityPercent)
+        {
+            reliabilityPercent = 100;
+
+            Fix2 delta = Entities.Position[targetIndex] - Entities.Position[sensorIndex];
+            Fix distSq = delta.SqrMagnitude();
+
+            // The radial component, which needs the one square root in this
+            // function. Squaring the dot product to avoid it does not work: the
+            // dot of a 45 km baseline with a 140 m/s closure is seven figures, and
+            // its square leaves Q31.32 an order of magnitude behind - the same
+            // 46,340 m ceiling SCALE.md records, arriving from the other side.
+            Fix radial;
+            if (distSq.Raw <= 0) radial = Fix.Zero;
+            else
+            {
+                Fix2 relative = Entities.Velocity[targetIndex] - Entities.Velocity[sensorIndex];
+                radial = Fix.Abs(Fix2.Dot(relative, delta) / Fix.Sqrt(distSq));
+            }
+
+            // Velocity is written by MovementSystem, which runs after
+            // RebuildDetection, so this reads last tick's motion: a thirty-second
+            // of a second of lag on a mechanic whose thresholds are whole metres
+            // per second.
+            if (radial < SimConstants.RadarNotchMetresPerSecond) return Fix.Zero;
+
+            Fix band = Fix.One;
+            if (radial < SimConstants.RadarSlowMetresPerSecond)
+            {
+                band = SimConstants.RadarSlowReachScale;
+                reliabilityPercent = SimConstants.RadarSlowReliabilityPercent;
+            }
+            else if (radial < SimConstants.RadarMediumMetresPerSecond)
+            {
+                band = SimConstants.RadarMediumReachScale;
+                reliabilityPercent = SimConstants.RadarMediumReliabilityPercent;
+            }
+
+            return RadarLayerScale(layer) * band;
+        }
+
+        /// <summary>What band the target is flying in does to a radar's reach.</summary>
+        static Fix RadarLayerScale(Layer layer)
+        {
+            if (layer == Layer.High) return SimConstants.RadarHighScale;
+            if (layer == Layer.Ground) return SimConstants.RadarGroundScale;
+            return SimConstants.RadarLowScale;
         }
 
         /// <summary>
@@ -1344,8 +1571,13 @@ namespace KZ.Sim
         /// a radar has to decide whether the small fast return it just got was a
         /// drone or a bird.
         /// </summary>
+        /// <param name="reliabilityPercent">
+        /// What survives of the channel's edge reliability. Only the radar channel
+        /// passes anything but 100: a return that is barely clear of the clutter
+        /// notch is intermittent as well as short (SimConstants' Doppler bands).
+        /// </param>
         bool Reaches(Fix sensorRange, byte signature, Fix modifier, Fix distSq,
-                     SensorChannel channel, int targetIndex)
+                     SensorChannel channel, int targetIndex, int reliabilityPercent = 100)
         {
             if (sensorRange.Raw <= 0 || signature == 0) return false;
 
@@ -1362,7 +1594,7 @@ namespace KZ.Sim
             // Out at the edge. Roll, but keyed to the tick and the pair rather than
             // drawn fresh each call, so one target does not resolve differently for
             // two sensors in the same instant.
-            int reliability = ChannelReliability(channel);
+            int reliability = (ChannelReliability(channel) * reliabilityPercent) / 100;
             ulong key = (ulong)(uint)targetIndex * 0x9E3779B97F4A7C15UL
                       + (ulong)(uint)Tick * 0xBF58476D1CE4E5B9UL
                       + (ulong)channel * 0x94D049BB133111EBUL;
@@ -1601,11 +1833,17 @@ namespace KZ.Sim
             {
                 case SensorChannel.Esm: nominal = s.Esm; strength = sig.Radio; break;
                 case SensorChannel.Radar:
-                    if (layer == Layer.Ground) return Fix.Zero;
                     if (!IsRadiating(sensorIndex)) return Fix.Zero;
                     nominal = s.Radar; strength = sig.Radar;
-                    mod = layer == Layer.High ? Fix.FromDoubleContentOnly(1.20)
-                                              : Fix.FromDoubleContentOnly(0.80);
+                    // No layer gate any more (radar-rf.md finding 9) - what gates
+                    // this channel is the Doppler notch, and a zero here is a
+                    // target sitting in the clutter rather than one flying in the
+                    // wrong band. ComputeDetection asks the same question of the
+                    // same function, so what the interface draws and what a
+                    // weapon gets are one answer.
+                    int reliabilityIgnored;
+                    mod = RadarDetectionScale(sensorIndex, targetIndex, layer, out reliabilityIgnored);
+                    if (mod.Raw <= 0) return Fix.Zero;
                     break;
                 case SensorChannel.Thermal:
                     nominal = s.Thermal; strength = sig.Thermal;
@@ -1660,10 +1898,18 @@ namespace KZ.Sim
         /// meeting point; one guided by an eyeball flies at the target, and against
         /// anything faster than itself that is a chase it cannot win.
         ///
-        /// Cost: two passes over the entity table per asking, the same shape the
-        /// multiplier already had. Interceptors are a handful of entities and both
-        /// callers ask once each per airframe per tick, so this does not touch the
-        /// detection inner loop.
+        /// Cost: up to three passes over the entity table per asking, the same
+        /// shape the multiplier already had. Interceptors are a handful of
+        /// entities and both callers ask once each per airframe per tick, so this
+        /// does not touch the detection inner loop. The third pass is only
+        /// reached by a contact nothing but a listener holds.
+        ///
+        /// AUDIT-UNWIRED.md F9 added the bottom rung. The second pass used to ask
+        /// BestDetectionRange, which includes the ESM channel, so a drone held on
+        /// nothing but its own transmissions read as <c>Optical</c> - and an
+        /// interceptor sent at it flew 0.55 of a lead computed from a velocity
+        /// nobody had measured, off a contact whose range was never known at all.
+        /// It reads as <c>Bearing</c> now, which flies no lead.
         /// </summary>
         public TrackQuality TrackQualityOf(byte team, EntityHandle target)
         {
@@ -1680,24 +1926,41 @@ namespace KZ.Sim
                 // A mast that has been told to stop transmitting returns zero
                 // here (DetectionRangeFor gates the radar channel on
                 // IsRadiating), so it cannot hand an interceptor a full lead
-                // solution off a sensor that is not radiating. The second pass
-                // below reaches the same answer the same way: BestDetectionRange
-                // asks per channel, and the radar channel is the one that is
-                // dark.
+                // solution off a sensor that is not radiating. The passes below
+                // reach the same answer the same way: DetectionRangeFor asks per
+                // channel, and the radar channel is the one that is dark.
                 Fix r = DetectionRangeFor(j, target.Index, SensorChannel.Radar);
                 if (r.Raw > 0 && Fix2.SqrDistance(Entities.Position[j], targetPos) <= r * r)
                     return TrackQuality.Radar;
             }
 
+            bool heardOnEsm = false;
             for (int j = 1; j < Entities.HighWater; j++)
             {
                 if (!Entities.IsSlotAlive(j)) continue;
                 if (Entities.Team[j] != team) continue;
                 if (!Entities.Has(j, ComponentMask.Sensor)) continue;
 
-                Fix r = BestDetectionRange(j, target.Index);
-                if (r.Raw > 0 && Fix2.SqrDistance(Entities.Position[j], targetPos) <= r * r)
+                Fix2 sensorPos = Entities.Position[j];
+                Fix distSq = Fix2.SqrDistance(sensorPos, targetPos);
+
+                for (int ch = 0; ch < 5; ch++)
+                {
+                    SensorChannel channel = (SensorChannel)ch;
+                    Fix r = DetectionRangeFor(j, target.Index, channel);
+                    if (r.Raw <= 0 || distSq > r * r) continue;
+                    if (channel == SensorChannel.Esm) { heardOnEsm = true; continue; }
                     return TrackQuality.Optical;
+                }
+            }
+
+            // Two listeners with a baseline between them have a position rather
+            // than two directions, and a position with no measured velocity is
+            // what the rung above means - radar-rf.md §3A.3.
+            if (heardOnEsm)
+            {
+                if (EsmCrossFix(team, target.Index, targetPos)) return TrackQuality.Optical;
+                return TrackQuality.Bearing;
             }
 
             return TrackQuality.None;
@@ -1724,6 +1987,8 @@ namespace KZ.Sim
                 // belonged to whatever used to occupy its index.
                 if (lastSeenTick != null)
                     for (int t = 0; t < lastSeenTick.Length; t++) lastSeenTick[t][idx] = -1;
+                if (lastSolutionTick != null)
+                    for (int t = 0; t < lastSolutionTick.Length; t++) lastSolutionTick[t][idx] = -1;
             }
             pendingDeaths.Clear();
         }
@@ -1877,6 +2142,18 @@ namespace KZ.Sim
                     int[] last = lastSeenTick[t];
                     for (int i = 1; i < Entities.HighWater; i++)
                         h = (h ^ (ulong)(uint)last[i]) * Prime;
+                }
+
+                // And the firing solution's memory, which is a second clock on the
+                // same shape and lapses on its own schedule (AUDIT-UNWIRED.md F9).
+                // Two peers that disagreed about it would disagree about which
+                // contacts their mounts are allowed to shoot at, and about nothing
+                // else hashed here.
+                if (lastSolutionTick != null)
+                {
+                    int[] lastSolution = lastSolutionTick[t];
+                    for (int i = 1; i < Entities.HighWater; i++)
+                        h = (h ^ (ulong)(uint)lastSolution[i]) * Prime;
                 }
             }
 

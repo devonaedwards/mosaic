@@ -305,12 +305,21 @@ namespace KZ.Sim
         {
             if (!w.Entities.IsAlive(target)) return false;
 
-            // Nothing is shootable until somebody has eyes on it. This is the rule
-            // that makes reconnaissance the gate on every shot fired, and the rule
-            // that gives night its meaning: an optical sensor loses most of its
-            // reach after dark, so a gun that dominates an approach in daylight can
-            // only see a few hundred metres of it at night.
-            if (!w.IsDetectedBy(w.Entities.Team[attackerIndex], target)) return false;
+            // Nothing is shootable until somebody has a *position* on it. This is
+            // the rule that makes reconnaissance the gate on every shot fired, and
+            // the rule that gives night its meaning: an optical sensor loses most
+            // of its reach after dark, so a gun that dominates an approach in
+            // daylight can only see a few hundred metres of it at night.
+            //
+            // AUDIT-UNWIRED.md F9: it used to ask IsDetectedBy, which is true of a
+            // bare bearing. radar-rf.md finding 8 - "passive RF gives you a
+            // bearing, not a firing solution" - and §3.4 says a single listener's
+            // range is unbounded along that bearing. So a Command Post hearing a
+            // transmitting drone somewhere out there does not hand every gun on
+            // the team a target; it hands them a direction to point something else
+            // in. Two listeners far enough apart still do, which is §3A.3's
+            // two-baseline rule and is inside HasFiringSolution.
+            if (!w.HasFiringSolution(w.Entities.Team[attackerIndex], target)) return false;
 
             if (w.Entities.EntityLayer[target.Index] == Layer.Ground) return true;
 
@@ -578,6 +587,12 @@ namespace KZ.Sim
         /// World.TrackQualityOf so that the vector an interceptor is flying and the
         /// roll it makes at the end are reading one answer rather than two copies
         /// of the same loop. The numbers are unchanged.
+        ///
+        /// TrackQuality.Bearing falls to the same 0.30 as no track at all, and
+        /// deliberately: a line of bearing tells an interceptor's terminal roll
+        /// exactly nothing that memory would not. CanEngage should have refused
+        /// the shot before this is reached, so the case is a floor rather than a
+        /// branch anything relies on.
         /// </summary>
         static Fix CueMultiplier(World w, int i, EntityHandle target)
         {

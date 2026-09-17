@@ -35,6 +35,7 @@ namespace KZ.Tests
             RegisterMinesAndNight(r);
             RegisterPointDefence(r);
             RegisterEconomy(r);
+            RegisterDetection(r);
         }
 
         // ------------------------------------------------------------------
@@ -209,7 +210,7 @@ namespace KZ.Tests
                 // it owns - it has ESM out to 10,800 m - and loses the one it was
                 // shouting on.
                 World w = MakeWorld(9104);
-                w.Spawn(Catalog.IdOf("Command Post"), 1, P(2400, 6000));
+                EntityHandle post = w.Spawn(Catalog.IdOf("Command Post"), 1, P(2400, 6000));
                 EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(6000, 6000));
 
                 // Something only the radar reaches: an airframe 6,600 m out,
@@ -218,9 +219,16 @@ namespace KZ.Tests
                 // zero against a jet that transmits nothing, and the Command
                 // Post is 10,200 m back with 6,000 m of ESM and 4,800 m of
                 // optics.
+                //
+                // Flown in at the mast rather than launched and left hanging:
+                // AUDIT-UNWIRED.md F7 put a Doppler notch on the radar channel, so
+                // a jet parked in mid-air with no order is a jet no radar can see,
+                // and this test would then have been asserting the notch rather
+                // than emission control. Sent at the Command Post behind the mast,
+                // which is 140 m/s of closing on the mast and clear of the notch.
                 EntityHandle spawned;
                 LaunchResult res = SortieSystem.Launch(w, 2, Catalog.IdOf("Jet Strike Drone"),
-                                                       P(12600, 6000), EntityHandle.None, 0,
+                                                       P(12600, 6000), post, 0,
                                                        out spawned);
                 Assert.Equal((long)LaunchResult.Launched, (long)res, "launched");
 
@@ -1872,6 +1880,13 @@ namespace KZ.Tests
                 EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(12000, 12000));
                 EntityHandle bomber = w.Spawn(Catalog.IdOf("Night Bomber"), 1, P(12000, 12000));
                 EntityHandle fiber = w.Spawn(Catalog.IdOf("Fiber FPV Team"), 2, P(12480, 12000));
+                // Flying, not hovering, and ordered rather than placed - the radar
+                // channel is gated on radial velocity now (AUDIT-UNWIRED.md F7),
+                // so a drone parked in mid-air is a drone the radar cannot see and
+                // the claim this test is guarding would have been about geometry
+                // rather than about fiber.
+                w.Enqueue(Command.MoveTo(2, fiber, P(16800, 12000)));
+                w.Step();
                 w.Step();
 
                 Assert.Equal(0, w.DetectionRangeFor(mast.Index, fiber.Index, SensorChannel.Esm).Raw,
@@ -1943,6 +1958,15 @@ namespace KZ.Tests
                 EntityHandle low = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(14400, 12000));
                 EntityHandle high = w.Spawn(Catalog.IdOf("Multirole Quad"), 2, P(14400, 12000));
                 w.Entities.EntityLayer[high.Index] = Layer.High;
+                // Both of them running in at the mast rather than hanging over it.
+                // The radar channel needs a radial component (AUDIT-UNWIRED.md F7)
+                // and the point of this test is the altitude band, so the Doppler
+                // term is held equal across the pair instead of being left at zero
+                // for both - which would have made the radar line below fail for a
+                // reason that has nothing to do with height.
+                w.Enqueue(Command.MoveTo(2, low, P(12000, 12000)));
+                w.Enqueue(Command.MoveTo(2, high, P(12000, 12000)));
+                w.Step();
                 w.Step();
 
                 Fix acousticLow = w.DetectionRangeFor(gun.Index, low.Index, SensorChannel.Acoustic);
@@ -1967,6 +1991,12 @@ namespace KZ.Tests
                 EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(12000, 12000));
                 EntityHandle decoy = w.Spawn(Catalog.IdOf("Decoy Drone"), 2, P(16800, 12000));
                 EntityHandle strike = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 2, P(16800, 12000));
+                // Both inbound at the mast, and both at 50 m/s, so the Doppler
+                // band is identical for the pair and the only thing left between
+                // them is cross-section - which is what this test is about.
+                w.Enqueue(Command.MoveTo(2, decoy, P(12000, 12000)));
+                w.Enqueue(Command.MoveTo(2, strike, P(12000, 12000)));
+                w.Step();
                 w.Step();
 
                 Fix vsDecoy = w.DetectionRangeFor(mast.Index, decoy.Index, SensorChannel.Radar);
@@ -1978,6 +2008,8 @@ namespace KZ.Tests
                 // And the other end of the scale still works: a plastic quadcopter
                 // is most of an order of magnitude below the decoy.
                 EntityHandle quad = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(16800, 12000));
+                w.Enqueue(Command.MoveTo(2, quad, P(12000, 12000)));
+                w.Step();
                 w.Step();
                 Fix vsQuad = w.DetectionRangeFor(mast.Index, quad.Index, SensorChannel.Radar);
                 Assert.True(vsDecoy > vsQuad * Fix.FromInt(5),
@@ -2745,6 +2777,183 @@ namespace KZ.Tests
         }
 
         // ------------------------------------------------------------------
+
+
+        // ------------------------------------------------------------------
+
+        static void RegisterDetection(TestRunner r)
+        {
+            r.Group("detection: the Doppler notch and the bearing");
+
+            r.Run("a radar sees a vehicle that is driving and loses it when it stops "
+                  + "(AUDIT-UNWIRED F7)", delegate
+            {
+                // radar-rf.md finding 9 and §5: the tank's dash in the radar
+                // column was wrong, and what replaces it is not a number but a
+                // rule - signature 94 while it is moving, nothing while it is
+                // parked, and the nothing is the Doppler gate rather than a
+                // second field.
+                //
+                // Everything here goes through the production path on purpose.
+                // The tank is spawned, told to drive with an order, and told to
+                // stop with an order; nothing writes a velocity or a signature by
+                // hand. Before this change the first assertion below was false at
+                // every range on the map, because DetectionRangeFor returned zero
+                // for anything on the ground.
+                World w = MakeWorld(9301);
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(2400, 6000));
+                EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(6000, 6000));
+                EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(13000, 6000));
+
+                w.Step();
+                Assert.Equal(0, w.DetectionRangeFor(mast.Index, tank.Index, SensorChannel.Radar).Raw,
+                             "parked, it is part of the clutter");
+                Assert.False(w.IsDetectedBy(1, tank), "and nothing else on the map reaches it");
+
+                w.Enqueue(Command.MoveTo(2, tank, P(6000, 6000)));
+                for (int i = 0; i < 4; i++) w.Step();
+                Assert.True(w.DetectionRangeFor(mast.Index, tank.Index, SensorChannel.Radar) > Fix.Zero,
+                            "driving at the mast, it is the loudest thing in the sector");
+                Assert.True(w.IsDetectedBy(1, tank), "so the radar has it");
+                Assert.True(w.TrackQualityOf(1, tank) == TrackQuality.Radar,
+                            "and it is a radar track, velocity and all");
+
+                w.Enqueue(Command.Stop(2, tank));
+                for (int i = 0; i < SimConstants.TrackHoldTicks + 8; i++) w.Step();
+                Assert.Equal(0, w.DetectionRangeFor(mast.Index, tank.Index, SensorChannel.Radar).Raw,
+                             "a tank that stops disappears, which is the whole mechanic");
+                Assert.False(w.IsDetectedBy(1, tank), "past the track hold, it is gone");
+            });
+
+            r.Run("crossing a radar's face defeats it as thoroughly as hovering does", delegate
+            {
+                // radar-rf.md finding 12: the notch is about *radial* velocity, so
+                // "a drone crossing tangentially at 20 m/s" sits in the clutter
+                // exactly as a hovering one does. That is the sentence that turns
+                // this from a stat into a tactic, so it gets its own test.
+                //
+                // Two identical airframes the same distance from the mast, one
+                // running in and one running across. Same speed, same
+                // cross-section, same range - the only difference is the heading,
+                // and the heading is given by an order.
+                World w = MakeWorld(9302);
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(2400, 6000));
+                EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(6000, 6000));
+                EntityHandle inbound = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 2, P(13000, 6000));
+                EntityHandle across = w.Spawn(Catalog.IdOf("Heavy Strike Drone"), 2, P(13000, 6000));
+
+                w.Enqueue(Command.MoveTo(2, inbound, P(6000, 6000)));
+                w.Enqueue(Command.MoveTo(2, across, P(13000, 20000)));
+                for (int i = 0; i < 8; i++) w.Step();
+
+                Assert.True(w.DetectionRangeFor(mast.Index, inbound.Index, SensorChannel.Radar)
+                            > w.DetectionRangeFor(mast.Index, across.Index, SensorChannel.Radar),
+                            "the one closing is seen further than the one crossing");
+                Assert.True(w.TrackQualityOf(1, inbound) == TrackQuality.Radar,
+                            "the inbound one is a radar track");
+                Assert.True(w.TrackQualityOf(1, across) != TrackQuality.Radar,
+                            "and flying across the face of it is a way out of that");
+            });
+
+            r.Run("an ESM bearing is not a firing solution (AUDIT-UNWIRED F9)", delegate
+            {
+                // radar-rf.md finding 8 and §3.4: one passive listener gives a
+                // line of bearing with the range "unbounded along the bearing",
+                // usable for cueing another sensor and "never a weapon".
+                //
+                // An Interceptor Battery hears a transmitting quad at 6,024 m,
+                // sees it on thermal at 547 m and holds it on radar at 1,447 m -
+                // and only while it is closing. Put the quad at 2,400 m, crossing,
+                // and every channel that produces a position is short of it while
+                // the one that produces a direction is not. Before this change the
+                // battery emptied its belt at it.
+                World w = MakeWorld(9303);
+                w.Player(1).Materiel = Fix.FromInt(100000);
+                EntityHandle battery = w.Spawn(Catalog.IdOf("Interceptor Battery"), 1, P(6000, 6000));
+                EntityHandle quad = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(8400, 6000));
+                w.Enqueue(Command.MoveTo(2, quad, P(8400, 14000)));
+
+                int belt = w.Entities.Weapon[battery.Index].EngagementsRemaining;
+                for (int i = 0; i < 8; i++) w.Step();
+
+                Assert.True(w.IsDetectedBy(1, quad), "the battery hears it perfectly well");
+                Assert.True(w.TrackQualityOf(1, quad) == TrackQuality.Bearing,
+                            "and what it has is a direction, not a position");
+                Assert.False(w.HasFiringSolution(1, quad), "so it is not a target");
+
+                for (int i = 0; i < SimConstants.Seconds(20); i++) w.Step();
+                Assert.Equal(belt, w.Entities.Weapon[battery.Index].EngagementsRemaining,
+                             "and twenty seconds later the belt is untouched");
+            });
+
+            r.Run("two listeners with a baseline make a fix; two on one line do not", delegate
+            {
+                // radar-rf.md §3A.3's two-baseline rule, which is the half of F9
+                // worth building rather than the half worth refusing: the fix
+                // error goes as 1/sin(crossing angle), so bearings that cross at
+                // 90 degrees are worth 131 m at five kilometres and bearings that
+                // cross at five degrees are worth 1,500 m. Promote at about 20.
+                //
+                // Same two Command Posts, same quad, same range, twice. The only
+                // thing that changes is where the second listener is standing, and
+                // that is the point: ESM stops being a radius and becomes a
+                // placement problem.
+                World inLine = MakeWorld(9304);
+                inLine.Spawn(Catalog.IdOf("Command Post"), 1, P(4000, 6000));
+                inLine.Spawn(Catalog.IdOf("Command Post"), 1, P(6000, 6000));
+                EntityHandle a = inLine.Spawn(Catalog.IdOf("FPV Team"), 2, P(9000, 6000));
+                for (int i = 0; i < 8; i++) inLine.Step();
+                Assert.True(inLine.IsDetectedBy(1, a), "both of them hear it");
+                Assert.True(inLine.TrackQualityOf(1, a) == TrackQuality.Bearing,
+                            "two listeners stacked on one line are one listener");
+                Assert.False(inLine.HasFiringSolution(1, a), "so still nothing to shoot at");
+
+                World spread = MakeWorld(9305);
+                spread.Spawn(Catalog.IdOf("Command Post"), 1, P(6000, 3000));
+                spread.Spawn(Catalog.IdOf("Command Post"), 1, P(6000, 9000));
+                EntityHandle b = spread.Spawn(Catalog.IdOf("FPV Team"), 2, P(9000, 6000));
+                for (int i = 0; i < 8; i++) spread.Step();
+                Assert.True(spread.TrackQualityOf(1, b) == TrackQuality.Optical,
+                            "and the same pair six kilometres apart has a position");
+                Assert.True(spread.HasFiringSolution(1, b), "which a weapon may have");
+            });
+
+            r.Run("a bearing is worth a shot when a gun's own eyes are short", delegate
+            {
+                // The audit's claim, measured where it actually bites: at night a
+                // Gun Mount's camera reaches 305 m and its microphone 576 m
+                // against a quad, and its barrel reaches 1,000 m. The outer half
+                // of its envelope used to be filled in by a Command Post two
+                // kilometres behind it hearing the quad's video transmitter.
+                Terrain t = new Terrain(24576, 24576);
+                t.Fill(TileClass.Open);
+                World w = new World(t, 256, 16, 9306, 2, NightStartTick());
+                Assert.True(w.IsNight, "this test is about what a camera cannot do after dark");
+                w.Player(1).Materiel = Fix.FromInt(100000);
+
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(9600, 6000));
+                EntityHandle gun = w.Spawn(Catalog.IdOf("Gun Mount"), 1, P(12000, 6000));
+                EntityHandle quad = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(12700, 6000));
+                w.Enqueue(Command.MoveTo(2, quad, P(12700, 14000)));
+
+                int belt = w.Entities.Weapon[gun.Index].EngagementsRemaining;
+                for (int i = 0; i < 8; i++) w.Step();
+                Assert.True(w.IsDetectedBy(1, quad), "the Command Post hears it at 700 m easily");
+                Assert.False(w.HasFiringSolution(1, quad), "and nothing on the team has a position");
+
+                for (int i = 0; i < SimConstants.Seconds(15); i++) w.Step();
+                Assert.Equal(belt, w.Entities.Weapon[gun.Index].EngagementsRemaining,
+                             "so the mount holds its fire, where it used to empty the belt");
+            });
+        }
+
+        /// <summary>The first clock reading that falls in darkness.</summary>
+        static int NightStartTick()
+        {
+            for (int t = 0; t < 400000; t += 250)
+                if (SimConstants.TimeOfDayAt(t) == DayPhase.Night) return t;
+            return 0;
+        }
 
         static void RegisterEconomy(TestRunner r)
         {

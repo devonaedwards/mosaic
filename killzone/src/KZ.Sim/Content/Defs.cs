@@ -633,6 +633,36 @@ namespace KZ.Sim
             });
         }
 
+        // Radar signatures on the ground, which until now were all zero.
+        //
+        // radar-rf.md finding 9: "radar can see ground targets, and the game says
+        // it cannot... the tank's — in the radar column is wrong. The correct
+        // constraint is Doppler: a stationary vehicle is invisible, a moving one
+        // is loud." §2.7 backs it with vendor figures - 12 km on vehicles against
+        // 5 km on a Phantom 4 - and with the three constraints that make it a
+        // rule rather than a number: the Doppler gate, line of sight, and mode
+        // exclusivity. The first is SimConstants' notch; the second is AUDIT F1
+        // and still unbuilt; the third is not modelled and is worth a brief.
+        //
+        // Only the tank has a published figure. §5's table gives a moving main
+        // battle tank at radar signature 94 and a stationary one at 0, and the
+        // zero is the Doppler gate rather than a second number - so the tank
+        // carries 94 and the notch takes it away when it stops, which is one
+        // mechanic instead of two.
+        //
+        // Everything else below it is a designer estimate stepped off that 94 by
+        // size, on the same scale the air roster already uses (94 down to 64 is
+        // 15 dB of cross-section, a tank to a motorbike). The scale is
+        // logarithmic - two points per decibel - so these are not "about three
+        // quarters of a tank", they are an order of magnitude below it.
+        //
+        // The two dismounted teams keep a zero, and that is a decision rather
+        // than an omission. §2.7 says C-UAS radars classify "human" alongside
+        // "vehicle", so a figure would be defensible - but both walk at 1.5 m/s,
+        // which is the floor of the notch, so their radial component is under it
+        // in almost every geometry. A signature nothing can ever read is the
+        // disease WIRING-SPEC exists to cure, so they do not get one until
+        // somebody gives infantry a vehicle to ride in.
         static void BuildGroundUnits()
         {
             Add(new UnitDef
@@ -645,7 +675,10 @@ namespace KZ.Sim
                 // documented medevac averaging 16 km/h over 36.5 km.
                 SpeedMetresPerSecond = M(5.5),
                 SensorOptical = M(2160),
-                SigRadio = 0, SigThermal = 40, SigAcoustic = 45, SigVisual = 55
+                SigRadio = 0, SigThermal = 40, SigAcoustic = 45, SigVisual = 55,
+                // A small tracked robot. Designer estimate, an order of magnitude
+                // of cross-section below the tank's 94.
+                SigRadar = 76
             });
 
             Add(new UnitDef
@@ -677,7 +710,10 @@ namespace KZ.Sim
                 // squad's *maximum* range on a range card, not an engagement.
                 WeaponRangeMetres = M(400),
                 SensorOptical = M(2640),
-                SigRadio = 0, SigThermal = 35, SigAcoustic = 60, SigVisual = 30
+                SigRadio = 0, SigThermal = 35, SigAcoustic = 60, SigVisual = 30,
+                // Motorbikes. Designer estimate, and the smallest thing on the
+                // ground that gets a radar return at all - 15 dB under the tank.
+                SigRadar = 64
             });
 
             Add(new UnitDef
@@ -689,7 +725,10 @@ namespace KZ.Sim
                 // is about where trucks die (30-50 km depth), not how fast they go.
                 SpeedMetresPerSecond = M(14.0),
                 SensorOptical = M(1920),
-                SigRadio = 0, SigThermal = 55, SigAcoustic = 60, SigVisual = 70
+                SigRadio = 0, SigThermal = 55, SigAcoustic = 60, SigVisual = 70,
+                // A large boxy soft-skinned vehicle. Designer estimate, a little
+                // under the tank because the shape is worse, not the size.
+                SigRadar = 88
             });
 
             // A ground robot keeps flying its link, so an electronic-warfare bubble
@@ -707,7 +746,8 @@ namespace KZ.Sim
                 SpeedMetresPerSecond = M(5.0),
                 Link = LinkKind.Radio, LinkRobustness = 40,
                 SensorOptical = M(1920),
-                SigRadio = 45, SigThermal = 35, SigAcoustic = 40, SigVisual = 50
+                SigRadio = 45, SigThermal = 35, SigAcoustic = 40, SigVisual = 50,
+                SigRadar = 76   // as Recovery UGV. Designer estimate.
             });
 
             Add(new UnitDef
@@ -719,7 +759,8 @@ namespace KZ.Sim
                 SpeedMetresPerSecond = M(8.0),
                 JamStrength = 55, JamRadiusMetres = M(4200), EmitsWhileActive = true,
                 SensorOptical = M(2400), SensorEsm = M(4800),
-                SigRadio = 30, SigThermal = 45, SigAcoustic = 45, SigVisual = 55
+                SigRadio = 30, SigThermal = 45, SigAcoustic = 45, SigVisual = 55,
+                SigRadar = 88   // as Supply Truck, same chassis class. Designer estimate.
             });
 
             Add(new UnitDef
@@ -737,6 +778,8 @@ namespace KZ.Sim
                 WeaponRangeMetres = M(2000),
                 SensorOptical = M(3840), SensorThermal = M(3000),
                 SigRadio = 0, SigThermal = 75, SigAcoustic = 75, SigVisual = 80,
+                // Designer estimate, a couple of decibels under the tank.
+                SigRadar = 90,
                 SensorArcDegrees = 90, SensorScanDegreesPerSecond = 30});
 
             // Expensive, powerful, and only survivable with jamming cover, cages,
@@ -776,6 +819,9 @@ namespace KZ.Sim
                 // thermal-optical.md §11: visual 100 (was 90) anchors the top of
                 // the optical scale. Thermal 90 stays as the night value.
                 SigRadio = 0, SigThermal = 90, SigAcoustic = 80, SigVisual = 100,
+                // radar-rf.md §5: a main battle tank moving reads 94, stationary
+                // 0. The zero is the Doppler notch doing it, not a second field.
+                SigRadar = 94,
                 SensorArcDegrees = 90, SensorScanDegreesPerSecond = 25});
 
             Add(new UnitDef

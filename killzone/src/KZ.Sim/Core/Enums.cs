@@ -167,15 +167,33 @@ namespace KZ.Sim
     /// rate from image scale, while the autocannon carries "organic AESA
     /// search/track + EO/IR; measured velocity". The same document says a firing
     /// solution is most sensitive to exactly that measurement.
+    ///
+    /// The rungs are ordered, and code compares them rather than listing them:
+    /// anything above <c>Bearing</c> is a position, and a position is what a
+    /// weapon needs. Adding a rung in the middle would change what every such
+    /// comparison means, which is the reason this comment says so.
     /// </summary>
     public enum TrackQuality : byte
     {
         /// <summary>Nobody holds it. Whatever is shooting is doing so on memory.</summary>
         None = 0,
-        /// <summary>Somebody has eyes on it, and no measured velocity.</summary>
-        Optical = 1,
+        /// <summary>
+        /// A direction and nothing else. One passive listener hears a transmitter
+        /// and can say where it lies, not how far away it is - radar-rf.md finding
+        /// 8 and §3.4: "a single passive sensor produces a line of bearing, not a
+        /// position", usable for cueing another sensor and "never a weapon". It
+        /// cues, it does not shoot, and it flies no lead.
+        /// </summary>
+        Bearing = 1,
+        /// <summary>
+        /// A position, and no measured velocity. Eyes on it, ears on it, or two
+        /// listeners crossing their bearings into a fix (radar-rf.md §3A.3) - the
+        /// three are the same rung because they deliver the same thing, which is
+        /// where the target is and no idea how fast it is going.
+        /// </summary>
+        Optical = 2,
         /// <summary>A radar holds it: range and closing rate are measured.</summary>
-        Radar = 2
+        Radar = 3
     }
 
     public enum DayPhase : byte

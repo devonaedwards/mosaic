@@ -454,6 +454,59 @@ namespace KZ.Sim
         public static readonly Fix OpticalHighScale = Fix.One;
         public static readonly Fix ThermalHighScale = Fix.FromDoubleContentOnly(1.30);
 
+        // ---- radar: clutter, and the Doppler notch ---------------------------
+
+        /// <summary>
+        /// What band the target is in does to a radar's reach. High is clean sky;
+        /// low is the clutter the whole sensor struggles with; the ground is the
+        /// clutter, by definition.
+        ///
+        /// The first two are the 1.20 / 0.80 that were written inline in
+        /// World.cs twice over. The third is new, and it is the one that needed
+        /// a number: radar-rf.md §4 recommends a three-band altitude modifier of
+        /// x1.25 / x1.00 / x0.40 and calls the bottom band nap-of-the-earth, so a
+        /// target actually on the earth gets that band. It is an extension of a
+        /// sourced figure rather than the figure itself, and it lands where the
+        /// research says it should: §2.7 quotes the O.W.L. 3D radar at 12 km on
+        /// vehicles, and a Radar Mast's 16,800 m against a moving tank at
+        /// signature 94 works out to 9.5 km - the right order, inside the vendor
+        /// figure rather than beyond it.
+        /// </summary>
+        public static readonly Fix RadarHighScale = Fix.FromDoubleContentOnly(1.20);
+        public static readonly Fix RadarLowScale = Fix.FromDoubleContentOnly(0.80);
+        public static readonly Fix RadarGroundScale = Fix.FromDoubleContentOnly(0.40);
+
+        /// <summary>
+        /// The Doppler notch, which radar-rf.md finding 12 calls "the missing
+        /// mechanic" and §2B.3 "the single most important mechanic in the radar
+        /// model".
+        ///
+        /// Ground clutter sits at zero Doppler and is spread by wind in the
+        /// vegetation. A return whose radial velocity falls inside that spread is
+        /// not a weak return, it is buried - so the notch is a hard gate and not
+        /// a multiplier, however large the cross-section. §2B.3's table, read
+        /// straight:
+        ///
+        ///   under 1.5 m/s   not detected
+        ///   1.5 - 4 m/s     reach x0.40, reliability x0.30
+        ///   4 - 10 m/s      reach x0.80, reliability x0.70
+        ///   over 10 m/s     full
+        ///
+        /// Radial velocity, not speed: the component along the sensor-to-target
+        /// line. That is what makes this a mechanic rather than a stat. A tank
+        /// that stops is invisible; a drone that hovers is invisible; a drone
+        /// crossing a radar's face at any speed at all is invisible, because a
+        /// tangential track has no radial component. The same airframe running in
+        /// at the mast is the loudest thing on the channel.
+        /// </summary>
+        public static readonly Fix RadarNotchMetresPerSecond = Fix.FromDoubleContentOnly(1.5);
+        public static readonly Fix RadarSlowMetresPerSecond = Fix.FromInt(4);
+        public static readonly Fix RadarMediumMetresPerSecond = Fix.FromInt(10);
+        public static readonly Fix RadarSlowReachScale = Fix.FromDoubleContentOnly(0.40);
+        public static readonly Fix RadarMediumReachScale = Fix.FromDoubleContentOnly(0.80);
+        public const int RadarSlowReliabilityPercent = 30;
+        public const int RadarMediumReliabilityPercent = 70;
+
         // ---- weather ---------------------------------------------------------
 
         /// <summary>
@@ -627,6 +680,23 @@ namespace KZ.Sim
         /// and produces an intermittent track rather than a certain one.
         /// </summary>
         public static readonly Fix DetectionSolidFraction = Fix.FromDoubleContentOnly(0.60);
+
+        /// <summary>
+        /// How far apart two passive listeners' bearings to the same emitter have
+        /// to cross before the pair is a position rather than two directions.
+        ///
+        /// radar-rf.md §3A.3: one sensor gives a line of bearing and "never a
+        /// weapon"; two give a fix whose error is sigma_theta x R / sin(delta),
+        /// which is 131 m at a 90 degree crossing, 383 m at 20 degrees and 1,500 m
+        /// at 5. Its implementable rule promotes a bearing to a fix when
+        /// sin(delta) > 0.35 - about 20 degrees - and that is this number, in the
+        /// simulation's own angle units (65,536 to the turn).
+        ///
+        /// Which turns "I have ESM everywhere" into a question about where the
+        /// ESM is, and that is the point of it. Two listeners on one line are a
+        /// worse sensor than the same two spread across a front.
+        /// </summary>
+        public const int EsmCrossFixBam = (20 * 65536) / 360;
 
         /// <summary>
         /// The target speed a gun's firing solution is quoted against, in real

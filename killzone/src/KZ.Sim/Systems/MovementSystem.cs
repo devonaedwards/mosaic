@@ -240,9 +240,11 @@ namespace KZ.Sim
             {
                 case TrackQuality.Radar: flown = SimConstants.InterceptLeadRadarTrack; break;
                 case TrackQuality.Optical: flown = SimConstants.InterceptLeadOpticalTrack; break;
-                // Nobody is holding it. There is no solution to fly, so the
-                // interceptor is pointed at the contact and does what it did before
-                // any of this existed.
+                // Nobody is holding it, or the only thing holding it is a bearing
+                // (AUDIT-UNWIRED.md F9). Either way there is no solution to fly:
+                // a line of bearing has no range on it, so there is no point on it
+                // to lead. The interceptor is pointed at the contact and does what
+                // it did before any of this existed.
                 default: return targetPos;
             }
 
