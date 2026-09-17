@@ -2319,14 +2319,12 @@ namespace KZ.Sim
             // optical detection from the first tick.
             h = (h ^ (ulong)Phase) * Prime;
 
-            // Which threads have already been found. A thread is found once, so
-            // this decides whether a future discovery fires at all - and it is the
-            // only part of the tether system in here, which is worth saying out
-            // loud: the polyline itself is not hashed, and a divergence in a node
-            // position would currently surface only through the drone flying on
-            // the end of it.
-            for (int id = 0; id < Tethers.Capacity; id++)
-                h = (h ^ (ulong)Tethers.Get(id).FoundByTeams) * Prime;
+            // The threads, in full: where each one lies, what it is doing, and
+            // which teams have already walked over it. This used to be the
+            // found-by mask alone, and said so - a node position that diverged
+            // between two peers would have surfaced only later, through the drone
+            // flying on the end of the cable. See TetherSystem.StateHash.
+            h = (h ^ Tethers.StateHash()) * Prime;
 
             h = (h ^ Territory.StateHash()) * Prime;
             h = (h ^ Imagery.StateHash()) * Prime;

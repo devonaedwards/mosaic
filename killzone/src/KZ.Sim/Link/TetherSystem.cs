@@ -67,6 +67,59 @@ namespace KZ.Sim
             this.rng = snagRng;
         }
 
+        /// <summary>
+        /// Every part of a thread that the simulation reads later, folded into the
+        /// world hash.
+        ///
+        /// This existed as FoundByTeams alone, hashed from World.StateHash, and the
+        /// comment there said out loud that the polyline was not covered. That was a
+        /// real hole rather than a tidy-up: node positions decide whether a drone is
+        /// held back by its own cable (ConstrainVelocity), whether a thread snags,
+        /// and - since AUDIT F14 - whether an enemy driving over one finds it. Two
+        /// peers that disagreed about where a filament lay would have agreed about
+        /// the world hash right up until the drone on the end of it went somewhere
+        /// else, which is the worst shape a determinism bug can have: silent, then
+        /// far from its cause.
+        ///
+        /// Free slots are skipped rather than hashed as zero, so capacity can change
+        /// between builds without moving the hash of a world that is using less of
+        /// it. Nodes are hashed to NodeCount for the same reason.
+        /// </summary>
+        public ulong StateHash()
+        {
+            unchecked
+            {
+                const ulong Prime = 1099511628211UL;
+                ulong h = 1469598103934665603UL;
+                for (int id = 0; id < tethers.Length; id++)
+                {
+                    Tether t = tethers[id];
+                    h = (h ^ (ulong)t.State) * Prime;
+                    if (t.State == TetherState.Free) continue;
+
+                    h = (h ^ (ulong)t.Drone.Value) * Prime;
+                    h = (h ^ (ulong)t.AnchorPosition.X.Raw) * Prime;
+                    h = (h ^ (ulong)t.AnchorPosition.Y.Raw) * Prime;
+                    h = (h ^ (ulong)t.Spooled.Raw) * Prime;
+                    h = (h ^ (ulong)t.SpoolMax.Raw) * Prime;
+                    h = (h ^ (ulong)t.TautSinceTick) * Prime;
+                    h = (h ^ (ulong)t.CutTick) * Prime;
+                    h = (h ^ (ulong)t.RoundRobinCursor) * Prime;
+                    h = (h ^ t.Team) * Prime;
+                    h = (h ^ t.FoundByTeams) * Prime;
+
+                    h = (h ^ (ulong)t.NodeCount) * Prime;
+                    for (int n = 0; n < t.NodeCount; n++)
+                    {
+                        h = (h ^ (ulong)t.Nodes[n].Position.X.Raw) * Prime;
+                        h = (h ^ (ulong)t.Nodes[n].Position.Y.Raw) * Prime;
+                        h = (h ^ (ulong)t.Nodes[n].Tile) * Prime;
+                    }
+                }
+                return h;
+            }
+        }
+
         public int Capacity { get { return tethers.Length; } }
         public Tether Get(int id) { return tethers[id]; }
 

@@ -140,6 +140,46 @@ namespace KZ.Tests
                 Assert.True(before != w.StateHash(), "one bit of movement changes the hash");
             });
 
+            r.Run("the hash notices a thread that has moved", delegate
+            {
+                // The tether polyline was not in StateHash. Only the found-by mask
+                // was, and the comment beside it said so. That is a real hole and
+                // not a tidy-up: node positions decide whether a drone is held back
+                // by its own cable, whether a thread snags, and - since AUDIT F14 -
+                // whether an enemy driving over one finds it. Two peers that
+                // disagreed about where a filament lay would have agreed about the
+                // world hash right up until the drone on the end of it went
+                // somewhere else: silent, and then far from its cause.
+                //
+                // Nudging a node by a single fixed-point step, in the style of "the
+                // hash notices a change anywhere in the world" above, because the
+                // point is coverage rather than any order a player can give.
+                Terrain ground = new Terrain(24576, 24576);
+                ground.Fill(TileClass.Open);
+                World w = new World(ground, 256, 32, 4242, 2);
+                w.Player(1).Materiel = Fix.FromInt(100000);
+                w.Spawn(Catalog.IdOf("Drone Workshop"), 1, P(3000, 12000));
+                EntityHandle prey = w.Spawn(Catalog.IdOf("Relay Mast"), 2, P(15000, 12000));
+                w.Enqueue(Command.LaunchSortie(1, Catalog.IdOf("Fiber FPV Team"),
+                                               P(3000, 12000), prey, 0));
+
+                int found = -1;
+                for (int step = 0; step < 32 * 60 && found < 0; step++)
+                {
+                    w.Step();
+                    for (int id = 0; id < w.Tethers.Capacity; id++)
+                        if (w.Tethers.Get(id).NodeCount > 1) { found = id; break; }
+                }
+                Assert.True(found >= 0, "the launch laid a thread with at least two nodes");
+
+                ulong before = w.StateHash();
+                TetherSystem.Tether t = w.Tethers.Get(found);
+                t.Nodes[1].Position = new Fix2(new Fix(t.Nodes[1].Position.X.Raw + 1),
+                                               t.Nodes[1].Position.Y);
+                Assert.True(before != w.StateHash(),
+                            "one bit of thread is a divergence the hash has to catch");
+            });
+
             r.Run("the hash notices a mast that has stopped transmitting", delegate
             {
                 // Whether a jammer is radiating is persistent state that nothing
