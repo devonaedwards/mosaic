@@ -29,7 +29,8 @@ namespace KZ.Sim
         SetAltitude,
         SetAutonomyBox,
         FitThermalBlanket,
-        FitCage
+        FitCage,
+        SetEmitting
     }
 
     public struct Command
@@ -173,6 +174,31 @@ namespace KZ.Sim
             c.Kind = CommandKind.FitCage; c.Team = team; c.Subject = subject; c.Param = savePercent;
             return c;
         }
+
+        /// <summary>
+        /// Stop transmitting, or start again. EmitterState.Active's own comment
+        /// has claimed since it was written that "switching off is a real
+        /// option", and until this order existed nothing outside a test could
+        /// take it.
+        ///
+        /// It is the whole of the answer to a jammer sitting across its owner's
+        /// launch corridor. Jamming is team-blind and stays that way - a bubble
+        /// does not ask whose drone it is denying, and a reduced own-side
+        /// penalty would be a coefficient nobody has measured (research queue
+        /// brief M, question 4, is what would tell us). So the cost of a jammer
+        /// is paid where it is actually paid: in deciding when to radiate.
+        /// Switched on, the enemy's links die and so do yours, and the loudest
+        /// thing on the map is you. Switched off, both work and nobody can hear
+        /// you - and if what you switched off was a radar, you cannot see on it
+        /// either.
+        /// </summary>
+        public static Command SetEmitting(byte team, EntityHandle subject, bool on)
+        {
+            Command c = new Command();
+            c.Kind = CommandKind.SetEmitting; c.Team = team; c.Subject = subject;
+            c.Param = on ? 1 : 0;
+            return c;
+        }
     }
 
     public sealed class CommandBuffer
@@ -267,6 +293,14 @@ namespace KZ.Sim
                 case CommandKind.FitCage:
                     if (w.Entities.IsAlive(c.Subject) && w.Entities.Team[c.Subject.Index] == c.Team)
                         w.FitCage(c.Subject, Fix.FromInt(c.Param) / 100);
+                    break;
+
+                // Ownership-checked for the same reason as the two above, and
+                // more urgently: this one would work on somebody else's mast.
+                // Switching an enemy radar off is not a thing a radio sends.
+                case CommandKind.SetEmitting:
+                    if (w.Entities.IsAlive(c.Subject) && w.Entities.Team[c.Subject.Index] == c.Team)
+                        w.SetEmitting(c.Subject, c.Param != 0);
                     break;
             }
         }

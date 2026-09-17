@@ -42,7 +42,16 @@ namespace KZ.Sim
         SatelliteCoverageLost,     // crossed a border out of the constellation's licensed ground
         SatelliteCoverageRegained,
         SortieRefusedDaylight,
-        SortieRefusedWeather
+        SortieRefusedWeather,
+        /// <summary>
+        /// A jammer or a radar started or stopped transmitting. Param is 1 for
+        /// on and 0 for off. The one thing a player watching the log needs in
+        /// order to read emission control as a decision rather than as the
+        /// simulation misbehaving: without it, a jamming dome vanishing off the
+        /// map and every link in the area coming back at the same instant has
+        /// no stated cause.
+        /// </summary>
+        EmissionsChanged
         // DayPhaseChanged is gone with the day/night cycle. A match is fought at
         // one time of day now and never changes phase, so nothing ever pushed
         // it - World.Phase is a constant to read, not an event to wait for.

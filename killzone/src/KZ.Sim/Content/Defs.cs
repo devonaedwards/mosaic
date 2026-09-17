@@ -159,6 +159,19 @@ namespace KZ.Sim
         public byte JamStrength;
         public Fix JamRadiusMetres;
 
+        /// <summary>
+        /// This thing radiates to do its job, so it can be told to stop.
+        ///
+        /// Deliberately not derived from JamStrength, which is how the emitter
+        /// component used to be granted. A radar mast jams nobody and is the
+        /// loudest building a player owns - SensorSuite.Radar says so in as many
+        /// words - so keying "does it transmit" off "does it deny" left the one
+        /// unit the dilemma was written for with nothing to switch off. AUDIT
+        /// F8. A jammer sets this too: denying and transmitting are the same
+        /// act for it, but they are not the same field.
+        /// </summary>
+        public bool EmitsWhileActive;
+
         public byte AutonomyQuality;
 
         public bool IsStructure;
@@ -273,6 +286,13 @@ namespace KZ.Sim
                 CostMateriel = 1000, BuildTicks = SimConstants.PlaySeconds(30),
                 Hp = M(900), Armour = ArmourClass.Structure, FootprintTiles = 3,
                 SensorRadar = M(16800), SensorEsm = M(10800),
+                // An active radar is an emitter. No number here is new: the
+                // boost it now takes is UnitDef.SignatureWhileEmitting's
+                // existing default, the same one an EW Post has always had.
+                // What changes is that the mast can be told to stop, and a
+                // mast that has stopped cannot see on the channel it stopped
+                // using - World.DetectionRangeFor.
+                EmitsWhileActive = true,
                 SigRadio = 25, SigThermal = 25, SigAcoustic = 15, SigVisual = 70
             });
 
@@ -291,7 +311,7 @@ namespace KZ.Sim
                 Name = "EW Post", IsStructure = true, Tier = 2,
                 CostMateriel = 750, BuildTicks = SimConstants.PlaySeconds(24),
                 Hp = M(1100), Armour = ArmourClass.Structure, FootprintTiles = 3,
-                JamStrength = 70, JamRadiusMetres = M(5400),
+                JamStrength = 70, JamRadiusMetres = M(5400), EmitsWhileActive = true,
                 // thermal-optical.md §11 "Jammer, transmitting": thermal 48 (was
                 // 40), visual 75 (was 70). Kilowatts into an amplifier and a
                 // cooling loop is a genuine hot spot on a vehicle-sized target.
@@ -697,7 +717,7 @@ namespace KZ.Sim
                 Hp = M(380), Armour = ArmourClass.Light,
                 // 29 km/h cross-country. Designer estimate.
                 SpeedMetresPerSecond = M(8.0),
-                JamStrength = 55, JamRadiusMetres = M(4200),
+                JamStrength = 55, JamRadiusMetres = M(4200), EmitsWhileActive = true,
                 SensorOptical = M(2400), SensorEsm = M(4800),
                 SigRadio = 30, SigThermal = 45, SigAcoustic = 45, SigVisual = 55
             });

@@ -25,6 +25,7 @@ namespace KZ.Tests
         public static void Register(TestRunner r)
         {
             RegisterJamming(r);
+            RegisterEmissionControl(r);
             RegisterLinks(r);
             RegisterMesh(r);
             RegisterTethers(r);
@@ -95,6 +96,161 @@ namespace KZ.Tests
                     prev = v;
                 }
                 Assert.True(monotonic, "jamming falls off smoothly as you fly outward");
+            });
+        }
+
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Emission control: the off switch, and what it costs the side that
+        /// throws it. AUDIT-UNWIRED.md F8.
+        ///
+        /// Everything here goes through Spawn, Enqueue and Step. That matters
+        /// more than usual for this feature, because EmitterState.Active was
+        /// written into every spawned emitter, read by three systems, and set
+        /// false by exactly one line in this file - the FINDINGS 30 shape
+        /// precisely, a flag that only its own test ever moved.
+        /// </summary>
+        static void RegisterEmissionControl(TestRunner r)
+        {
+            r.Group("emission control");
+
+            r.Run("a jammer told to stop transmitting stops jamming", delegate
+            {
+                // The measured defect this exists for: the defence's EW Post sits
+                // across its own launch corridor, jamming is team-blind, and so
+                // every raid it flew went black off the pad. Here the jammer and
+                // the drone are on the same side, which is the case the game had
+                // no answer to at all.
+                World w = MakeWorld(9101);
+                w.Spawn(Catalog.IdOf("Command Post"), 2, P(14400, 6000));
+                EntityHandle post = w.Spawn(Catalog.IdOf("EW Post"), 2, P(12000, 6000));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 2, P(13800, 6000));
+
+                for (int i = 0; i < SimConstants.AmberToBlackTicks + 8; i++) w.Step();
+                Assert.True(w.Entities.Link[drone.Index].Pip == LinkPip.Black,
+                            "its own side's bubble has taken its pilot away");
+
+                w.Enqueue(Command.SetEmitting(2, post, false));
+                for (int i = 0; i < 8; i++) w.Step();
+
+                Assert.True(w.Entities.IsAlive(post), "the post is still standing");
+                Assert.True(w.Entities.Link[drone.Index].Pip == LinkPip.Green,
+                            "and with the post quiet the pilot is back");
+                Assert.Equal(0, w.Entities.Link[drone.Index].JamSampled,
+                             "there is no field left to sample");
+
+                // And back on again, because a posture you cannot resume is not a
+                // posture.
+                w.Enqueue(Command.SetEmitting(2, post, true));
+                for (int i = 0; i < SimConstants.AmberToBlackTicks + 8; i++) w.Step();
+                Assert.True(w.Entities.Link[drone.Index].Pip == LinkPip.Black,
+                            "switched back on, it denies its own side again");
+            });
+
+            r.Run("you cannot switch off somebody else's jammer", delegate
+            {
+                World w = MakeWorld(9102);
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(4800, 6000));
+                EntityHandle post = w.Spawn(Catalog.IdOf("EW Post"), 2, P(12000, 6000));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(13800, 6000));
+
+                for (int i = 0; i < SimConstants.AmberToBlackTicks + 8; i++) w.Step();
+                Assert.True(w.Entities.Link[drone.Index].Pip == LinkPip.Black, "jammed");
+
+                // The order every player would send first if it worked.
+                w.Enqueue(Command.SetEmitting(1, post, false));
+                for (int i = 0; i < 8; i++) w.Step();
+
+                Assert.True(w.Entities.Link[drone.Index].Pip == LinkPip.Black,
+                            "an enemy's order over the radio does not turn their transmitter off");
+            });
+
+            r.Run("a radar mast can be switched off, and jams nobody when it is on", delegate
+            {
+                // The decoupling, stated as a pair. The mast now carries an
+                // emitter component - it did not before, because the component
+                // was granted off JamStrength and a radar's is zero - and the
+                // thing that must not have come with it is a jamming bubble.
+                World w = MakeWorld(9103);
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(4800, 6000));
+                EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(6000, 6000));
+                EntityHandle drone = w.Spawn(Catalog.IdOf("FPV Team"), 1, P(6600, 6000));
+
+                for (int i = 0; i < SimConstants.AmberToBlackTicks + 8; i++) w.Step();
+                Assert.True(w.Entities.Link[drone.Index].Pip == LinkPip.Green,
+                            "standing next to your own radar mast costs you nothing");
+                Assert.Equal(0, w.Entities.Link[drone.Index].JamSampled,
+                             "a radar is not a jammer, however loud it is");
+
+                // And the order reaches it, which is the whole point of the flag
+                // being separate from JamStrength.
+                //
+                // The component test is not decoration. Without it this reads
+                // the Active field of a struct the mast may not carry at all,
+                // and an unfitted component's default is false - so the
+                // assertion below would pass by construction against exactly
+                // the code this change replaces. That is the failure WIRING-SPEC
+                // opens with, and it is one line to close.
+                Assert.True(w.Entities.Has(mast.Index, ComponentMask.Emitter),
+                            "a radar mast is an emitter, which is what it was not before");
+                Assert.True(w.Entities.Emitter[mast.Index].Active, "and it starts switched on");
+
+                w.Enqueue(Command.SetEmitting(1, mast, false));
+                w.Step();
+                Assert.False(w.Entities.Emitter[mast.Index].Active,
+                             "the loudest building a player owns can be told to be quiet");
+            });
+
+            r.Run("a radar that has been switched off cannot see, and still hears", delegate
+            {
+                // The half that gives the off switch weight on both sides of the
+                // map. A mast under emission control keeps every passive channel
+                // it owns - it has ESM out to 10,800 m - and loses the one it was
+                // shouting on.
+                World w = MakeWorld(9104);
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(2400, 6000));
+                EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 1, P(6000, 6000));
+
+                // Something only the radar reaches: an airframe 6,600 m out,
+                // inside the mast's 8,501 m radar reach against it and outside
+                // every other channel on the map - the mast's own ESM reads
+                // zero against a jet that transmits nothing, and the Command
+                // Post is 10,200 m back with 6,000 m of ESM and 4,800 m of
+                // optics.
+                EntityHandle spawned;
+                LaunchResult res = SortieSystem.Launch(w, 2, Catalog.IdOf("Jet Strike Drone"),
+                                                       P(12600, 6000), EntityHandle.None, 0,
+                                                       out spawned);
+                Assert.Equal((long)LaunchResult.Launched, (long)res, "launched");
+
+                // And something loud enough for the mast's own ESM to hold: an
+                // enemy jammer, transmitting, 7,200 m away against 9,957 m of
+                // passive reach.
+                EntityHandle theirs = w.Spawn(Catalog.IdOf("EW Post"), 2, P(13200, 6000));
+
+                for (int i = 0; i < 16; i++) w.Step();
+                Assert.True(w.IsDetectedBy(1, spawned), "the radar holds the airframe");
+                Assert.True(w.TrackQualityOf(1, spawned) == TrackQuality.Radar,
+                            "and it is a radar track, which is what a lead solution is flown off");
+
+                w.Enqueue(Command.SetEmitting(1, mast, false));
+                // Past the track hold: a track once acquired is held for a couple
+                // of seconds after the sensor stops reaching it, and this test is
+                // about the sensor rather than about the memory of it.
+                for (int i = 0; i < SimConstants.TrackHoldTicks + 16; i++) w.Step();
+
+                Assert.False(w.IsDetectedBy(1, spawned),
+                             "a radar that is not radiating does not find an airframe");
+                Assert.True(w.TrackQualityOf(1, spawned) == TrackQuality.None,
+                            "so no interceptor flies a full lead off it either");
+                Assert.True(w.IsDetectedBy(1, theirs),
+                            "but the passive channels are untouched: the mast still hears a transmitter");
+
+                w.Enqueue(Command.SetEmitting(1, mast, true));
+                for (int i = 0; i < 16; i++) w.Step();
+                Assert.True(w.TrackQualityOf(1, spawned) == TrackQuality.Radar,
+                            "and it is a radar again the moment it is told to be");
             });
         }
 

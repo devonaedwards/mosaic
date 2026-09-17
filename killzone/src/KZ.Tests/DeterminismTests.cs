@@ -139,6 +139,38 @@ namespace KZ.Tests
                 }
                 Assert.True(before != w.StateHash(), "one bit of movement changes the hash");
             });
+
+            r.Run("the hash notices a mast that has stopped transmitting", delegate
+            {
+                // Whether a jammer is radiating is persistent state that nothing
+                // else hashed here derives from, and until CommandKind.SetEmitting
+                // existed no order could move it - so a miss in StateHash could
+                // only ever have been provoked by a test. It can be provoked by a
+                // standing order now, and two peers that disagreed about it would
+                // disagree about whose links are alive, about who is the loudest
+                // thing on the map, and about whether a radar mast can see.
+                //
+                // Deliberately a world with nothing in it but the emitter. If
+                // anything else were present the switch would move link pips and
+                // detection memory as well, and the test would pass off those
+                // rather than off the bit it is about.
+                Terrain t = new Terrain(12288, 12288);
+                t.Fill(TileClass.Open);
+                World a = new World(t, 64, 8, 4242, 2);
+                World b = new World(t, 64, 8, 4242, 2);
+
+                EntityHandle pa = a.Spawn(Catalog.IdOf("EW Post"), 2, P(6000, 6000));
+                b.Spawn(Catalog.IdOf("EW Post"), 2, P(6000, 6000));
+                for (int i = 0; i < 8; i++) { a.Step(); b.Step(); }
+                Assert.Equal((long)a.StateHash(), (long)b.StateHash(),
+                             "sanity: the two worlds agree before the order");
+
+                a.Enqueue(Command.SetEmitting(2, pa, false));
+                a.Step(); b.Step();
+
+                Assert.True(a.StateHash() != b.StateHash(),
+                            "a mast going quiet is a divergence the hash has to catch");
+            });
         }
 
         /// <summary>

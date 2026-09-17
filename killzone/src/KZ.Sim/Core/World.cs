@@ -319,7 +319,12 @@ namespace KZ.Sim
                 };
             }
 
-            if (def.JamStrength > 0)
+            // AUDIT F8: this used to read `def.JamStrength > 0`, which is why
+            // the Radar Mast - the loudest building a player owns, by its own
+            // stat block - had no emitter component, took no radio boost, and
+            // could not be switched off. Whether a thing transmits and whether
+            // it denies are different questions and now read different fields.
+            if (def.EmitsWhileActive)
             {
                 Entities.AddComponent(i, ComponentMask.Emitter);
                 Entities.Emitter[i] = new EmitterState
@@ -493,6 +498,28 @@ namespace KZ.Sim
             Entities.CageDisruptionChance[h.Index] = Fix.Clamp(disruptionChance, Fix.Zero, Fix.One);
         }
 
+        /// <summary>
+        /// Switch an emitter on or off. The one thing that makes a jammer a
+        /// posture rather than a wall, and the only mitigation this game offers
+        /// for a bubble that lands on its owner's own launch corridor -
+        /// see Command.SetEmitting for why there is no own-side exemption.
+        ///
+        /// Silent on a subject with no emitter, so a player fat-fingering the
+        /// order onto a truck costs them nothing, and silent on a redundant
+        /// order, so a standing order can restate its posture every tick
+        /// without filling the log.
+        /// </summary>
+        public void SetEmitting(EntityHandle h, bool on)
+        {
+            if (!Entities.IsAlive(h)) return;
+            int i = h.Index;
+            if (!Entities.Has(i, ComponentMask.Emitter)) return;
+            if (Entities.Emitter[i].Active == on) return;
+            Entities.Emitter[i].Active = on;
+            Events.Push(SimEventKind.EmissionsChanged, Tick, h, EntityHandle.None,
+                        Entities.Team[i], on ? 1 : 0);
+        }
+
         // ---- the autonomy no-go bubble ---------------------------------------
 
         /// <summary>
@@ -595,6 +622,12 @@ namespace KZ.Sim
                 if (!Entities.IsSlotAlive(i)) continue;
                 if (!Entities.Has(i, ComponentMask.Emitter)) continue;
                 if (!Entities.Emitter[i].Active) continue;
+                // An emitter that denies nothing has no place in the jamming
+                // field. Since the component stopped being granted off
+                // JamStrength a radar mast has one, and without this it would
+                // take one of the sixty-four emitter slots and - worse - hand
+                // Snapshot a zero-radius jamming dome to draw over its owner.
+                if (Entities.Emitter[i].JamStrength == 0) continue;
 
                 Signal.AddEmitter(new JamEmitter
                 {
@@ -1254,8 +1287,13 @@ namespace KZ.Sim
                 if (Reaches(s.Esm, sig.Radio, Fix.One, distSq, SensorChannel.Esm, ti)) return true;
 
                 // Active radar. Air only, and better against altitude, where there
-                // is no ground clutter to pick a small return out of.
-                if (layer != Layer.Ground)
+                // is no ground clutter to pick a small return out of. And only
+                // while it is actually transmitting: a radar that has been told
+                // to go quiet is not a passive sensor, it is a switched-off one.
+                // The mask test is per sensor rather than per pair and only
+                // reached by something that has a radar at all, so the cost in
+                // the inner loop is one flag read on a handful of entities.
+                if (layer != Layer.Ground && s.Radar.Raw > 0 && IsRadiating(i))
                 {
                     Fix radarMod = layer == Layer.High
                         ? Fix.FromDoubleContentOnly(1.20)
@@ -1529,6 +1567,24 @@ namespace KZ.Sim
         }
 
         /// <summary>
+        /// Whether this entity's transmitters are on.
+        ///
+        /// Something with no emitter component is always radiating, because it
+        /// has nothing to switch: a tank's optics are not a transmission and a
+        /// microphone is not either. The distinction only bites on the radar
+        /// channel, which is the one channel that finds things by shouting at
+        /// them, and it bites in exactly one direction - a mast that has gone
+        /// quiet keeps every passive sensor it owns. A Radar Mast under emission
+        /// control still hears on its ESM, which is the trade the whole order is
+        /// for: stop being the loudest thing on the map, keep listening, lose
+        /// the thing that measures velocity.
+        /// </summary>
+        bool IsRadiating(int i)
+        {
+            return !Entities.Has(i, ComponentMask.Emitter) || Entities.Emitter[i].Active;
+        }
+
+        /// <summary>
         /// The reach of one channel against one target, for the interface to draw
         /// and for tests to assert against.
         /// </summary>
@@ -1546,6 +1602,7 @@ namespace KZ.Sim
                 case SensorChannel.Esm: nominal = s.Esm; strength = sig.Radio; break;
                 case SensorChannel.Radar:
                     if (layer == Layer.Ground) return Fix.Zero;
+                    if (!IsRadiating(sensorIndex)) return Fix.Zero;
                     nominal = s.Radar; strength = sig.Radar;
                     mod = layer == Layer.High ? Fix.FromDoubleContentOnly(1.20)
                                               : Fix.FromDoubleContentOnly(0.80);
@@ -1620,6 +1677,13 @@ namespace KZ.Sim
                 if (!Entities.Has(j, ComponentMask.Sensor)) continue;
                 if (Entities.Sensor[j].Radar.Raw <= 0) continue;
 
+                // A mast that has been told to stop transmitting returns zero
+                // here (DetectionRangeFor gates the radar channel on
+                // IsRadiating), so it cannot hand an interceptor a full lead
+                // solution off a sensor that is not radiating. The second pass
+                // below reaches the same answer the same way: BestDetectionRange
+                // asks per channel, and the radar channel is the one that is
+                // dark.
                 Fix r = DetectionRangeFor(j, target.Index, SensorChannel.Radar);
                 if (r.Raw > 0 && Fix2.SqrDistance(Entities.Position[j], targetPos) <= r * r)
                     return TrackQuality.Radar;
@@ -1741,6 +1805,17 @@ namespace KZ.Sim
                     h = (h ^ (ulong)a.BoxMax.Y.Raw) * Prime;
                     h = (h ^ (ulong)(uint)a.BoxExpiryTick) * Prime;
                 }
+
+                // AUDIT F8: EmitterState.Active was persistent state that no
+                // command could reach, so the only thing that could ever have
+                // desynchronised it was a test. Now a standing order toggles it
+                // mid-match, and it decides three separate things a tick later -
+                // whose links die, who is the loudest thing on the map, and
+                // whether a radar mast can see at all. Two peers that disagreed
+                // about whether a mast was transmitting would disagree about all
+                // three and about nothing else hashed here.
+                if (Entities.Has(i, ComponentMask.Emitter))
+                    h = (h ^ (Entities.Emitter[i].Active ? 1UL : 0UL)) * Prime;
 
                 if (Entities.Has(i, ComponentMask.Link))
                 {
