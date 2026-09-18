@@ -11,14 +11,31 @@
 #   and the document kept the old numbers. Nothing re-ran an experiment and
 #   compared it to what was recorded.
 #
-#   INERTIA.  Three of the ten experiments - Stacking, Vertical, Decoy Escort -
-#   produced byte-identical output across six builds spanning a corrected weapon
-#   range, a magazine, a traverse rate, a track hold, twenty corrected signature
-#   numbers, a realistic world, and an engagement-commitment mechanic. FINDINGS 32.
-#   They are nonetheless the sole evidence behind five findings.
+#   CEILING.  FINDINGS 32: three of the ten experiments produced byte-identical
+#   output across six builds spanning a corrected weapon range, a magazine, a
+#   traverse rate, a track hold, twenty corrected signature numbers, a realistic
+#   world, and an engagement-commitment mechanic - and the reason was legible in
+#   their own tables the whole time. "Every row of all three tables sits on a
+#   ceiling ... and a measurement pinned to a ceiling is a constant, not a
+#   result." An experiment whose answer is 100% before the run begins is a unit
+#   test asserting true, and it is dead in exactly the sense a symbol nothing
+#   calls is dead.
 #
-# An experiment whose output never moves is dead in exactly the sense a symbol
-# nothing calls is dead. This is that check, run by build.sh.
+# This file used to infer that second failure from sibling behaviour: an
+# experiment that sat still while at least three *other* experiments moved was
+# reported "suspected inert". That signal is gone, and FINDINGS 40 records why.
+# It conflated "cannot move" with "correctly unaffected" - sensors compares
+# optics, acoustic and thermal and carries no radar at all, so a Doppler notch
+# landing in the simulation *should* leave it byte-identical - and by the time
+# seven of the ten were warning, six of the seven on two generations' worth of
+# three siblings twitching, it was a warning nobody could act on. A checker that
+# cries wolf is disabled within a week, which is this project's own stated
+# standard and the reason the signal was replaced rather than retuned.
+#
+# What replaced it measures the property directly, in the experiment's own
+# output, with no reference to any other experiment and no need for generational
+# history: how much of this table is pinned to an extreme, and does any column
+# of it vary at all. See "Ceilings" below.
 #
 # Why a byte comparison is even valid: KZ.Balance calls the real, shipped
 # simulation, which is fixed-point only, draws randomness solely from
@@ -51,6 +68,7 @@
 #   ... --warn-only                          report but never fail
 #   ... --all                                full detail, not just counts
 #   ... --root DIR / --ledger FILE / --snapshots DIR    point at a different tree
+#   ... --ceiling-allow FILE                 a different ceiling allowlist
 
 import hashlib
 import os
@@ -71,15 +89,49 @@ FIXTURE = os.path.join(HERE, "testdata", "experiment-drift")
 
 DEFAULT_LEDGER = os.path.join(HERE, "experiment-drift-ledger.txt")
 DEFAULT_SNAPSHOTS = os.path.join(HERE, "experiment-baselines")
+DEFAULT_CEILING_ALLOW = os.path.join(HERE, "experiment-ceiling-allow.txt")
 
-# An experiment that has sat unchanged while at least this many *distinct
-# other* experiments moved is reported as suspected-inert - distinct
-# experiments, not distinct generations, so one commit that bundles several
-# real changes and moves six siblings at once counts for more than six
-# generations of one sibling twitching alone. Set at 3 rather than 1 so a
-# single coincidental change elsewhere never accuses an experiment that simply
-# had nothing to do with it - see "How inertia is judged" below.
-INERTIA_MIN_OPPORTUNITIES = 3
+# --- the ceiling detector's three numbers, and why each is where it is -------
+#
+# A percentage cell in one of these reports is a share of trials: bounded at 0
+# and at 100, so those two values are the only ones that can be a *ceiling*
+# rather than a measurement. That is what makes percentages the class this
+# detector reads and everything else the class it leaves alone; see the
+# "Ceilings" section for what it therefore cannot see.
+#
+# A sweep is entitled to ONE rung at each end of its range. That is what
+# bracketing a transition means: you want a rung the defence always survives
+# and a rung it never does, so you know the interesting band is between them.
+# A *second* rung on the same bound is a rung that told you nothing. So the
+# first and last cell of a column are dropped when they sit on a bound, and the
+# share below is measured on what is left - which is the difference between
+# APPROACH (81, 86, 90, 86, 85, 94, 100: one rung off the end, six doing work)
+# and SATURATION (0, 0, 37, 98, 100, 100, 100, 100: four rungs saying the same
+# thing).
+CEILING_TRIM_ENDS = True
+
+# PINNED_SHARE at one half, stated as a rule rather than tuned to a corpus:
+# after the ends are trimmed, more of this column is a constant than is a
+# result.
+CEILING_PINNED_SHARE = 0.5
+
+# A column shorter than this cannot distinguish "pinned" from "small": two
+# cells at 100% are one coincidence, and accusing an experiment on two cells is
+# how a checker earns a reputation for noise. Measured on the column as
+# printed, before trimming, so shortening a sweep is not a way to get out from
+# under this check.
+CEILING_MIN_COLUMN = 4
+
+# ...and at least this much column has to survive the trim for the share to
+# mean anything.
+CEILING_MIN_AFTER_TRIM = 2
+
+# Three identical cells in one column is the flat-sweep signal: a variable was
+# swept and the answer did not move. Three rather than four because a flat
+# column is a stronger statement than a pinned one - it needs no assumption
+# about where the bounds are - and because a three-rung sweep is a real thing
+# this harness prints.
+FLAT_MIN_COLUMN = 3
 
 TIMEOUT_SECONDS = 180
 
@@ -284,7 +336,8 @@ def save_ledger(path, ledger):
         "# extends last_gen. The full text behind each digest is",
         "# tools/experiment-baselines/<name>.txt, always the *current* run - that",
         "# file is the diffable drift report; this ledger is the compact history",
-        "# behind it that inertia is computed from.",
+        "# behind it, and the only question asked of that history is whether an",
+        "# experiment has ever moved at all (see 'frozen' in the checker).",
         "#",
         "# Regenerate with: python3 tools/check_experiment_drift.py --update-baseline",
         "",
@@ -334,10 +387,11 @@ CATEGORIES = {
     "drift":       "output changed since the last recorded baseline - amend the finding it backs",
     "new":         "an experiment with no recorded baseline yet",
     "crash":       "an experiment did not run to completion",
-    "inertia":     "output has not moved across enough of its siblings' changes to trust as live",
+    "ceiling":     "part of this experiment's output is pinned to an extreme or does not vary",
+    "frozen":      "output byte-identical across the whole recorded history",
     "stale":       "a recorded experiment no longer exists in KZ.Balance",
 }
-CATEGORY_ORDER = ["crash", "new", "drift", "inertia", "stale"]
+CATEGORY_ORDER = ["crash", "new", "drift", "ceiling", "frozen", "stale"]
 
 
 def diff_summary(old_text, new_text, max_lines=12):
@@ -355,94 +409,224 @@ def diff_summary(old_text, new_text, max_lines=12):
 
 
 # ---------------------------------------------------------------------------
-# Inertia.
+# Ceilings, and the one thing history is still asked.
 #
-# "This experiment's output has not changed" is easy to see and answers the
-# wrong question. FINDINGS 32's three experiments are not interesting because
-# their number stayed the same across builds - Aperture and Mines did that too
-# for stretches, legitimately, because nothing that feeds them changed. They
-# are interesting because six substantive, unrelated changes to the simulation
-# ran underneath them and *none of it showed*.
+# FINDINGS 32 diagnosed three dead experiments by reading their tables: "every
+# row of all three sits on a ceiling - 8 drones take any number of turrets, 6
+# drones take any altitude split, every real drone gets through every decoy mix
+# - and a measurement pinned to a ceiling is a constant, not a result". That
+# diagnosis needed no sibling, no generation and no history. It needed the
+# output.
 #
-# This checker cannot read what any experiment measures, so it cannot ask "did
-# something relevant change" directly - that would need a hand-maintained map
-# from experiment to the systems it exercises, which is exactly the kind of
-# thing that goes stale silently and is the disease this project is trying to
-# cure, not a cure for it. What it can ask, mechanically, or the same
-# principle check_dead_symbols.py already relies on for test-only symbols: did
-# *anything in the same universe of evidence* move. If eight of the ten
-# balance experiments changed their numbers across the same span of updates
-# and the ninth and tenth did not, the ninth and tenth were not obviously
-# insulated from everything that happened - they went through it and came out
-# unmarked, which is the ceiling FINDINGS 32 describes ("8 drones take any
-# number of turrets") in mechanical form.
+# So this reads the output. Every percentage cell inside a *table* - a run of
+# lines under one of these reports' own ---- rules, prose excluded, because
+# prose says things like "loses 40% of its range" and that is a stat being
+# quoted, not a trial being counted - is grouped into columns by the character
+# offset its last digit lands on. These tables are printed through fixed-width
+# format strings and every numeric column in them is right-aligned, so the end
+# offset is the column key; a column parsed from a report whose alignment
+# someone has broken simply splits into two short columns and falls under
+# CEILING_MIN_COLUMN rather than producing a wrong accusation.
 #
-# So an experiment is INERTIA-SUSPECTED when its output has been unchanged for
-# a run of generations across which at least INERTIA_MIN_OPPORTUNITIES *other*
-# experiments changed. That is evidence, not proof - an experiment can be
-# correctly, permanently flat (Aperture's coverage arithmetic might never need
-# to move again) and this heuristic cannot tell that apart from a ceiling.
-# Which is exactly why it only ever warns (see report()) and why the finding
-# says "suspected" and shows its work - the generations, the siblings, the
-# count - rather than asserting dead. An experiment with too little history to
-# judge either way is reported as such, honestly, rather than folded into
-# "fine": three generations of silence is not evidence of anything yet.
+# Two things are then true of a column or they are not:
+#
+#   PINNED   - at least CEILING_PINNED_SHARE of its cells read exactly 0% or
+#              100%. Those are the bounds of a share-of-trials, so a cell
+#              sitting on one is a cell that could not have moved further in
+#              the direction it is already at.
+#   FLAT     - every cell in it is the same number. The sweep varied something
+#              and the answer did not.
+#
+# What this deliberately cannot see, stated so nobody trusts it too far:
+#
+#   - It reads percentages only. MINES prints "0 of 4" and "yes, after 1
+#     mine(s)" and has no percentage cell anywhere, so this detector says
+#     nothing about it at all - correctly, because it has no way to know
+#     whether "0 of 4" is a floor or a finding. VERTICAL's "quads lost" column
+#     reads 0.08, 0.01, 0.00, 0.00, which is a floor in everything but type,
+#     and this misses it. A bounded-measure detector needs to know the bounds,
+#     and only the percent sign declares them.
+#   - It cannot tell a ceiling that is a defect from one that is the point.
+#     VERTICAL's Gun Mount column is 100% in all four rows *because a Gun Mount
+#     cannot reach the high band at all*, which is the comparison that
+#     experiment exists to draw, and its own commentary says so. The finding is
+#     still correct - that column carries no information - and what to do about
+#     it is a judgement for whoever owns src/KZ.Balance. That is why it warns.
+#   - A ceiling is a property of the current numbers. An experiment can be
+#     unpinned and still be exercising nothing; coverage is a different
+#     question and this file has never been able to answer it (see FINDINGS 40
+#     for what the ten actually touch).
+#
+# And one question that genuinely needs the ledger, asked without reference to
+# any sibling: has this experiment's output *ever* changed? An experiment that
+# has sat on one digest for the whole of a recorded history long enough to mean
+# something is making a claim about itself, not about its neighbours. That is
+# FROZEN below.
+
+PERCENT_CELL = re.compile(r"(?<![\w.])(\d{1,3})%")
+TABLE_RULE = re.compile(r"^\s*-{6,}\s*$")
 
 
-def moved_generations(ledger, exclude=None):
-    """Generations at which some experiment's digest changed - i.e. every run
-    after that experiment's first. A brand-new experiment's first row is not a
-    change (nothing preceded it to differ from), so it never counts here."""
-    moved = {}
-    for name, runs in ledger.experiments.items():
-        if name == exclude:
-            continue
-        for r in runs[1:]:
-            moved.setdefault(r.first_gen, []).append(name)
-    return moved
+def table_bodies(text):
+    """The data rows of each table in one experiment's output: the lines after
+    a ---- rule, up to the first blank line. Everything else is prose."""
+    lines = text.split("\n")
+    bodies, i = [], 0
+    while i < len(lines):
+        if TABLE_RULE.match(lines[i]):
+            j = i + 1
+            body = []
+            while j < len(lines) and lines[j].strip():
+                body.append(lines[j])
+                j += 1
+            if body:
+                bodies.append(body)
+            i = j
+        else:
+            i += 1
+    return bodies
 
 
-def inertia_findings(ledger, names, threshold=INERTIA_MIN_OPPORTUNITIES):
+def percent_columns(text):
+    """[(column key, [values...]), ...] for every percentage column in every
+    table, in the order the columns appear."""
+    columns = []
+    for body in table_bodies(text):
+        found = {}
+        for line in body:
+            for m in PERCENT_CELL.finditer(line):
+                found.setdefault(m.end(), []).append(int(m.group(1)))
+        for key in sorted(found):
+            columns.append((key, found[key]))
+    return columns
+
+
+CEILING_ALLOW_TAGS = ("structural", "control")
+
+
+def load_ceiling_allow(path):
+    """{(experiment, (cells...)): reason}, plus the malformed lines. An entry
+    names the column by value, so it stops applying the moment the numbers move
+    - the dead-symbol allowlist's rule (a reason per entry, a tag the reviewer
+    can accept or reject on its own) with the one addition this domain needs."""
+    allow, errors = {}, []
+    if not os.path.exists(path):
+        return allow, errors
+    with open(path, "r") as fh:
+        for lineno, raw in enumerate(fh, start=1):
+            line = raw.rstrip("\n")
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            if "#" not in line:
+                errors.append("ceiling-allow:%d: no reason - an entry without one is a warning "
+                              "being suppressed: %r" % (lineno, line))
+                continue
+            body, reason = line.split("#", 1)
+            reason = reason.strip()
+            parts = body.split()
+            if len(parts) != 2:
+                errors.append("ceiling-allow:%d: expected '<experiment> <cells>  # <tag>: <why>', "
+                              "got %r" % (lineno, line))
+                continue
+            name, cells = parts
+            try:
+                values = tuple(int(c) for c in cells.split(","))
+            except ValueError:
+                errors.append("ceiling-allow:%d: cells must be comma-separated whole percentages, "
+                              "got %r" % (lineno, cells))
+                continue
+            tag = reason.split(":", 1)[0].strip()
+            if tag not in CEILING_ALLOW_TAGS:
+                errors.append("ceiling-allow:%d: reason must open with one of %s, got %r"
+                              % (lineno, "/".join(CEILING_ALLOW_TAGS), tag))
+                continue
+            if len(reason) < 40:
+                errors.append("ceiling-allow:%d: reason too short to judge: %r" % (lineno, reason))
+                continue
+            allow[(name, values)] = reason
+    return allow, errors
+
+
+def trim_bracket(values):
+    """Drop a single leading and a single trailing cell when they sit on a
+    bound. One rung below the transition and one above it is the shape of a
+    sweep that found its range; everything after that is repetition."""
+    body = list(values)
+    if body and (body[0] == 0 or body[0] == 100):
+        body = body[1:]
+    if body and (body[-1] == 0 or body[-1] == 100):
+        body = body[:-1]
+    return body
+
+
+def ceiling_findings(current_texts, names, allow=None):
+    allow = allow or {}
     findings = []
-    insufficient = []
+    excused = 0
+    for name in names:
+        text = current_texts.get(name)
+        if text is None:
+            continue
+        pinned_cols, flat_cols = [], []
+        for _key, values in percent_columns(text):
+            if (name, tuple(values)) in allow:
+                excused += 1
+                continue
+            if len(values) >= FLAT_MIN_COLUMN and len(set(values)) == 1:
+                flat_cols.append(values)
+                continue
+            if len(values) < CEILING_MIN_COLUMN:
+                continue
+            body = trim_bracket(values) if CEILING_TRIM_ENDS else list(values)
+            if len(body) < CEILING_MIN_AFTER_TRIM:
+                continue
+            pinned = [v for v in body if v == 0 or v == 100]
+            if len(pinned) >= CEILING_PINNED_SHARE * len(body):
+                pinned_cols.append((values, body, len(pinned)))
+        if not pinned_cols and not flat_cols:
+            continue
+        parts = []
+        for values in flat_cols:
+            parts.append("a column that does not vary at all (%s)"
+                         % ", ".join("%d%%" % v for v in values))
+        for values, body, n in pinned_cols:
+            parts.append("%d of %d cells at 0%% or 100%% once the bracketing ends are "
+                         "allowed for (%s)"
+                         % (n, len(body), ", ".join("%d%%" % v for v in values)))
+        findings.append(Finding(
+            "ceiling", name, "; ".join(parts),
+            "FINDINGS 32's prescription: put it back on its knees - fewer drones, more "
+            "turrets, a defence that starts with an advantage - or, if the ceiling is the "
+            "comparison the experiment exists to draw, say so in the experiment's own "
+            "commentary so the next reader does not have to rediscover it, and record it in "
+            "tools/experiment-ceiling-allow.txt with a reason"))
+    return findings, excused
+
+
+def frozen_findings(ledger, names, min_generations=6):
+    """An experiment whose digest has never changed across a recorded history of
+    at least min_generations. Unlike the sibling heuristic this replaces, it
+    makes no claim about what else was happening - only that this experiment has
+    one row in the ledger and the ledger is long enough for that to be a
+    statement. Six generations because that is the span FINDINGS 32 drew its own
+    conclusion from, and because anything shorter is a new experiment."""
+    findings = []
     for name in names:
         runs = ledger.experiments.get(name)
-        if not runs:
+        if not runs or len(runs) != 1:
             continue
-        current = runs[-1]
-        born_at = runs[0].first_gen
-        age = ledger.generation - born_at + 1
-        moved = moved_generations(ledger, exclude=name)
-        opportunities = sorted(g for g in moved if current.first_gen < g <= current.last_gen)
-        # The gate counts distinct SIBLINGS, not distinct generations. One
-        # generation where six of the other nine experiments all moved at once
-        # (a single commit that bundles several real changes, which is the
-        # common case - see docs/EXPERIMENT-DRIFT.md) is strong evidence that
-        # something happened; counting it as "one opportunity" the same as a
-        # generation where only one sibling twitched would bury exactly the
-        # strongest signal this checker gets.
-        distinct_siblings = sorted(set(n for g in opportunities for n in moved[g]))
-        if len(runs) == 1 and age < threshold + 1:
-            # Too young to judge - not "stable", just unproven either way. This
-            # is about the experiment's own age, not the project's: an
-            # experiment born last generation gets the same benefit of the
-            # doubt on generation 500 of a long-lived ledger as it would on
-            # generation 5 of a new one.
-            insufficient.append((name, age))
+        span = ledger.generation - runs[0].first_gen + 1
+        if span < min_generations:
             continue
-        if len(distinct_siblings) >= threshold:
-            per_gen = ", ".join("gen%d (%d)" % (g, len(moved[g])) for g in opportunities)
-            detail = ("unchanged for %d generation(s) (gen %d-%d) while %d other experiment(s) "
-                       "changed across %d of those generations - %s" %
-                       (current.last_gen - current.first_gen + 1, current.first_gen,
-                        current.last_gen, len(distinct_siblings), len(opportunities), per_gen))
-            findings.append(Finding(
-                "inertia", name, detail,
-                "cannot be fixed here - it means the experiment could not have shown a change "
-                "even if the simulation invalidated it. Owned by whoever maintains "
-                "src/KZ.Balance: put it back on its knees (FINDINGS 32's own prescription) or "
-                "confirm nothing it exercises has changed and say so"))
-    return findings, insufficient
+        findings.append(Finding(
+            "frozen", name,
+            "byte-identical output across the whole of its recorded history "
+            "(gen %d-%d, %d generations)" % (runs[0].first_gen, ledger.generation, span),
+            "check whether anything it exercises has changed in that span. If something "
+            "has, the experiment cannot see it; if nothing has, say so and the row is "
+            "evidence rather than a gap"))
+    return findings
+
 
 
 # ---------------------------------------------------------------------------
@@ -453,10 +637,10 @@ def inertia_findings(ledger, names, threshold=INERTIA_MIN_OPPORTUNITIES):
 
 
 class Result(object):
-    def __init__(self, findings, insufficient_history, ok_names, ledger_errors, generation, total):
+    def __init__(self, findings, ok_names, ledger_errors, generation, total, excused=0):
         self.findings = findings
-        self.insufficient_history = insufficient_history
         self.ok_names = ok_names
+        self.excused = excused
         self.ledger_errors = ledger_errors
         self.generation = generation
         self.total = total
@@ -467,7 +651,8 @@ class Result(object):
                 + list(self.ledger_errors))
 
 
-def analyse(ledger, current_texts, names, crashes=()):
+def analyse(ledger, current_texts, names, crashes=(), ceiling_allow=None,
+            allow_errors=()):
     """crashes: the failure messages run_once/capture raise, each shaped
     "<name>: ...". Parsed back into names here rather than asking the caller
     to pass both a message list and a name set that could disagree."""
@@ -509,11 +694,14 @@ def analyse(ledger, current_texts, names, crashes=()):
                 "stale", name, "no longer produced by KZ.Balance",
                 "delete its rows from the ledger and its file from tools/experiment-baselines/"))
 
-    inertia, insufficient = inertia_findings(ledger, [n for n in names if n not in crash_names])
-    findings.extend(inertia)
+    judged = [n for n in names if n not in crash_names]
+    ceilings, excused = ceiling_findings(current_texts, judged, ceiling_allow)
+    findings.extend(ceilings)
+    findings.extend(frozen_findings(ledger, judged))
 
     findings.sort(key=lambda f: (CATEGORY_ORDER.index(f.category), f.name))
-    return Result(findings, insufficient, ok, ledger.errors, ledger.generation, len(names))
+    return Result(findings, ok, list(ledger.errors) + list(allow_errors),
+                  ledger.generation, len(names), excused)
 
 
 # ---------------------------------------------------------------------------
@@ -526,7 +714,8 @@ def report(res, show_all=False):
 
     if res.ledger_errors:
         print("")
-        print("  FAIL  the ledger is malformed (%d issue(s))" % len(res.ledger_errors))
+        print("  FAIL  the ledger or the ceiling allowlist is malformed (%d issue(s))"
+              % len(res.ledger_errors))
         for e in res.ledger_errors:
             print("    %s" % e)
 
@@ -550,10 +739,13 @@ def report(res, show_all=False):
                     print("        %s" % dline)
             print("        fix: %s" % f.fix)
 
-    items = by_cat.get("inertia", [])
-    if items:
+    for cat in ("ceiling", "frozen"):
+        items = by_cat.get(cat, [])
+        if not items:
+            continue
         print("")
-        print("  WARN  %d experiment(s) suspected inert - %s" % (len(items), CATEGORIES["inertia"]))
+        print("  WARN  %d experiment(s) %s - %s"
+              % (len(items), "on a ceiling" if cat == "ceiling" else "frozen", CATEGORIES[cat]))
         for f in items:
             print("    %s" % f.name)
             print("        %s" % f.detail)
@@ -561,11 +753,6 @@ def report(res, show_all=False):
                 print("        %s" % f.fix)
         if not show_all:
             print("        (--all shows what to do about each)")
-
-    if res.insufficient_history:
-        print("")
-        print("  %d experiment(s) have too little history to judge for inertia yet: %s"
-              % (len(res.insufficient_history), ", ".join(n for n, _g in res.insufficient_history)))
 
     items = by_cat.get("stale", [])
     if items:
@@ -576,8 +763,10 @@ def report(res, show_all=False):
 
     print("")
     fail_n = len(res.failing)
-    warn_n = len(by_cat.get("inertia", [])) + len(by_cat.get("stale", []))
-    print("  %d ok, %d failing, %d warning" % (len(res.ok_names), fail_n, warn_n))
+    warn_n = (len(by_cat.get("ceiling", [])) + len(by_cat.get("frozen", []))
+              + len(by_cat.get("stale", [])))
+    print("  %d ok, %d failing, %d warning, %d ceiling(s) allowlisted with a reason"
+          % (len(res.ok_names), fail_n, warn_n, res.excused))
 
     if res.failing:
         print("")
@@ -591,8 +780,6 @@ def report(res, show_all=False):
 def list_mode(res):
     for f in res.findings:
         print("%s\t%s\t%s" % (f.category, f.name, f.detail))
-    for name, gen in res.insufficient_history:
-        print("insufficient-history\t%s\tonly %d generation(s) recorded" % (name, gen))
     for name in res.ok_names:
         print("ok\t%s\tmatches recorded baseline" % name)
 
@@ -600,41 +787,66 @@ def list_mode(res):
 # ---------------------------------------------------------------------------
 # Self-test.
 #
-# No C# is compiled or run here - analyse() takes already-captured text and a
-# ledger, both supplied directly, exactly the split check_dead_symbols.py makes
-# between parsing real sources and its EXPECTED corpus. The scenario below is a
-# miniature project history: four fictional experiments walked across enough
-# synthetic generations to exercise every shape this file has to get right.
+# No C# is compiled or run here - analyse(), ceiling_findings() and
+# frozen_findings() all take already-captured text and a ledger, both supplied
+# directly, exactly the split check_dead_symbols.py makes between parsing real
+# sources and its EXPECTED corpus.
 #
-#   steady            - changes at every generation. Never flagged.
-#   mover1/2/3        - each changes exactly once, at a different generation.
-#                       Not asserted on directly; they exist so `frozen` below
-#                       has evidence from three *distinct* siblings, not one
-#                       sibling changing three times - see the gate's own
-#                       comment above inertia_findings for why that distinction
-#                       matters.
-#   frozen            - never changes, across a span where steady and all
-#                       three movers changed. This is the Stacking/Vertical/
-#                       Decoy-Escort shape and must be flagged.
-#   recently_settled  - changed at generation 5 and has been flat for exactly
-#                       one generation since. Only `steady` has moved since -
-#                       one distinct sibling, below the threshold of three -
-#                       so it must NOT be flagged. This is the honest middle
-#                       case: not enough evidence yet, which is different from
-#                       "flat and cleared".
-#   newcomer          - born at generation 5, so it has existed for only two
-#                       generations total. Must be reported as insufficient
-#                       history, never as suspected or as clean - there has
-#                       not been time to tell.
+# The ceiling corpus is six synthetic reports, each one a shape this detector
+# has to get right and each one drawn from a real row of the ten:
 #
-# What this fixture deliberately does NOT try to test: a "legitimately still"
-# experiment sitting in the exact same generation span as `frozen`, with the
-# exact same siblings moving around it. That case is genuinely
-# indistinguishable from this file's own vantage point - it has no way to know
-# `frozen`'s output was *supposed* to move and `quiet`'s was not, only that
-# something else did. Claiming this self-test can tell them apart would be
-# asserting a capability the checker does not have; see the comment above
-# inertia_findings for what it does instead (warn with evidence, never fail).
+#   pinned        - SATURATION's shape. One column, six of eight cells at 0%
+#                   or 100%, two cells doing work in the middle. Must flag:
+#                   more of that column is a constant than is a result.
+#   flat          - VERTICAL's Gun Mount column. Four identical cells. Must
+#                   flag, and must flag as "does not vary" rather than as
+#                   pinned, because a flat column of 50% is just as dead and
+#                   needs no assumption about where the bounds are.
+#   live          - STACKING's shape. A full table that moves in every column
+#                   and touches 100% once. Must NOT flag - one cell at a bound
+#                   is a sweep reaching the end of its range.
+#   edge          - APPROACH's shape: a seven-rung sweep whose last row is
+#                   100%. One in seven is under half. Must NOT flag. This is
+#                   the case the old sibling heuristic got wrong and the
+#                   reason the threshold is a share rather than a count.
+#   prose         - a live table with percentages in the paragraph under it
+#                   ("loses 40% of its range", "30% of its hit chance", both
+#                   from VERTICAL's own commentary). Must NOT flag: a stat
+#                   quoted in prose is not a trial being counted, and reading
+#                   it as one is how a detector starts producing numbers
+#                   nobody can trace back to a cell.
+#   short         - two cells, both 100%. Must NOT flag. CEILING_MIN_COLUMN
+#                   exists because two coincidences are not evidence.
+#   bracketed     - 0, 36, 75, 98, 100. The shape a sweep should have: one
+#                   rung the defence always survives, three that move, one it
+#                   never survives. Must NOT flag, and it is the pair with
+#                   `repeated` that the trim rule exists for.
+#   repeated      - 0, 0, 75, 100, 100. The same transition, with a rung
+#                   wasted at each end. Must flag.
+#
+# The ledger fixture is a miniature project history for the drift, stale and
+# frozen paths:
+#
+#   steady            - changes at every generation. Never frozen.
+#   frozen            - one digest across all six generations. Must be flagged.
+#   recently_settled  - two runs, so it has moved at least once. Never frozen,
+#                       however long its current run is.
+#   newcomer          - born at generation 5. One run, but a span of two
+#                       generations, under the six a claim needs. Must NOT be
+#                       flagged - there has not been time to tell, and saying
+#                       so by silence is the honest reading.
+#   mover1/2/3        - kept from the fixture this file had when its signal was
+#                       sibling-relative. They are no longer evidence for
+#                       anything, and they stay because the save/load round
+#                       trip below is a better test with seven experiments in
+#                       the ledger than with four.
+#
+# What this deliberately does not try to test: whether a flagged ceiling is a
+# defect or the comparison an experiment exists to draw. VERTICAL's Gun Mount
+# column is genuinely 100% in every row and genuinely the point of that table.
+# This file has no way to tell those apart and does not claim to - it warns,
+# with the cells printed, and the judgement belongs to whoever owns
+# src/KZ.Balance.
 
 
 def build_fixture_ledger():
@@ -651,12 +863,10 @@ def build_fixture_ledger():
     add("frozen", [(1, 6, "f0")])
     add("recently_settled", [(1, 4, "r0"), (5, 6, "r1")])
     add("newcomer", [(5, 6, "n0")])
-    # Three more siblings, each moving exactly once, at a different generation.
-    # The gate counts distinct siblings, not distinct generations, so `frozen`
-    # needs evidence from three different experiments, not one experiment
-    # changing three times - these three plus `steady` (which also moves in
-    # this span) supply that. Not asserted on individually; present only as
-    # evidence sources for `frozen` and `recently_settled` above.
+    # Three more experiments, each moving exactly once. They were evidence for
+    # the sibling-relative signal this file used to carry and are evidence for
+    # nothing now; they stay so the save/load round trip below runs against a
+    # ledger with seven experiments in it rather than four.
     add("mover1", [(1, 1, "m1a"), (2, 6, "m1b")])
     add("mover2", [(1, 2, "m2a"), (3, 6, "m2b")])
     add("mover3", [(1, 3, "m3a"), (4, 6, "m3b")])
@@ -665,32 +875,185 @@ def build_fixture_ledger():
 
 def selftest():
     ok = True
-    ledger = build_fixture_ledger()
-    names = ["steady", "frozen", "recently_settled", "newcomer"]
 
-    # inertia_findings is a pure function of the ledger alone (it never looks
-    # at current output, only history), so it is exercised directly here with
-    # no captured text needed.
-    findings, insufficient = inertia_findings(ledger, names)
-    got = set(f.name for f in findings)
+    # --- the ceiling detector, over its corpus of report shapes -------------
+    corpus = {
+        # SATURATION's shape: six of eight cells on a bound.
+        "pinned": normalize(
+            "  drones   gun killed\n"
+            "  ----------------------\n"
+            "       1           0%\n"
+            "       2           0%\n"
+            "       3          37%\n"
+            "       5          98%\n"
+            "       8         100%\n"
+            "      12         100%\n"
+            "      16         100%\n"
+            "      24         100%\n"),
+        # VERTICAL's Gun Mount column: four cells, one value.
+        "flat": normalize(
+            "  attack            mount killed\n"
+            "  ------------------------------\n"
+            "  all low                   100%\n"
+            "  three low, two high       100%\n"
+            "  two low, three high       100%\n"
+            "  all high                  100%\n"),
+        # STACKING's shape: every column moves; one cell happens to reach 100%.
+        "live": normalize(
+            "  turrets  3 drones 4 drones 5 drones 6 drones\n"
+            "  -------------------------------------------\n"
+            "        1       41%      76%      99%     100%\n"
+            "        2       42%      78%      96%      99%\n"
+            "        3       41%      74%      95%      98%\n"
+            "        4       41%      73%      95%      98%\n"),
+        # APPROACH's shape: a sweep that runs off the end of its range.
+        "edge": normalize(
+            "  launch at   gun killed\n"
+            "  ----------------------\n"
+            "    14400 m          81%\n"
+            "    17400 m          86%\n"
+            "    18200 m          90%\n"
+            "    18600 m          86%\n"
+            "    18900 m          85%\n"
+            "    19200 m          94%\n"
+            "    19500 m         100%\n"),
+        # A live table with percentages in the paragraph under it.
+        "prose": normalize(
+            "  attack       mount killed\n"
+            "  -------------------------\n"
+            "  all low               10%\n"
+            "  two high              32%\n"
+            "  three high            34%\n"
+            "  all high              29%\n"
+            "\n"
+            "  The Autocannon loses 40% of its range and 30% of its hit\n"
+            "  chance shooting upward, and 100% of nothing either way.\n"),
+        # Two cells on a bound is a coincidence, not a ceiling.
+        "short": normalize(
+            "  arm      killed\n"
+            "  ---------------\n"
+            "  first      100%\n"
+            "  second     100%\n"),
+        # A sweep that brackets its transition: one rung the defence always
+        # survives, three that move, one it never survives. Must NOT flag.
+        "bracketed": normalize(
+            "  drones   killed\n"
+            "  ---------------\n"
+            "       2       0%\n"
+            "       3      36%\n"
+            "       4      75%\n"
+            "       5      98%\n"
+            "       6     100%\n"),
+        # The same sweep with a rung repeated at each bound. Two of the five
+        # rungs are now saying what one already said. Must flag.
+        "repeated": normalize(
+            "  drones   killed\n"
+            "  ---------------\n"
+            "       1       0%\n"
+            "       2       0%\n"
+            "       4      75%\n"
+            "       6     100%\n"
+            "       8     100%\n"),
+    }
+    found, excused = ceiling_findings(corpus, sorted(corpus))
+    got = dict((f.name, f.detail) for f in found)
 
-    print("self-test: inertia over a synthetic six-generation history")
+    print("self-test: ceilings over a corpus of report shapes")
     checks = [
-        ("frozen", "frozen" in got, "unchanged while three distinct siblings each changed - must flag"),
-        ("steady", "steady" not in got, "changes every generation - must never flag"),
-        ("recently_settled", "recently_settled" not in got,
-         "settled one generation ago, only one sibling change since - not enough evidence yet"),
-        ("newcomer", "newcomer" not in got, "too little history - must not flag as inert"),
+        ("pinned", "pinned" in got, "six of eight cells at a bound - must flag"),
+        ("flat", "flat" in got, "a column with one value in four rows - must flag"),
+        ("live", "live" not in got, "every column moves, one cell reaches 100% - must not flag"),
+        ("edge", "edge" not in got, "one row in seven at 100% is a sweep ending, not a ceiling"),
+        ("prose", "prose" not in got, "percentages in the commentary are not trial counts"),
+        ("short", "short" not in got, "two cells at 100% is below CEILING_MIN_COLUMN"),
+        ("bracketed", "bracketed" not in got,
+         "one rung below the transition and one above it is a sweep that found its range"),
+        ("repeated", "repeated" in got, "a second rung on the same bound told nobody anything"),
     ]
     for name, cond, why in checks:
-        print("  %s %-10s %s" % ("PASS" if cond else "FAIL", name, why))
+        print("  %s %-7s %s" % ("PASS" if cond else "FAIL", name, why))
         ok = ok and cond
 
-    insuff_names = set(n for n, _g in insufficient)
-    cond = insuff_names == {"newcomer"}
-    print("  %s insufficient-history bucket is exactly {newcomer}, got %s"
-          % ("PASS" if cond else "FAIL", sorted(insuff_names)))
+    cond = "does not vary" in got.get("flat", "")
+    print("  %s a flat column is reported as flat, not as pinned" % ("PASS" if cond else "FAIL"))
     ok = ok and cond
+
+    cond = "0%" in got.get("pinned", "") and "37%" in got.get("pinned", "")
+    print("  %s a ceiling finding prints the cells it is accusing" % ("PASS" if cond else "FAIL"))
+    ok = ok and cond
+
+    cond = percent_columns(corpus["prose"]) == [(27, [10, 32, 34, 29])]
+    print("  %s percent_columns() reads table bodies only, got %s"
+          % ("PASS" if cond else "FAIL", percent_columns(corpus["prose"])))
+    ok = ok and cond
+
+    cond = excused == 0
+    print("  %s nothing is excused when no allowlist is passed" % ("PASS" if cond else "FAIL"))
+    ok = ok and cond
+
+    # --- the ceiling allowlist ----------------------------------------------
+    reason = ("structural: a Gun Mount cannot engage the High band at all, so this column is "
+              "the contrast rather than the measurement")
+    allowed, excused = ceiling_findings(corpus, sorted(corpus),
+                                        {("flat", (100, 100, 100, 100)): reason})
+    names_allowed = set(f.name for f in allowed)
+    cond = "flat" not in names_allowed and excused == 1
+    print("  %s an allowlisted column is excused and counted, not reported"
+          % ("PASS" if cond else "FAIL"))
+    ok = ok and cond
+
+    cond = "pinned" in names_allowed
+    print("  %s allowlisting one column does not excuse the rest of the corpus"
+          % ("PASS" if cond else "FAIL"))
+    ok = ok and cond
+
+    stale, _ = ceiling_findings(corpus, sorted(corpus),
+                                {("flat", (100, 100, 100, 99)): reason})
+    cond = "flat" in set(f.name for f in stale)
+    print("  %s an allowlist entry whose cells no longer match stops excusing anything"
+          % ("PASS" if cond else "FAIL"))
+    ok = ok and cond
+
+    allow_path = os.path.join(FIXTURE, ".allow.tmp")
+    try:
+        with open(allow_path, "w") as fh:
+            fh.write("# a comment\n\n"
+                     "good  100,100,100,100  # structural: measured across three flight sizes "
+                     "and it is the units, not the rungs\n"
+                     "noreason  100,100,100,100\n"
+                     "badtag  100,100  # because I said so: it is fine\n"
+                     "shortreason  100,100  # control: fine\n"
+                     "notnumbers  a,b  # structural: the cells are not percentages at all here\n")
+        entries, errors = load_ceiling_allow(allow_path)
+        cond = list(entries) == [("good", (100, 100, 100, 100))]
+        print("  %s only the well-formed allowlist entry is loaded, got %s"
+              % ("PASS" if cond else "FAIL", sorted(entries)))
+        ok = ok and cond
+        cond = len(errors) == 4
+        print("  %s no reason, a bad tag, a reason too short and unparseable cells each error "
+              "rather than passing silently (%d)" % ("PASS" if cond else "FAIL", len(errors)))
+        ok = ok and cond
+    finally:
+        if os.path.exists(allow_path):
+            os.remove(allow_path)
+
+    # --- frozen, over a synthetic six-generation history --------------------
+    ledger = build_fixture_ledger()
+    names = ["steady", "frozen", "recently_settled", "newcomer"]
+    got = set(f.name for f in frozen_findings(ledger, names))
+
+    print("self-test: frozen over a synthetic six-generation history")
+    checks = [
+        ("frozen", "frozen" in got, "one digest across all six generations - must flag"),
+        ("steady", "steady" not in got, "changes every generation - must never flag"),
+        ("recently_settled", "recently_settled" not in got,
+         "has moved once, so it is not frozen however long its current run is"),
+        ("newcomer", "newcomer" not in got,
+         "one run, but only two generations old - too little history to claim anything"),
+    ]
+    for name, cond, why in checks:
+        print("  %s %-16s %s" % ("PASS" if cond else "FAIL", name, why))
+        ok = ok and cond
 
     # --- drift, new, stale, crash, and the digest/text plumbing -------------
     ledger2 = Ledger()
@@ -811,6 +1174,9 @@ def main(argv):
     snapshots_dir = DEFAULT_SNAPSHOTS
     if "--snapshots" in argv:
         snapshots_dir = os.path.abspath(argv[argv.index("--snapshots") + 1])
+    ceiling_allow_path = DEFAULT_CEILING_ALLOW
+    if "--ceiling-allow" in argv:
+        ceiling_allow_path = os.path.abspath(argv[argv.index("--ceiling-allow") + 1])
 
     if "--selftest" in argv:
         return selftest()
@@ -851,8 +1217,10 @@ def main(argv):
         return 0
 
     ledger = load_ledger(ledger_path)
+    ceiling_allow, allow_errors = load_ceiling_allow(ceiling_allow_path)
     outputs, failures = capture_all(exe_argv, names, verify_determinism=False)
-    res = analyse(ledger, outputs, names, crashes=failures)
+    res = analyse(ledger, outputs, names, crashes=failures,
+                  ceiling_allow=ceiling_allow, allow_errors=allow_errors)
 
     if "--list" in argv:
         list_mode(res)

@@ -18,14 +18,25 @@ same experiment gave 37/92/100. Nobody had touched the experiment; the
 simulation moved underneath it and the document kept the old numbers, because
 nothing re-ran an experiment and compared it against what was written down.
 
-**Inertia.** FINDINGS 32: Stacking, Vertical and Decoy Escort produced
+**Ceiling.** FINDINGS 32: Stacking, Vertical and Decoy Escort produced
 byte-identical output across six builds spanning a corrected weapon range, a
 magazine, a traverse rate, a track hold, twenty corrected signature numbers, a
 realistic world, and an engagement-commitment mechanic. They are nonetheless
-the sole evidence behind five findings. An experiment whose output cannot move
-is dead in exactly the sense a symbol nothing calls is dead — the dead-symbol
-guard is the argument that this class of problem is worth catching mechanically,
-applied to the balance harness instead of the simulation's public surface.
+the sole evidence behind five findings. The reason was legible in their own
+tables the whole time: *“every row of all three tables sits on a ceiling ... and
+a measurement pinned to a ceiling is a constant, not a result.”* An experiment
+whose output cannot move is dead in exactly the sense a symbol nothing calls is
+dead — the dead-symbol guard is the argument that this class of problem is worth
+catching mechanically, applied to the balance harness instead of the
+simulation's public surface.
+
+**That second signal was replaced in FINDINGS 40, and everything below is
+written as the guard now stands.** It used to infer deadness by correlation — an
+experiment that sat still while at least three *other* experiments moved was
+reported “suspected inert” — which conflated *cannot move* with *correctly
+unaffected* and reached seven warnings out of ten before anybody acted on one.
+It now measures the property directly in the experiment's own output. The old
+form is described where it is needed to read this document's history.
 
 ## How to read the guard
 
@@ -39,12 +50,13 @@ python3 tools/check_experiment_drift.py --selftest            its own corpus
 python3 tools/check_experiment_drift.py --update-baseline      acknowledge current output as the record
 ```
 
-Two files hold the record:
+Three files hold the record:
 
 | file | what it means |
 |---|---|
 | `tools/experiment-drift-ledger.txt` | compact history: which generation each experiment's output last changed in, and what its digest is now. |
 | `tools/experiment-baselines/<name>.txt` | the *current* accepted output for one experiment, in full. `git diff` on this file is the drift report for anyone who does not want to run the tool. |
+| `tools/experiment-ceiling-allow.txt` | ceilings that are the comparison rather than a defect. One line per column, naming it by value and carrying a tagged reason. `tools/dead-symbols-allow.txt`'s shape and its rule: an entry without a reason is a warning being suppressed, and the checker rejects one. |
 
 A **generation** is one accepted `--update-baseline` — not a build, not a
 commit, not a clock tick. It means "someone looked at the current numbers and
@@ -91,14 +103,15 @@ for it:
   the moment it is caught, and never cheaper later, which is the same argument
   `check_dead_symbols.py` makes for failing on a newly-dead symbol rather than
   warning.
-- **Inertia only ever warns.** It is a heuristic inferred from sibling
-  behaviour (see below), not a proof, and the checker says so in its own
-  output ("suspected"). Failing the build on an uncertain signal is exactly
-  how a checker earns the reputation that gets it disabled within a week — and
-  concretely, it would mean this guard's own first commit could not land
-  without either fixing Stacking, Vertical and Decoy Escort (another agent's
-  work, out of scope here) or lying about them. Recorded debt, not a wall,
-  same as the dead-symbol baseline.
+- **A ceiling only ever warns.** It is a statement about the numbers and not
+  about intent: the checker can see that a column is a constant and cannot see
+  whether being a constant is the comparison the experiment exists to draw.
+  VERTICAL's Gun Mount column reads 100% in all four rows because a Gun Mount
+  cannot engage the High band at all, which is precisely the contrast the
+  Autocannon arm beside it is read against; failing the build on that would be
+  failing it on a correct experiment. So a ceiling is recorded debt or an
+  allowlist entry with a reason, never a wall — same as the dead-symbol
+  baseline, and for the same argument.
 - **A crash always fails,** unconditionally. There is no number to compare, so
   there is nothing to warn about — either an experiment runs to completion or
   the checker cannot say anything at all.
@@ -110,34 +123,82 @@ for it:
   and asks to be deleted, the same as a dead-symbols baseline line that stops
   matching anything.
 
-## How inertia is judged, and what it cannot judge
+## How a ceiling is judged, and what it cannot judge
 
-The mechanism cannot read what any experiment measures, so it cannot ask "did
-something relevant to this experiment change" directly — building that map by
+The mechanism cannot read what any experiment measures, so it cannot ask “did
+something relevant to this experiment change” directly — building that map by
 hand would be exactly the kind of authority that goes stale silently, which is
 the disease this whole project is trying to cure rather than a cure for it.
-What it can ask, mechanically: across the generations this experiment's output
-has sat unchanged, did **any of its nine siblings** move? If eight of the ten
-balance experiments changed their numbers across the same span of
-`--update-baseline`s and the ninth did not, the ninth was not obviously
-insulated from everything that happened around it — which is the shape FINDINGS
-32 describes in six real builds, turned into a standing check.
 
-An experiment is reported **suspected inert** when it has been unchanged
-across a run of generations in which at least three siblings changed (each
-finding names the generations and which siblings moved, so the evidence is
-inspectable rather than asserted). An experiment too young to have accumulated
-that much evidence either way — new, or only recently settled — is reported as
-having **insufficient history**, honestly, rather than folded into "clean".
+**What it used to ask instead, and why that is gone.** Across the generations
+this experiment's output sat unchanged, did any of its nine siblings move? If
+eight of ten changed and the ninth did not, the ninth was not obviously
+insulated from what happened around it. That is a heuristic about a *population*
+being used to accuse an *individual*, and it fails in both directions. SENSORS
+compares optics, acoustic and thermal and carries no radar at all, so the
+Doppler notch landing in FINDINGS 38 *should* have left it byte-identical; the
+guard reported it as suspected inert. STACKING resolves from 11% to 100% across
+its own table and moved at generation 13; the guard reported it as suspected
+inert too, because the two most recent generations happened to move three other
+experiments. By the time it was warning on seven of ten, six of them on that
+same two-generation coincidence, it was a warning nobody could act on — which
+is this project's own stated standard for a checker that should be replaced.
+FINDINGS 40 has the measurement behind that paragraph.
 
-What this cannot do, stated so nobody trusts it further than it goes: it
-cannot distinguish an experiment that is *dead* from one that is *correctly and
-permanently flat* when both sit in the same span of sibling movement. Aperture
-or Mines could legitimately never need to move again; this heuristic has no way
-to know that in advance, only that they haven't yet. That is why the finding
-says "suspected" and shows every generation and sibling behind the number
-rather than asserting "dead", and why it warns rather than fails — the
-judgement belongs to whoever maintains `src/KZ.Balance`, not to this checker.
+**What it asks now.** Every percentage cell inside a table — a run of lines
+under one of these reports' own `----` rules, prose excluded — grouped into
+columns by the character offset its last digit lands on, because these tables
+are printed through fixed-width format strings and every numeric column in them
+is right-aligned. Then two properties of a column, either of which is a finding:
+
+- **pinned** — at least half its cells read exactly 0% or 100%. Those are the
+  bounds of a share-of-trials, so a cell on one is a cell that could not have
+  moved further in the direction it is already at.
+- **flat** — every cell in it is the same number. A variable was swept and the
+  answer did not move.
+
+A sweep is entitled to **one rung at each end of its range**, because that is
+what bracketing a transition means: you want a rung the defence always survives
+and a rung it never does, so you know the interesting band is between them. So
+the first and last cell are dropped when they sit on a bound before the share is
+taken. That is the difference between APPROACH (81, 86, 90, 86, 85, 94, 100 —
+one rung off the end and six doing work) and the SATURATION table this guard
+found (0, 0, 37, 98, 100, 100, 100, 100 — four rungs saying the same thing).
+
+This is a measurement of the experiment's own output. It needs no sibling, no
+generation and no history, which means it says the same thing on the day an
+experiment is written as it does five generations later, and it cannot be
+confused by a busy commit or a quiet one.
+
+**One question is still asked of the ledger**, and only one: has this
+experiment's output *ever* changed, across a recorded history long enough for
+the silence to be a statement? That is `frozen`, and it is deliberately not
+sibling-relative — it is a claim about the experiment and nothing else. Nothing
+is frozen today; every one of the ten moved at generation 13.
+
+**What a ceiling cannot tell you.** Whether it is a defect or the point.
+VERTICAL's Gun Mount column is 100% in all four rows and is *supposed* to be:
+a Gun Mount cannot reach the High band, so one high drone in the flight is
+outside the defence rather than evading it, and that column is the contrast the
+Autocannon arm beside it is read against. Measured before it was excused —
+flights of two, three and four quads across every split give 99—100% in every
+cell, so it is the units and not the rungs. That is what
+`tools/experiment-ceiling-allow.txt` is for, and why an entry there names the
+column by its values: the day the numbers move, the entry stops matching and the
+warning comes back.
+
+It also reads **percentages only**, and says so rather than implying more.
+MINES prints “0 of 4” and “yes, after 1 mine(s)” and has no percentage cell
+anywhere, so this detector is silent about it — correctly, because it has no way
+to know whether “0 of 4” is a floor or a finding. VERTICAL's quads-lost column
+reads 0.08, 0.01, 0.00, 0.00, which is a floor in everything but type, and this
+misses it. A bounded-measure detector needs to know the bounds, and only the
+percent sign declares them.
+
+And it says nothing at all about **coverage**. An experiment can be perfectly
+unpinned and still exercise none of the systems that changed this week. That is
+a different question, this guard has never been able to answer it, and FINDINGS
+40 answers it by hand for the current ten.
 
 ## The first run
 
@@ -232,11 +293,13 @@ verified or a fix this task made.
   counts and percentages straight from a trial loop, no rounding step hidden
   behind formatting) but it is a limit of the method, not a guarantee against
   it.
-- It has no notion of *which* systems an experiment exercises, so its inertia
-  signal is entirely sibling-relative — see "How inertia is judged" above. It
-  will never say "Stacking should have moved because the gun's range changed
-  and Stacking spawns a gun mount"; it can only say "everything else moved and
-  this didn't."
+- It has no notion of *which* systems an experiment exercises. It will never
+  say “Stacking should have moved because the gun's range changed and Stacking
+  spawns a gun mount.” It used to substitute a sibling-relative guess for that,
+  and the guess was wrong more often than it was right; it now says nothing
+  about coverage at all. That is honest and it is also a real gap — FINDINGS 40
+  worked the current ten out by hand, one mutation at a time, and the answer
+  was worse than anybody had assumed.
 - A change that only affects an experiment's *prose* (the commentary strings
   printed alongside a table) counts as drift the same as a change to its
   numbers, because the checker reads the whole of stdout. That is deliberate —

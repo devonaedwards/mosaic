@@ -81,11 +81,16 @@ check_dead_symbols() {
 #              went stale (recorded 10/72/98, tree gave 37/92/100, nobody
 #              noticed). Fix: read the diff it prints, amend whatever finding
 #              depended on the old numbers, then run --update-baseline.
-#   inertia  - an experiment that has not moved across enough of its siblings'
-#              changes to trust as live. Warns only - it is a heuristic, not a
-#              proof, and FINDINGS.md 32's own examples (Stacking, Vertical,
-#              Decoy Escort) are already flagged here and are not this
-#              checker's to fix.
+#   ceiling  - a percentage column in an experiment's own output that is pinned
+#              to 0% or 100% or does not vary at all. FINDINGS 32: a
+#              measurement pinned to a ceiling is a constant, not a result.
+#              Warns only - the checker can see that a column is a constant and
+#              cannot see whether being one is the comparison the experiment
+#              exists to draw, so a ceiling that is the point goes in
+#              tools/experiment-ceiling-allow.txt with a reason.
+#   frozen   - an experiment whose output has never once changed across a
+#              recorded history long enough for the silence to mean something.
+#              Warns only, same argument.
 #
 # It runs the compiled KZ.Balance.exe once per experiment (real trials, real
 # ticks), so it costs roughly as long as `./build.sh balance` does - slower

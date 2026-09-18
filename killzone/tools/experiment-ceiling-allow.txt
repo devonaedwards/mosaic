@@ -1,0 +1,26 @@
+# KILL ZONE - the experiment-drift checker's ceiling allowlist.
+#
+#   <experiment>  <the column, exactly as it prints>  # <tag>: <why>
+#
+# The ceiling detector (see check_experiment_drift.py) reports a percentage
+# column that is pinned to a bound or does not vary at all, because FINDINGS 32
+# is right that a measurement pinned to a ceiling is a constant rather than a
+# result. Some constants are the point. This is where one says so, and an entry
+# without a reason is a warning being suppressed, so the checker rejects it -
+# the same rule, and the same shape of file, as tools/dead-symbols-allow.txt.
+#
+# The reason has to open with one of these tags:
+#
+#   structural  the ceiling is a property of the units in the comparison rather
+#               than of the rungs the experiment chose, so no ladder can move
+#               it. Measured, not assumed: an entry with this tag names the
+#               sweep that was tried.
+#   control     a deliberately degenerate arm, kept as the reference the live
+#               arm beside it is read against.
+#
+# The column is matched by value, which is the whole point of writing it out:
+# the day the numbers move, the entry stops matching and the warning comes
+# back. An allowlist that keeps applying after the thing it excused has changed
+# is the failure this project keeps naming.
+
+vertical  100,100,100,100  # structural: the Gun Mount cannot engage the High band at all (Defs.cs, CanReachHigh false), so one high drone in the flight is outside the defence rather than evading it. Measured before being excused - flights of two, three and four quads across every split give 99-100% in every cell, so it is not the flight size. The column is the contrast the Autocannon arm beside it is read against, and the experiment's own commentary says so.
