@@ -533,6 +533,27 @@ What does not survive is the sentence "the gun still reaches 550 m, it simply
 cannot hit a small fast thing out there". The gun never reached 550 m. That was
 the harness, and this entry is one of the five that measured it.
 
+### Amended again: two of those rungs are no longer measured, and the jet sentence has no experiment behind it
+
+**The 8-drone and 24-drone rows are gone from the harness** (FINDINGS 40). A Gun
+Mount goes from 0% at two drones to 100% at six, so every rung above six was the
+same answer repeated and five of the eight cells in that column read 0% or 100%.
+The ladder is 2, 3, 4, 5, 6 now. Nothing that was being measured moved — three
+drones is 37% and five is 98%, identical to the digit — so the table above is
+still a fair record of what those rungs said; there is simply no current
+measurement of the two at the bottom of it, and there does not need to be.
+
+**And this entry's answer to the jet question is unsupported.** “A turbojet strike
+drone crossing at three times the speed of a quadcopter is not hard to shoot at,
+it is hard to hit, and the speed term does that on its own” rests on
+`AirHitChance`'s speed term, which **no balance experiment can measure**.
+`FiringSolutionReferenceSpeed` was moved from 45 m/s to 90 and then to 200 and all
+ten experiments printed identical bytes: the term is `reference / target speed`
+clamped at 1.15, every airframe the harness flies against a gun is at 28 or
+33 m/s, and the only faster ones appear in `decoys`, whose defender is an
+interceptor and does not use that function. The claim may be correct. It is
+untested, and nothing flying faster than 50 m/s has ever been in a balance table.
+
 ## 16. Stacked turrets stopped mattering, which is now suspicious in the other direction
 
 | turrets | drones needed |
@@ -1499,6 +1520,48 @@ lesson: **a green suite proves nothing about the paths it does not walk, and a
 saturated experiment proves nothing about the variables it cannot move.** Item 30
 learned the first half. This is the second.
 
+### Amended twice, and the second amendment is the one that matters
+
+**Amended once, in item 34: discharged, not fixed.** The catalogue rescale moved
+all ten experiments and the guard reported zero inertia warnings. That was true
+of generation 13 and it was a discharge by luck rather than by repair: nothing in
+this entry's prescription had been done, and the three tables were still pinned.
+
+**Amended again, by FINDINGS 40, and this entry's reasoning survives while its
+list and its instrument do not.**
+
+*The list is stale, as this entry half-predicted.* Stacking, Vertical and Decoy
+Escort are no longer the three. Vertical and Decoys started moving; Stacking
+resolves from 11% to 100% and was being flagged by a heuristic rather than by its
+own numbers. The experiments actually sitting on a ceiling in generation 15 were
+**saturation**, **night** and **vertical**, only one of which this entry names.
+
+*The instrument that found them was wrong and is replaced.* The
+sibling-correlation signal that grew out of this entry reached seven warnings out
+of ten, including `sensors`, which carries no radar and was *supposed* to be
+unmoved by a Doppler notch. FINDINGS 40 has the measurement and the replacement:
+this entry's own method, reading the table for a ceiling, made mechanical.
+
+*The prescription is right and was applied, with one correction.* “Fewer drones,
+more turrets, a defence that starts with an advantage” fixed saturation and
+darkness. But **more turrets is the one form of it that does not work here** and
+this document already contained the proof: the stacking table measures four
+mounts as worth two points over one against a tap. The defence that starts with
+an advantage has to be a different mount, not more of the same one.
+
+*And one ceiling is not a defect.* Vertical's Gun Mount column is 100% in all four
+rows because a Gun Mount cannot reach the High band, and no flight size moves it
+— two, three and four quads across every split give 99–100% in every cell. A
+ceiling can be the comparison an experiment exists to draw. That case is now
+excused in writing, by value, in `tools/experiment-ceiling-allow.txt`, so the day
+those four numbers move the warning comes back.
+
+*What this entry could not have known.* Its subject is experiments that cannot
+detect a change. FINDINGS 40 found the larger version: experiments that never
+instantiate the system at all. Four of the systems wired since this entry was
+written — interception vectoring, emission control, ground radar, fiber — can be
+broken outright without any of the ten printing a different byte.
+
 ## 33. The realistic world changed the description and not one number
 
 AUDIT F34 found that every experiment ran on `Fill(Open)` with clear weather, firm
@@ -1606,7 +1669,12 @@ holds, now with a 3,840 m envelope rather than 320.
   is worth 26 points" claim is gone. The conclusion that the panoramic head is
   the only one worth buying survives, for a different reason.
 - **Item 32 is discharged**, not amended. All ten experiments moved and the guard
-  reports zero inertia warnings.
+  reports zero inertia warnings. **Amended by FINDINGS 40 on both halves.** All ten
+  did move, and that discharged nothing: the rescale moved every number in the
+  harness without unpinning a single table, and saturation, night and vertical
+  were still sitting on ceilings two generations later. The zero-warnings half is
+  now a statement about an instrument that no longer exists — the inertia signal
+  was measuring sibling behaviour and has been replaced.
 - **Item 10 is the only finding the rescale leaves standing verbatim** — mines
   are identical in every cell, which is exactly what a weapon with no sensor, no
   hit roll, no magazine and no arrival order should do.
@@ -2622,3 +2690,266 @@ column**, with the event firing seven times. That is the FINDINGS 38 shape
 exactly — correct, reachable, and not touching the game — and the only reason it
 is not this entry's conclusion is that the measurement was run before the write-up
 rather than after it.
+
+## 40. What the ten experiments actually touch, and it is less than anyone thought
+
+KILL ZONE is a video game. Everything below is measured inside a fictional
+simulation against fictional factions; the numbers are the game's, not anyone's.
+
+The drift guard was reporting seven of ten experiments as suspected inert after
+three sessions of wiring. Three explanations were on the table — the guard is
+crying wolf, the experiments are saturated, or the harness has no coverage of
+what was wired — and all three turned out to be true of different rows. This
+entry is the evidence for each, in the order the evidence was taken, because the
+third one is the expensive one and it would not have been believed without the
+first two out of the way.
+
+### The method: change one constant in the simulation and see who notices
+
+Everything below rests on one procedure, which is worth naming because it is
+cheap and this project has not used it before. Take a constant the last three
+sessions installed, change it, rebuild, run all ten experiments, and compare
+each one's output byte for byte against the same run on the unmodified tree.
+An experiment that does not move has no path to that constant — not an opinion
+about coverage, a measurement of it.
+
+Eight mutations, each on a scratch copy of the tree, each a real rebuild and a
+real run of all ten:
+
+| mutation | what it breaks | experiments that noticed |
+|---|---|---|
+| `TrackHoldTicks` 2 s → 8 s | detection, everywhere | aperture, approach, night, range, saturation, sensors, stacking, vertical |
+| `RadarNotch*` gates removed | FINDINGS 38's Doppler notch | decoys, vertical |
+| `IsRadiating` → always false | every radar switched off (37) | decoys, vertical |
+| `RadarGroundScale` 0.40 → 0.01 | FINDINGS 38's ground-clutter band | **nothing** |
+| `InterceptLead*` 1.00/0.55 → 0.05 | FINDINGS 36's interception vectoring | **nothing** |
+| `TetherDiscoveryRangeMetres` 288 → 2,880 | FINDINGS 39's filament discovery | **nothing** |
+| `FiringSolutionReferenceSpeed` 45 → 90 | the speed term of every air hit roll | **nothing** |
+| the same, 45 → 200 | as above, four times harder | **nothing** |
+
+The track-hold row is the control and it did its job: a change to detection is
+felt by eight of the ten, which is what a live harness looks like. Every other
+row is the finding.
+
+### Hypothesis 1 holds: the guard was measuring the wrong thing
+
+`INERTIA_MIN_OPPORTUNITIES` flagged an experiment that sat unchanged while at
+least three *other* experiments moved. That is a heuristic about a population
+used to accuse an individual, and both of its failure modes were live in the
+warning list it was printing:
+
+- **`sensors` was a false positive by construction.** It compares optics,
+  acoustic and thermal against a quadcopter and a tank. It carries no radar at
+  all. A Doppler notch landing in the simulation *should* leave it byte-identical,
+  and the mutation table above confirms it: the notch and the radar off-switch
+  both leave it untouched, while the track hold moves it. It was insulated
+  because it was supposed to be.
+- **`stacking` was a false positive on its own numbers.** Its table resolves from
+  11% to 100% across eight columns and it moved at generation 13. It was flagged
+  because generations 14 and 15 happened to move three siblings.
+
+Six of the seven warnings rested on that same two-generation coincidence: three
+experiments moved at gens 14–15, the gate is three, and everything that did not
+move was accused. That is not evidence of anything about the seven.
+
+**The replacement is FINDINGS 32's own diagnosis made mechanical.** Item 32 named
+three dead experiments by reading their tables — *"every row of all three tables
+sits on a ceiling"* — and needed no ledger, no sibling and no history to do it.
+The guard now does the same thing: every percentage cell inside a table, grouped
+into columns, then *pinned* (at least half the column at 0% or 100%, the bounds
+of a share-of-trials) or *flat* (every cell the same number).
+
+One rule in it was not obvious and is the part worth keeping. **A sweep is
+entitled to one rung at each end of its range.** Bracketing a transition means
+having a rung the defence always survives and a rung it never does; without the
+allowance, `approach` — 81, 86, 90, 86, 85, 94, 100, six rows doing work and one
+running off the end — reads the same as `saturation` — 0, 0, 37, 98, 100, 100,
+100, 100, four rungs saying one thing. With it they separate cleanly.
+
+Seven warnings became three findings, and all three are real:
+
+| | what the detector said |
+|---|---|
+| `saturation` | 6 of 8 cells at a bound |
+| `night` | 3 of 4 at a bound in the night column |
+| `vertical` | a column that does not vary at all: 100%, 100%, 100%, 100% |
+
+`aperture`, `approach`, `mines`, `sensors` and `stacking` were cleared, which is
+the point: four of them were never anything but correctly unaffected, and saying
+so out loud is worth more than a warning that covers them along with everything
+else.
+
+### Hypothesis 2 holds for two of the three, and the third cannot be fixed by a ladder
+
+**`saturation` and `night` were sampling past the transition rather than
+measuring it.** A Gun Mount against a tap goes from 0% killed at two drones to
+100% at six. Saturation swept 1, 2, 3, 5, 8, 12, 16, 24 — five rungs past the top
+of the band — and darkness swept 3, 5, 8, 12, of which three are at or past it.
+Both are rebuilt, and the rebuilding cost nothing that was being measured: three
+drones is still 37%, five still 98%, three drones by day still 36% against 41% at
+night, identical to the digit. The dead rungs were replaced with live ones.
+
+Saturation now runs two arms, because item 32's "more turrets" is the one form of
+its own prescription that does not work here — `stacking` already measures four
+mounts as worth two points over one against a tap, since a supporting mount
+commits to a target that is already being engaged. The defence that starts with
+an advantage has to be a different *mount*, so the second arm is the Autocannon
+Mount the catalogue already ships, swept 6 to 16 across its own band.
+
+That arm pays for itself beyond un-pinning the column, and the answer is not the
+one the ladder alone would suggest:
+
+| mount | absorbs | cheapest cost to remove it | its own price | ratio |
+|---|---|---|---|---|
+| Gun Mount | 0% at 2 drones, 100% at 6 | 1,016 MAT | 450 | **2.3x** |
+| Autocannon Mount | 2% at 6, 100% at 16 | 2,482 MAT | 1,600 | **1.6x** |
+
+**The cheap mount is the better buy per Materiel and the expensive one is the
+better buy per position**, and which a player wants is a map question rather than
+a balance one. That sentence did not exist before, because the table it comes
+from had four rows saying 100%.
+
+**`vertical` is a ceiling that no ladder can move, and it is measured rather than
+argued.** Its Gun Mount column reads 100% in all four rows because a Gun Mount
+cannot engage the High band at all, so a drone sent there is outside the defence
+rather than evading it. The obvious fix is fewer quads; it does not work. Flights
+of two, three and four across every split:
+
+| flight | splits tried | mount killed |
+|---|---|---|
+| 2 quads | 2/0, 1/1, 0/2 | 99%, 100%, 100% |
+| 3 quads | 3/0, 2/1, 1/2, 0/3 | 100% in every cell |
+| 4 quads | 4/0, 3/1, 2/2, 1/3, 0/4 | 100% in every cell |
+
+Two Multirole Quads on a three-second spacing take a Gun Mount ninety-nine times
+in a hundred. The column is a property of the units in the comparison, not of the
+rungs the experiment chose, and it is the contrast the Autocannon arm beside it is
+read against. So it goes in `tools/experiment-ceiling-allow.txt` with a written
+reason, the dead-symbol allowlist's shape and rule — and the entry names the
+column by its four values, so the day they move the entry stops matching and the
+warning comes back.
+
+### Hypothesis 3 holds, and it is worse than the question assumed
+
+The ten experiments have **no coverage of any of the four systems wired in the
+last three sessions.** Not thin coverage. None, in the strict sense that the
+constants those systems are built on can be changed to values that visibly break
+them and every one of the ten prints the same bytes.
+
+| experiment | what it measures | can its output move | what it exercises |
+|---|---|---|---|
+| `saturation` | how much of a tap one point-defence mount absorbs, and what removing it costs | yes — changed at gens 2, 3, 4, 6, 11, 13, 16, and under the track hold | optics and acoustic detection, air hit rolls, the belt and the cooldown, pad egress, territory and navigation error |
+| `range` | whether the barrel or the seeing is the binding number | yes — gens 2, 3, 4, 6, 9, 12, 13, 14, and under the track hold | the same, plus the flat control world as a territory comparison |
+| `approach` | what a forward launch pad is worth | yes — gens 2, 3, 4, 6, 9, 11, 13, and under the track hold | the same, plus the track-latch geometry |
+| `night` | what darkness costs a mount that sees with cameras | yes — gens 2, 3, 4, 6, 9, 11, 13, 16, and under the track hold | the day/night cycle against optics and acoustic |
+| `mines` | what a mine does to each vehicle class, and whether it cares whose it is | no trial variance — no sensor, no hit roll, no magazine, no arrival order, so one run is the answer. It changed at gens 6, 12 and 13 when the world and the catalogue scale moved under it, and it is the one experiment the track hold correctly leaves alone | mine arming and trigger radius, damage by armour class, ground movement orders |
+| `sensors` | what each sensor fit finds, and what finding it is worth | yes — gens 3, 6, 12, 13, and under the track hold | optics, acoustic, thermal, the day/night cycle. **No radar, by design** |
+| `stacking` | whether more mounts covering one approach pay, against a tap and against a stream | yes — gens 6, 12, 13, and under the track hold; resolves 11%–100% across its own table | engagement commitment, the belt, arrival spacing |
+| `vertical` | whether splitting an attack across altitude bands works | yes — gens 2, 6, 12, 13, 15, and under the track hold | altitude bands, re-lay cost, the upward-shot penalty, and **radar** — the Autocannon's |
+| `decoys` | whether decoys buy warheads onto a target | yes — gens 2, 3, 6, 12, 13, 15 — but **not** under the track hold, which is unexplained and recorded as such | **radar**, ESM, interception rolls, radar cross-section, the Doppler notch |
+| `aperture` | what an arc costs and what it buys | yes — gens 3, 6, 12, 13, and under the track hold | the arc/reach law, sweep versus stare, optics and acoustic |
+
+Two rows in that table are not like the others and both are worth stating
+plainly. `mines` is flat because a mine is flat, which the harness already
+argued and this measurement supports rather than discovers. `decoys` sitting
+out the track-hold mutation is a loose end: its defender is the only
+interceptor in the harness and plausibly never loses a contact long enough for
+a longer coast to matter, but that is a guess and it is written here as one.
+
+And what none of them exercise:
+
+- **Interception vectoring and the lead table (FINDINGS 36, 38).** Nothing in the
+  harness launches an airframe that flies an intercept. `decoys` spawns an
+  Interceptor Battery, which is a structure: it rolls `ResolveInterception` at the
+  merge and never flies to one. Setting the radar lead to 0.05 and the optical
+  lead to 0.05 — which is the mechanic switched off — changes nothing anywhere.
+- **Emission control (FINDINGS 37).** No experiment issues the order; the string
+  "Emission" does not appear in `KZ.Balance`. Forcing every emitter dark does move
+  `decoys` and `vertical`, so the *radar channel* is exercised, but nothing in the
+  harness can tell you what the decision is worth, which is the whole of item 37.
+- **Ground radar and the Doppler notch against the ground (FINDINGS 38).** The
+  clutter band can be taken from 0.40 to 0.01 with no effect on anything. `mines`
+  is the only experiment with a ground vehicle under orders to drive, and there is
+  no radar within reach of it; `decoys` and `vertical` are the only experiments
+  with a radar, and everything they look at is airborne. The two halves of the
+  mechanic are in different experiments.
+- **Fiber (FINDINGS 39).** No experiment spawns a Fiber FPV Team. The whole tether
+  subsystem — the leash, the snag, the thread on the ground and now its discovery
+  — has never been in a balance table. Multiplying the discovery range by ten
+  changes nothing.
+
+**The pattern behind all four is the same and it is not laziness.** Items 36 to 39
+were measured, carefully, through `KZ.Play`'s scenario and headless runs — twenty
+trials of a jet crossing a mast, ten play-minutes on three seeds, contact-seconds
+counted. Those are good measurements. They are also one scenario's geometry, and
+item 38 says so in its own words: *"two mechanics, both measured, both correct,
+both inert where the game is actually played."* The balance harness is where a
+mechanic gets swept rather than sampled, and nothing from the last three sessions
+has been swept.
+
+### A fifth thing the sweep found that nobody was looking for
+
+**The speed term of `AirHitChance` cannot be measured by this harness at all.**
+`FiringSolutionReferenceSpeed` was moved from 45 m/s to 90 and then to 200 — a
+four-fold change in the reference every air hit roll is scored against — and all
+ten experiments printed identical bytes both times.
+
+The cause is a clamp. The term is `reference / target speed`, clamped to
+[0.20, 1.15]. Every airframe the harness flies against a gun is an FPV Team at
+33 m/s or a Multirole Quad at 28, and 45/33 and 200/33 both land on the 1.15
+ceiling. The only airframes above 45 m/s in any experiment are the Heavy Strike
+Drone and the Decoy Drone at 50, and they appear solely in `decoys`, where the
+defender is an interceptor and interceptors do not use `AirHitChance` —
+`CombatSystem` branches to `ResolveInterception` before reaching it.
+
+So FINDINGS 15's answer to the jet question — *"a turbojet strike drone crossing
+at three times the speed of a quadcopter is not hard to shoot at, it is hard to
+hit, and the speed term does that on its own"* — has no experiment behind it. The
+claim may well be right; the harness cannot say, and could not have noticed the
+term being deleted. Nothing flying faster than 50 m/s has ever been in a balance
+table, and the one airframe the sentence is about, the Jet Strike Drone at
+140 m/s, has never been spawned by `KZ.Balance`.
+
+### What is not fixed, and what each missing experiment would be for
+
+Three experiments are specified and not built. They are named here rather than
+guessed at later, and each one says what it is *for* before anybody writes it:
+
+1. **A radar experiment.** To answer what a radar is worth against a ground
+   target and what the notch costs, by sweeping a vehicle's *radial* velocity
+   rather than its range: a Radar Mast against a Main Tank driving in, driving
+   across, and parked, at several offsets. It is the only shape that puts a
+   moving ground vehicle in front of a radar, which is the half of FINDINGS 38
+   nothing currently reaches. It also gives the emission-control decision its
+   first sweep: the same table with the mast radiating and dark is what the
+   order is worth.
+2. **An interception experiment.** To answer what the lead table buys, by
+   sweeping target speed and crossing angle against a flying interceptor. It
+   needs the Interceptor FPV, which the catalogue ships and no experiment has
+   ever spawned, and it is the natural home for the Jet Strike Drone — which
+   would also, as a side effect, be the first experiment in which
+   `AirHitChance`'s speed term is off its clamp.
+3. **A fiber experiment.** To answer what the thread costs, by sweeping the
+   distance between the launch pad and the enemy's ground traffic: the same
+   sortie flown from a forward pad and a rear one, against a lane a vehicle
+   patrols. Item 39 already found by hand that this is a decision about where
+   you launch; a sweep is what turns that into a number a player can be
+   taught.
+
+None of the three is written here. The diagnosis was the expensive part and it is
+worth having on its own, and an experiment written in the last hour of a session
+is how the harness got into this state.
+
+### The general form
+
+Item 30 learned that a green suite proves nothing about the paths it does not
+walk. Item 32 learned that a saturated experiment proves nothing about the
+variables it cannot move. This is the third one and it is the one that needed a
+tool rather than a reading:
+
+**An experiment proves nothing about a system it never instantiates, and there is
+no way to tell which those are by looking at it.** The ten read as a broad suite.
+They are ten variations on one engagement — a mount, a pad, and FPV Teams — and
+the way to find that out was to break the simulation on purpose and see who
+complained.
+

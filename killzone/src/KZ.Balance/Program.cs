@@ -18,11 +18,11 @@
 // its own output.
 //
 // FINDINGS 32 and the experiment-drift guard (docs/EXPERIMENT-DRIFT.md): seven
-// of the ten experiments here could not detect a change to the simulation.
-// Stacking, Vertical, Decoy Escort, Mines, Sensors, Aperture and Range have
-// been gone through one at a time; the reasoning for each is on the experiment
-// itself rather than summarised here, because a summary at the top of a file is
-// the first thing to go stale. In outline:
+// of the ten experiments here were reported as unable to detect a change to the
+// simulation. Stacking, Vertical, Decoy Escort, Mines, Sensors, Aperture and
+// Range were gone through one at a time; the reasoning for each is on the
+// experiment itself rather than summarised here, because a summary at the top of
+// a file is the first thing to go stale. In outline:
 //
 //   SENSORS and APERTURE were not experiments. They spawned a mount, overwrote
 //   its SensorSuite, stepped once and printed a detection range - the detection
@@ -72,6 +72,22 @@
 //
 //   PAD EGRESS IS WIRED NOW and compounds with the launch spacing below, so
 //   "launched together" means "tapped together". See "Arrival scheduling".
+//
+// FINDINGS 40 revisited all of that and corrected two halves of it. Four of the
+// seven were never inert - the guard was inferring deadness from what its
+// siblings did, and SENSORS in particular carries no radar and was supposed to
+// sit still through a Doppler notch. The two that genuinely were pinned are not
+// on that list at all: SATURATION and DARKNESS were sweeping past the Gun
+// Mount's transition rather than across it, and both are rebuilt around it, with
+// a second arm on a different mount where one mount could not be made to
+// resolve. VERTICAL's Gun Mount column is a ceiling, is measured to be one that
+// no ladder can move, and is excused in writing rather than smoothed.
+//
+// FINDINGS 40's larger finding is about this file as a whole and is not fixed
+// here: the ten are ten variations on one engagement - a mount, a pad and FPV
+// Teams - and interception vectoring, emission control, ground radar and fiber
+// can each be broken outright without any of them printing a different byte.
+// Three experiments are specified there and none of them is written yet.
 //
 // Every map size this file builds is checked against the ~32 km ceiling the
 // squared-distance comparison imposes (CheckMapFitsTheComparableRange). The two
@@ -805,16 +821,19 @@ namespace KZ.Balance
         /// are also indiscriminate, and the last row below is that claim measured
         /// rather than asserted.</para>
         ///
-        /// <para><b>On this experiment being flat.</b> The drift guard lists this
-        /// among seven suspected inert, and it is the one of the seven that is
-        /// simply correct. A mine involves no sensor, no hit roll, no magazine,
-        /// no traverse and no arrival order, so none of the faults that killed
-        /// the other six can reach it, and there is no stochastic term for a
-        /// trial count to average over: one run is the answer. FINDINGS 10
-        /// already records it as the only table that came through the honest
-        /// re-run untouched.</para>
+        /// <para><b>On this experiment being flat.</b> The drift guard used to list
+        /// this among seven suspected inert; it no longer does, and FINDINGS 40
+        /// says why the accusation was wrong about this one and about four others
+        /// with it. A mine involves no sensor, no hit roll, no magazine, no
+        /// traverse and no arrival order, so none of the faults that killed the
+        /// genuinely pinned experiments can reach it, and there is no stochastic
+        /// term for a trial count to average over: one run is the answer.
+        /// FINDINGS 10 already records it as the only table that came through the
+        /// honest re-run untouched, and FINDINGS 40 measured it again from the
+        /// other direction - lengthening the track hold, which moves eight of the
+        /// ten, correctly moves nothing here.</para>
         ///
-        /// <para>Two things did need fixing, and neither was inertia. The
+        /// <para>Two things did need fixing, and neither was resolution. The
         /// "per mine" column was computed in this harness by calling
         /// <c>Catalog.DamageMultiplier</c> and multiplying - so it re-derived the
         /// simulation's arithmetic instead of observing it, and would have agreed
