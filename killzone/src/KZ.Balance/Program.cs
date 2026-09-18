@@ -307,21 +307,79 @@ namespace KZ.Balance
         /// The question this answers is whether a gun that kills one drone at a
         /// time can be beaten by sending more drones at a time. It is the first
         /// thing any player will try.
+        ///
+        /// <para><b>Why there are two arms now.</b> FINDINGS 40. Against the Gun
+        /// Mount alone this experiment went from 0% to 100% across a two-drone
+        /// span, and the ladder it swept - 1, 2, 3, 5, 8, 12, 16, 24 - put five of
+        /// its eight rungs past the top of that span. Six of the eight cells in
+        /// the "gun killed" column read 0% or 100%, which is FINDINGS 32's
+        /// diagnosis exactly: a measurement pinned to a ceiling is a constant, not
+        /// a result. Four rows said "yes, obviously" four times.</para>
+        ///
+        /// <para>The fix is FINDINGS 32's own prescription - a defence that starts
+        /// with an advantage - taken by adding the second point-defence unit the
+        /// catalogue already ships rather than by stacking more of the first. More
+        /// Gun Mounts would not have worked: the STACKING table below already
+        /// measures four mounts as worth two points over one against a tap,
+        /// because a supporting mount commits to a target that is already being
+        /// engaged. The Autocannon Mount is a different proposition - twenty
+        /// engagements a belt against five, a two-second cycle, airburst rounds
+        /// and 3,360 m of reach - and its own transition sits between 6 and 16
+        /// drones, so each arm now brackets its own band: one rung the mount
+        /// always survives, three that move, one it never survives.</para>
+        ///
+        /// <para>The per-kill column is what the second arm buys as a question
+        /// rather than as a row. It is the only place in this harness where two
+        /// pieces of the same kind of kit are priced against the attack that
+        /// removes them.</para>
         /// </summary>
         static void SaturationExperiment()
         {
             Console.WriteLine();
-            Console.WriteLine("SATURATION - one tap's worth of drones against one gun mount");
-            Console.WriteLine("launched on one tap from a pad 5,400 m out; the gun's kill ring is");
-            Console.WriteLine("1,000 m (point-defence.md Q2) and its camera finds a quad at 1,527 m.");
-            Console.WriteLine("'together' is now one tap: pad egress walks them off 4 ticks apart, so");
-            Console.WriteLine("the 24-drone row is spread over nearly three of the mount's cooldowns");
+            Console.WriteLine("SATURATION - one tap's worth of drones against one gun position");
+            Console.WriteLine("launched on one tap from a pad 5,400 m out; pad egress walks them");
+            Console.WriteLine("off 4 ticks apart, so the longer rows are spread over several of");
+            Console.WriteLine("the mount's cooldowns");
+            Console.WriteLine("two arms, each swept across its own mount's band - see the comment");
+            Console.WriteLine("on this method for why one arm could not be measured");
             PrintWorldConfig(StandardBorderMetres, 1, 2);
+
+            // Ladders chosen to bracket each mount's own transition, measured
+            // before they were written down: the Gun Mount goes 0% at two drones
+            // to 100% at six, the Autocannon 0% at six to 100% at sixteen. A rung
+            // below the band and a rung above it, and nothing repeated.
+            SaturationArm("Gun Mount", new int[] { 2, 3, 4, 5, 6 });
+            SaturationArm("Autocannon Mount", new int[] { 6, 8, 10, 12, 16 });
+
+            Console.WriteLine();
+            Console.WriteLine("  A gun mount takes three hits to destroy. 'arrived' is the average");
+            Console.WriteLine("  number of drones per attempt that lived long enough to strike it.");
+            Console.WriteLine();
+            Console.WriteLine("  Read the two per-kill columns against the two mounts' own prices,");
+            Console.WriteLine("  because surviving longer and being worth the money are different");
+            Console.WriteLine("  questions and this is the only table in the harness that separates");
+            Console.WriteLine("  them. The Autocannon absorbs three times the tap - six drones where");
+            Console.WriteLine("  the Gun Mount starts losing at three - and costs three and a half");
+            Console.WriteLine("  times as much. At its cheapest it makes an attacker spend about one");
+            Console.WriteLine("  and a half times its own price to remove it; the Gun Mount makes him");
+            Console.WriteLine("  spend more than twice. So the cheap mount is the better buy per");
+            Console.WriteLine("  Materiel and the expensive one is the better buy per position, and");
+            Console.WriteLine("  which of those a player wants is a map question rather than a");
+            Console.WriteLine("  balance one.");
+        }
+
+        /// <summary>One mount type's saturation ladder.</summary>
+        static void SaturationArm(string mountDef, int[] counts)
+        {
+            UnitDef mount = Catalog.Get(Catalog.IdOf(mountDef));
+            Console.WriteLine();
+            Console.WriteLine(string.Format("  against the {0} - {1} MAT, {2} m of reach, {3} engagements a belt",
+                mountDef, mount.CostMateriel, mount.WeaponRangeMetres.RoundToInt(),
+                mount.EngagementsPerBelt));
             Console.WriteLine();
             Console.WriteLine("  drones   arrived   gun killed   materiel spent   per kill");
             Console.WriteLine("  " + new string('-', 62));
 
-            int[] counts = { 1, 2, 3, 5, 8, 12, 16, 24 };
             for (int c = 0; c < counts.Length; c++)
             {
                 int n = counts[c];
@@ -330,8 +388,11 @@ namespace KZ.Balance
 
                 for (int trial = 0; trial < trials; trial++)
                 {
+                    World w = MakeRealisticWorld(28800, 19200, 256, 32, (ulong)(trial + 1), 2, 0,
+                        StandardBorderMetres, 1, 2);
                     int arrived;
-                    bool killed = RunAssault(n, F(14400), (ulong)(trial + 1), out arrived);
+                    bool killed = RunAssaultScenario(w, mountDef, MountTweak.None, n,
+                                                     F(14400), 0, out arrived);
                     arrivedTotal += arrived;
                     if (killed) gunKilled++;
                 }
@@ -347,9 +408,6 @@ namespace KZ.Balance
                     cost,
                     perKill));
             }
-            Console.WriteLine();
-            Console.WriteLine("  A gun mount takes three hits to destroy. 'arrived' is the average");
-            Console.WriteLine("  number of drones per attempt that lived long enough to strike it.");
         }
 
         /// <summary>
@@ -684,7 +742,16 @@ namespace KZ.Balance
             Console.WriteLine("           arrived  killed    arrived  killed");
             Console.WriteLine("  " + new string('-', 52));
 
-            int[] counts = { 3, 5, 8, 12 };
+            // FINDINGS 40. The old ladder was 3, 5, 8, 12 and five of its eight
+            // outcome cells read 100%: at five drones and above the mount dies
+            // whatever the light is, so three of the four rows were asking a
+            // question the first row had already answered. The Gun Mount's
+            // transition against a tap runs from two drones to six, so the ladder
+            // is the transition now - one rung it always survives, two that move,
+            // one it never survives - and the day/night contrast lives in the two
+            // in the middle, where it can be read, instead of in one row out of
+            // four.
+            int[] counts = { 2, 3, 4, 5 };
             for (int c = 0; c < counts.Length; c++)
             {
                 int n = counts[c];
@@ -710,6 +777,11 @@ namespace KZ.Balance
             }
             Console.WriteLine();
             Console.WriteLine("  Nothing about the gun changed. Only whether it could see.");
+            Console.WriteLine("  The two middle rows are the whole of the measurement: outside");
+            Console.WriteLine("  them the tap is either too small to trouble the mount in any");
+            Console.WriteLine("  light or large enough to take it in any light, and a row that");
+            Console.WriteLine("  reads the same in both columns is not evidence that darkness");
+            Console.WriteLine("  costs nothing - it is evidence that the row was chosen badly.");
         }
 
         /// <summary>The gun's best detection channel against an FPV Team, day or night.</summary>

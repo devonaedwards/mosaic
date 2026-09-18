@@ -6,9 +6,14 @@ gun's own best sensor reaches 1527 m by day, 576 m after dark
   drones   by day             at night
            arrived  killed    arrived  killed
   ----------------------------------------------------
+       2       1.4      0%        1.6      0%
        3       2.4     36%        2.6     41%
+       4       3.4     75%        3.6     86%
        5       4.4     98%        4.6    100%
-       8       7.4    100%        7.6    100%
-      12       9.6    100%        9.6    100%
 
   Nothing about the gun changed. Only whether it could see.
+  The two middle rows are the whole of the measurement: outside
+  them the tap is either too small to trouble the mount in any
+  light or large enough to take it in any light, and a row that
+  reads the same in both columns is not evidence that darkness
+  costs nothing - it is evidence that the row was chosen badly.

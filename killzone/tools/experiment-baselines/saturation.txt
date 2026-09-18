@@ -1,21 +1,43 @@
 
-SATURATION - one tap's worth of drones against one gun mount
-launched on one tap from a pad 5,400 m out; the gun's kill ring is
-1,000 m (point-defence.md Q2) and its camera finds a quad at 1,527 m.
-'together' is now one tap: pad egress walks them off 4 ticks apart, so
-the 24-drone row is spread over nearly three of the mount's cooldowns
+SATURATION - one tap's worth of drones against one gun position
+launched on one tap from a pad 5,400 m out; pad egress walks them
+off 4 ticks apart, so the longer rows are spread over several of
+the mount's cooldowns
+two arms, each swept across its own mount's band - see the comment
+on this method for why one arm could not be measured
   world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 21600 m (team 1 west / team 2 east), imagery granted over each side's own ground
+
+  against the Gun Mount - 450 MAT, 1000 m of reach, 5 engagements a belt
 
   drones   arrived   gun killed   materiel spent   per kill
   --------------------------------------------------------------
-       1       0.5          0%              200      never
        2       1.4          0%              400      never
        3       2.4         37%              600       1636
+       4       3.4         75%              800       1066
        5       4.4         98%             1000       1016
-       8       7.4        100%             1600       1600
-      12       9.6        100%             2400       2400
-      16      11.3        100%             3200       3200
-      24      12.9        100%             4800       4800
+       6       5.2        100%             1200       1200
+
+  against the Autocannon Mount - 1600 MAT, 3360 m of reach, 20 engagements a belt
+
+  drones   arrived   gun killed   materiel spent   per kill
+  --------------------------------------------------------------
+       6       1.9          2%             1200      72000
+       8       3.8         23%             1600       6857
+      10       5.8         73%             2000       2727
+      12       7.3         97%             2400       2482
+      16       8.6        100%             3200       3200
 
   A gun mount takes three hits to destroy. 'arrived' is the average
   number of drones per attempt that lived long enough to strike it.
+
+  Read the two per-kill columns against the two mounts' own prices,
+  because surviving longer and being worth the money are different
+  questions and this is the only table in the harness that separates
+  them. The Autocannon absorbs three times the tap - six drones where
+  the Gun Mount starts losing at three - and costs three and a half
+  times as much. At its cheapest it makes an attacker spend about one
+  and a half times its own price to remove it; the Gun Mount makes him
+  spend more than twice. So the cheap mount is the better buy per
+  Materiel and the expensive one is the better buy per position, and
+  which of those a player wants is a map question rather than a
+  balance one.
