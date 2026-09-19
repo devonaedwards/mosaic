@@ -55,7 +55,6 @@ write-only      MeshNode.IsRepeater
 write-only      MineState.LaidByTeam
 write-only      MoverState.RadiusClass
 write-only      SalvageState.CreatedTick
-write-only      SimEvent.B
 write-only      SortieState.SpawnTick
 sim-public      Fix.Half
 sim-public      Fix.Lerp

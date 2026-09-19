@@ -311,6 +311,9 @@ namespace KZ.Balance
             if (which == "all" || which == "vertical") VerticalExperiment();
             if (which == "all" || which == "decoys") DecoyEscortExperiment();
             if (which == "all" || which == "aperture") ApertureExperiment();
+            if (which == "all" || which == "radar") RadarGroundExperiment();
+            if (which == "all" || which == "intercept") InterceptionExperiment();
+            if (which == "all" || which == "fiber") FiberExperiment();
 
             return 0;
         }
@@ -349,6 +352,7 @@ namespace KZ.Balance
         /// pieces of the same kind of kit are priced against the attack that
         /// removes them.</para>
         /// </summary>
+        // MEASURES saturation: track-hold
         static void SaturationExperiment()
         {
             Console.WriteLine();
@@ -467,6 +471,7 @@ namespace KZ.Balance
         /// 33's "identical, every cell" table rather than working around
         /// silently. This runs on the same realistic world as everything else.</para>
         /// </summary>
+        // MEASURES range: track-hold
         static void GunRangeExperiment()
         {
             Console.WriteLine();
@@ -665,6 +670,7 @@ namespace KZ.Balance
         /// the mount is much stronger than it was in compressed units. Four is
         /// the force SATURATION reads at 67%, which leaves room either way.</para>
         /// </summary>
+        // MEASURES approach: track-hold
         static void ApproachExperiment()
         {
             Console.WriteLine();
@@ -743,6 +749,7 @@ namespace KZ.Balance
         /// the seconds the drones needed. This is the counter the subject matter
         /// actually uses, and it costs the attacker nothing but patience.
         /// </summary>
+        // MEASURES night: track-hold, night-optics
         static void NightExperiment()
         {
             Fix dayReach = GunOpticalReachVsFPV(false);
@@ -842,6 +849,7 @@ namespace KZ.Balance
         /// world. And the indiscriminate rule, which is the entry's whole moral
         /// argument, had no row at all.</para>
         /// </summary>
+        // MEASURES mines: mine-arming
         static void MineExperiment()
         {
             Console.WriteLine();
@@ -862,7 +870,17 @@ namespace KZ.Balance
                 bool died = RunMineField(vehicles[v], 2, out perMine, out triggered, out atLeast);
 
                 UnitDef def = Catalog.ByName(vehicles[v]);
-                int eats = atLeast ? 1 : (def.Hp.RoundToInt() + perMine - 1) / perMine;
+                // perMine is observed rather than computed, so it can legitimately
+                // be zero - a field that never went off took nothing off anything.
+                // On the shipped tree it never is, which is why this divided
+                // straight into it until the mutation guard broke a mine's fuze and
+                // got a DivideByZeroException instead of a table. A harness that
+                // crashes rather than reporting "the mechanic did nothing" cannot
+                // be asked whether the mechanic matters, which is the one question
+                // this experiment exists to answer.
+                int eats = atLeast ? 1
+                         : perMine <= 0 ? 0
+                         : (def.Hp.RoundToInt() + perMine - 1) / perMine;
 
                 Console.WriteLine(string.Format("  {0,-18}  {1,8}   {2,15}   {3}",
                     vehicles[v],
@@ -989,6 +1007,7 @@ namespace KZ.Balance
         /// off - but they are now read off a spawned unit rather than an
         /// assembled struct, and they are no longer the whole experiment.</para>
         /// </summary>
+        // MEASURES sensors: track-hold, night-optics
         static void SensorMixExperiment()
         {
             Console.WriteLine();
@@ -1097,6 +1116,7 @@ namespace KZ.Balance
         /// FINDINGS 13's structural argument is about something this game does not
         /// contain.</para>
         /// </summary>
+        // MEASURES stacking: track-hold
         static void StackingExperiment()
         {
             Console.WriteLine();
@@ -1301,6 +1321,7 @@ namespace KZ.Balance
         /// it one engagement cannot see it at all, whatever the constant is set
         /// to. This is the same error FINDINGS 18 records making twice already.</para>
         /// </summary>
+        // MEASURES vertical: track-hold, radar-notch, radar-dark
         static void VerticalExperiment()
         {
             Console.WriteLine();
@@ -1492,6 +1513,7 @@ namespace KZ.Balance
         /// varies the thing under test: whether buying decoys instead of warheads
         /// puts more warheads on the target.</para>
         /// </summary>
+        // MEASURES decoys: radar-notch, radar-dark
         static void DecoyEscortExperiment()
         {
             Console.WriteLine();
@@ -1680,6 +1702,7 @@ namespace KZ.Balance
         /// doing so, and it is measuring a unit the game cannot currently
         /// produce.</para>
         /// </summary>
+        // MEASURES aperture: track-hold
         static void ApertureExperiment()
         {
             Console.WriteLine();
@@ -1828,6 +1851,912 @@ namespace KZ.Balance
                     survived++;
             }
             return survived * 100 / trials;
+        }
+
+        // ------------------------------------------------------------------
+        // The three experiments FINDINGS 40 specified and did not write.
+        //
+        // All three exist because of one measurement: FINDINGS 40 broke the
+        // constants behind ground radar, emission control, interception
+        // vectoring and fiber, one at a time, and every one of the ten
+        // experiments above printed identical bytes. Not thin coverage - none.
+        // The three below are the coverage, and each is written to the standard
+        // that finding implies: it has to move when the thing it measures is
+        // broken, and tools/check_experiment_mutations.py is what says whether
+        // it does. The `// MEASURES` line above each one is the claim; the guard
+        // is what makes the claim cost something.
+
+        /// <summary>
+        /// A radar mast against something on the ground, swept by what the
+        /// vehicle is doing rather than by how far away it is.
+        ///
+        /// <para><b>Why the sweep is a velocity and not a range.</b> FINDINGS 38
+        /// wired two mechanics and measured both on one geometry: radar can see
+        /// the ground at all (<c>SimConstants.RadarGroundScale</c>), and the
+        /// Doppler notch gates a return by its <i>radial</i> velocity rather
+        /// than its size. The second is not a stat, it is a geometry: the same
+        /// tank at the same range is a loud return driving at the mast, a weak
+        /// one driving obliquely, and no return at all driving across its face
+        /// or sitting still. A range sweep cannot see any of that, which is why
+        /// this one sweeps the vehicle's closest approach and its heading and
+        /// holds its speed at the one the catalogue gives it.</para>
+        ///
+        /// <para><b>No trial loop, and it is not an oversight.</b> Nothing here
+        /// draws from a random stream. The edge-of-envelope roll in
+        /// <c>World.Reaches</c> is keyed to the tick and the sensor-target pair
+        /// rather than drawn from <c>DetRandom</c> - deliberately, so that one
+        /// target does not resolve differently for two sensors in the same
+        /// instant - and movement and detection are otherwise arithmetic. So a
+        /// second trial of the same drive is the same drive, and averaging sixty
+        /// of them would be averaging one number with itself. MINES is flat for
+        /// the same kind of reason and says so in the same place.</para>
+        ///
+        /// <para><b>What the parked column is.</b> A constant zero, in every
+        /// row, and it is the comparison rather than a defect: a vehicle at rest
+        /// has no radial component, so the notch is a hard gate on it whatever
+        /// its cross-section and wherever it is standing. That is the mechanic's
+        /// whole claim, and the two live columns beside it are read against it.
+        /// It is excused in writing in tools/experiment-ceiling-allow.txt rather
+        /// than smoothed away, by value, so the day it moves the warning comes
+        /// back.</para>
+        /// </summary>
+        // MEASURES radar: radar-notch, radar-slow-band, radar-ground-clutter, radar-dark, emission-order
+        static void RadarGroundExperiment()
+        {
+            Console.WriteLine();
+            Console.WriteLine("RADAR - a mast against a vehicle on the ground");
+            Console.WriteLine("Radar Mast at 14,400 m; a Main Tank at its catalogue 7.5 m/s driving a");
+            Console.WriteLine("12,000 m leg past it. The sweep is the vehicle's closest approach and its");
+            Console.WriteLine("heading, because what gates this channel is radial velocity and not range");
+            Console.WriteLine(string.Format("the mast holds a tank closing head-on out to {0} m, and a tank "
+                                          + "crossing its face at 0 m", RadarClosingReach().RoundToInt()));
+            Console.WriteLine("one run per cell, not sixty: nothing in this engagement draws from a");
+            Console.WriteLine("random stream, so a second trial is the same drive (see the comment)");
+            PrintWorldConfig(StandardBorderMetres, 1, 2);
+
+            Console.WriteLine();
+            Console.WriteLine("  (a) the notch. Each cell is the share of the drive's ticks the mast");
+            Console.WriteLine("  holds the tank at all.");
+            Console.WriteLine();
+            Console.WriteLine("  closest approach   driving in   driving across   parked");
+            Console.WriteLine("  " + new string('-', 62));
+
+            // Rungs picked to bracket the mast's own reach against a closing tank
+            // rather than to spread evenly: 300 m is inside everything and 10,800 m
+            // is outside the medium band's reach, so the sweep has one row that is
+            // held whatever the heading and one that is held on no heading at all,
+            // which is what bracketing a transition means (FINDINGS 40).
+            int[] offsets = { 300, 1200, 2400, 3600, 4800, 6000, 7200 };
+            for (int o = 0; o < offsets.Length; o++)
+            {
+                Console.WriteLine(string.Format("  {0,16}   {1,10}   {2,14}   {3,6}",
+                    offsets[o] + " m",
+                    RadarPass(RadarDrive.In, offsets[o], true) + "%",
+                    RadarPass(RadarDrive.Across, offsets[o], true) + "%",
+                    RadarPass(RadarDrive.Parked, offsets[o], true) + "%"));
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("  The parked column is the notch in its pure form: zero at every range,");
+            Console.WriteLine("  because a vehicle at rest has no radial component and no cross-section");
+            Console.WriteLine("  and no proximity can buy its way out of a hard gate. That is the one");
+            Console.WriteLine("  cell-for-cell comparison in the table - same position, same tank, same");
+            Console.WriteLine("  mast, nothing different but whether the engine is running.");
+            Console.WriteLine();
+            Console.WriteLine("  The two moving columns are NOT a controlled comparison of heading and");
+            Console.WriteLine("  should not be read as one. Both legs are 12,000 m, but a leg driven at");
+            Console.WriteLine("  the mast spans every range from 13 km down to the stated one while a");
+            Console.WriteLine("  leg driven across its face never leaves the stated one by more than");
+            Console.WriteLine("  half its length, so the crossing column is fought much closer in. That");
+            Console.WriteLine("  is why it overtakes the closing column past about 3 km rather than");
+            Console.WriteLine("  being quieter everywhere: inside the envelope the notch costs the");
+            Console.WriteLine("  crosser most of its contact, and outside it the closer has no contact");
+            Console.WriteLine("  to lose. Both facts are about a real manoeuvre and neither is about");
+            Console.WriteLine("  the other.");
+            Console.WriteLine();
+            Console.WriteLine("  The crossing column peaking at 3,600 m is the sharpest thing here and");
+            Console.WriteLine("  is left standing rather than smoothed. Nearer than that, a crossing");
+            Console.WriteLine("  tank spends most of its leg inside the angle where the radial falls");
+            Console.WriteLine("  into the 1.5-4 m/s band - short reach and 30% reliability, so the");
+            Console.WriteLine("  contact is both closer and intermittent. Further out, the band is");
+            Console.WriteLine("  irrelevant because the whole leg is past what the mast reaches. 3,600 m");
+            Console.WriteLine("  is where the geometry puts the whole crossing inside the medium band");
+            Console.WriteLine("  and inside the envelope at once, and it is the best place on this map");
+            Console.WriteLine("  to be a tank the mast can see.");
+
+            Console.WriteLine();
+            Console.WriteLine("  (b) emission control - FINDINGS 37's order, issued through");
+            Console.WriteLine("  Command.SetEmitting and never before in a balance table. Two rows and");
+            Console.WriteLine("  not a sweep, and the comment on this method says why.");
+            Console.WriteLine();
+            Console.WriteLine("  the mast is    heard at   a listener at 3,000 m holds it   its own pass");
+            Console.WriteLine("  " + new string('-', 76));
+            Console.WriteLine(string.Format("  {0,-13}  {1,8}   {2,29}   {3,12}",
+                "radiating", RadarHeardAt(true).RoundToInt() + " m",
+                RadarHeard(3000, true) + "% of ticks",
+                RadarPass(RadarDrive.In, 1200, true) + "%"));
+            Console.WriteLine(string.Format("  {0,-13}  {1,8}   {2,29}   {3,12}",
+                "dark", RadarHeardAt(false).RoundToInt() + " m",
+                RadarHeard(3000, false) + "% of ticks",
+                RadarPass(RadarDrive.In, 1200, false) + "%"));
+            Console.WriteLine();
+            Console.WriteLine("  'heard at' is how far an EW Truck's passive listening reaches the mast,");
+            Console.WriteLine("  read off a spawned truck in a stepped world. 'its own pass' is the");
+            Console.WriteLine("  1,200 m closing drive from (a), so the last column is what the order");
+            Console.WriteLine("  costs and the first two are what it buys.");
+            Console.WriteLine();
+            Console.WriteLine("  Switching off does not hide the mast. It moves the range at which the");
+            Console.WriteLine("  other side hears it from a little over four kilometres to a little");
+            Console.WriteLine("  under two and a half - a factor of about 1.8 - because a quiet mast is");
+            Console.WriteLine("  still a structure with a radio signature of its own. What it pays for");
+            Console.WriteLine("  that is everything: against a ground target a dark mast holds nothing");
+            Console.WriteLine("  at any range on any heading, because its only other sensor is passive");
+            Console.WriteLine("  RF and a Main Tank's radio signature is zero. So the order is not a");
+            Console.WriteLine("  posture a player can hold while still working - it is a decision to");
+            Console.WriteLine("  stop seeing in exchange for halving the radius inside which somebody");
+            Console.WriteLine("  can find you.");
+        }
+
+        enum RadarDrive { In, Across, Parked }
+
+        /// <summary>
+        /// The mast's own position in the radar experiment. Far enough west of
+        /// StandardBorderMetres that the whole leg is on one side of the line, so
+        /// territory is not quietly a second variable.
+        /// </summary>
+        const int RadarMastX = 14400;
+        const int RadarMastY = 9360;
+
+        /// <summary>
+        /// The leg, in metres and in ticks. 12,000 m at the Main Tank's 7.5 m/s is
+        /// 1,600 real seconds; the loop is given a quarter more than that so a
+        /// drive that is slowed by terrain still finishes inside it, and the share
+        /// is taken over the ticks actually driven rather than over the budget.
+        /// </summary>
+        const int RadarLegMetres = 12000;
+
+        /// <summary>
+        /// One drive past the mast, and the share of its ticks the mast held the
+        /// tank. Closest approach is the same quantity in all three modes: the
+        /// drive-in leg ends abeam at that distance, the crossing leg passes abeam
+        /// at it at its midpoint, and the parked vehicle simply stands at it.
+        /// </summary>
+        static int RadarPass(RadarDrive mode, int closestApproach, bool radiating)
+        {
+            World w = MakeRealisticWorld(28800, 19200, 64, 4, 1, 2, 0,
+                StandardBorderMetres, 1, 2);
+
+            EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(RadarMastX, RadarMastY));
+            if (!radiating) w.Enqueue(Command.SetEmitting(2, mast, false));
+
+            Fix2 start, destination;
+            switch (mode)
+            {
+                case RadarDrive.In:
+                    // From 12,000 m out on the mast's own axis, ending abeam.
+                    start = P(RadarMastX - RadarLegMetres, RadarMastY + closestApproach);
+                    destination = P(RadarMastX, RadarMastY + closestApproach);
+                    break;
+                case RadarDrive.Across:
+                    // Perpendicular to the bearing, abeam at the midpoint.
+                    start = P(RadarMastX + closestApproach, RadarMastY - RadarLegMetres / 2);
+                    destination = P(RadarMastX + closestApproach, RadarMastY + RadarLegMetres / 2);
+                    break;
+                default:
+                    start = P(RadarMastX + closestApproach, RadarMastY);
+                    destination = start;
+                    break;
+            }
+
+            EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 1, start);
+            if (mode != RadarDrive.Parked)
+                w.Enqueue(Command.MoveTo(1, tank, destination));
+
+            // The leg's own duration, plus a quarter. A Main Tank is LinkKind.None
+            // - a crewed vehicle, not a robot - so nothing stops it for want of a
+            // command post, and the drive is the whole of the trial.
+            int budget = (RadarLegMetres * SimConstants.TicksPerRealSecond * 5) / (4 * 7)
+                       + SimConstants.TicksPerSecond;
+            int held = 0, ticks = 0;
+            for (int t = 0; t < budget; t++)
+            {
+                w.Step();
+                ticks++;
+                if (w.IsDetectedBy(2, tank)) held++;
+                if (mode != RadarDrive.Parked
+                    && Fix2.Distance(w.Entities.Position[tank.Index], destination) < F(48)) break;
+            }
+            return ticks > 0 ? (held * 100) / ticks : 0;
+        }
+
+        /// <summary>
+        /// How far the mast holds a tank that is closing on it head-on, read off a
+        /// driving vehicle rather than off the formula: the tank is given a moment
+        /// to be moving before the range is asked for, because a stationary tank
+        /// returns zero and that is the mechanic rather than a measurement error.
+        /// </summary>
+        static Fix RadarClosingReach()
+        {
+            World w = MakeRealisticWorld(28800, 19200, 64, 4, 1, 2, 0,
+                StandardBorderMetres, 1, 2);
+            EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(RadarMastX, RadarMastY));
+            EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 1, P(RadarMastX - 6000, RadarMastY));
+            w.Enqueue(Command.MoveTo(1, tank, P(RadarMastX, RadarMastY)));
+            for (int t = 0; t < SimConstants.TicksPerSecond * 4; t++) w.Step();
+            return w.DetectionRangeFor(mast.Index, tank.Index, SensorChannel.Radar);
+        }
+
+        /// <summary>
+        /// The other half of the emission-control trade: how much of a run the
+        /// listening side holds the mast, with the mast transmitting and with it
+        /// told to stop. Nothing drives here - this is about the mast's own
+        /// signature, which is what the order changes.
+        /// </summary>
+        /// <remarks>
+        /// Swept across the listener's range first, and it would not resolve:
+        /// passive listening is the most reliable channel in the model, so the
+        /// share of ticks is 100% out to the reach and 0% past it with almost
+        /// nothing in between, and a column of 100s and 0s is FINDINGS 32's
+        /// ceiling however many rungs it has. The quantity that actually moves is
+        /// the reach itself, so that is what is printed, at one range where the
+        /// two answers differ.
+        /// </remarks>
+        static int RadarHeard(int listenerRange, bool radiating)
+        {
+            World w = MakeRealisticWorld(28800, 19200, 64, 4, 1, 2, 0,
+                StandardBorderMetres, 1, 2);
+            EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(RadarMastX, RadarMastY));
+            if (!radiating) w.Enqueue(Command.SetEmitting(2, mast, false));
+            w.Spawn(Catalog.IdOf("EW Truck"), 1, P(RadarMastX - listenerRange, RadarMastY));
+
+            // Long enough for the order to be executed, the emitter signature to
+            // be rebuilt and the edge roll in World.Reaches to have been asked a
+            // few hundred times - the share is what that roll produces, so a run
+            // of one tick would report a coin toss as a balance figure.
+            int held = 0, ticks = SimConstants.TicksPerSecond * 20;
+            for (int t = 0; t < ticks; t++)
+            {
+                w.Step();
+                if (w.IsDetectedBy(1, mast)) held++;
+            }
+            return (held * 100) / ticks;
+        }
+
+        /// <summary>
+        /// How far an EW Truck's passive listening reaches the mast, with the
+        /// mast transmitting and with it dark. Read off a spawned truck after the
+        /// order has been executed and the emitter signature rebuilt, not
+        /// computed: the boost a radiating emitter takes is
+        /// UnitDef.SignatureWhileEmitting and this harness should not be
+        /// re-deriving it (MINES made that mistake with the damage table).
+        /// </summary>
+        static Fix RadarHeardAt(bool radiating)
+        {
+            World w = MakeRealisticWorld(28800, 19200, 64, 4, 1, 2, 0,
+                StandardBorderMetres, 1, 2);
+            EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(RadarMastX, RadarMastY));
+            if (!radiating) w.Enqueue(Command.SetEmitting(2, mast, false));
+            EntityHandle truck = w.Spawn(Catalog.IdOf("EW Truck"), 1, P(RadarMastX - 3000, RadarMastY));
+            for (int t = 0; t < 4; t++) w.Step();
+            return w.DetectionRangeFor(truck.Index, mast.Index, SensorChannel.Esm);
+        }
+
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// One interceptor against one incoming airframe, swept by how fast the
+        /// airframe is and how far off the interceptor's pad sits from its track.
+        ///
+        /// <para><b>What it is for.</b> FINDINGS 36 built the vectoring - cue,
+        /// solution, fly to the meeting point - and FINDINGS 40 found that
+        /// nothing in this harness had ever launched an airframe that flies one.
+        /// <c>decoys</c> spawns an Interceptor Battery, which is a structure: it
+        /// rolls <c>ResolveInterception</c> at the merge and never flies to one.
+        /// So <c>InterceptLeadRadarTrack</c> and <c>InterceptLeadOpticalTrack</c>
+        /// could both be set to 0.05 - the mechanic switched off - with no
+        /// experiment printing a different byte. This is the sweep that makes the
+        /// lead table cost something.</para>
+        ///
+        /// <para><b>Why the two arms are a radar and no radar.</b> How much of
+        /// the computed lead an interceptor actually flies is decided by
+        /// <c>World.TrackQualityOf</c>: a radar track buys the whole solution, an
+        /// optical one buys 0.55 of it, and a bearing buys none. That is the
+        /// entire content of the lead table, so the honest sweep of it is the
+        /// same geometry with the mast there and with it absent, and the gap
+        /// between the two arms is what the mast is worth.</para>
+        ///
+        /// <para><b>And one correction to FINDINGS 40's specification, found in
+        /// the code rather than argued.</b> That entry says this experiment would
+        /// be "the first experiment in which <c>AirHitChance</c>'s speed term is
+        /// off its clamp". It would not have been: <c>CombatSystem</c> branches
+        /// to <c>ResolveInterception</c> before <c>AirHitChance</c> is reached,
+        /// so an interceptor never scores an air hit roll at all - which FINDINGS
+        /// 40 itself says two sections earlier. An interceptor experiment alone
+        /// leaves the speed term exactly where it found it. Arm (c) is the
+        /// repair: the same four airframes against an Autocannon Mount, which is
+        /// not an interceptor and therefore does score that roll, and which at
+        /// 140 m/s is the first thing in this harness to take the term off the
+        /// 1.15 ceiling it has sat on since it was written.</para>
+        /// </summary>
+        // MEASURES intercept: intercept-lead-radar, intercept-lead-optical, firing-solution-speed
+        static void InterceptionExperiment()
+        {
+            Console.WriteLine();
+            Console.WriteLine("INTERCEPTION - one Interceptor FPV against one incoming airframe");
+            Console.WriteLine("the target flies west to east at a structure at 21,600 m; the defence");
+            Console.WriteLine("scrambles one interceptor from a pad at 19,800 m, offset from the track");
+            Console.WriteLine("by the column heading. 85 m/s against targets from 28 to 140");
+            PrintWorldConfig(StandardBorderMetres, 1, 2);
+
+            // The speed ladder is the catalogue's, not an invented one, and the
+            // two rungs in the middle are chosen for where they sit relative to
+            // AirHitChance's clamp: the speed term is reference/speed clamped at
+            // 1.15, so it is pinned for anything under 39 m/s and live above it.
+            // The Loitering Munition at 36 and the Mid-Range Striker at 45 sit
+            // either side of that line. The gap from 50 to 140 is the roster's
+            // own - there is nothing in the catalogue between them - and it is
+            // why the jet reads as a different kind of problem rather than a
+            // harder version of the same one.
+            string[] targets = { "Multirole Quad", "Loitering Munition", "Mid-Range Striker",
+                                 "Heavy Strike Drone", "Jet Strike Drone" };
+            int[] offsets = { 0, 900, 1800, 3000 };
+
+            for (int arm = 0; arm < 2; arm++)
+            {
+                bool radar = arm == 0;
+                Console.WriteLine();
+                Console.WriteLine(radar
+                    ? "  (a) with a Radar Mast radiating behind the defence"
+                    : "  (b) the same, with no radar on the defence at all");
+                Console.WriteLine();
+                Console.Write("  target                     ");
+                for (int o = 0; o < offsets.Length; o++)
+                    Console.Write(string.Format("{0,12}",
+                        offsets[o] == 0 ? "on track" : offsets[o] + " m off"));
+                Console.WriteLine();
+                Console.WriteLine("  " + new string('-', 76));
+
+                for (int t = 0; t < targets.Length; t++)
+                {
+                    UnitDef def = Catalog.ByName(targets[t]);
+                    Console.Write(string.Format("  {0,-18} {1,3} m/s ",
+                        targets[t], def.SpeedMetresPerSecond.RoundToInt()));
+                    for (int o = 0; o < offsets.Length; o++)
+                        Console.Write(string.Format("{0,12}",
+                            InterceptRate(targets[t], offsets[o], radar) + "%"));
+                    Console.WriteLine();
+                }
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("  (c) the same five airframes against an Autocannon Mount, which is not");
+            Console.WriteLine("  an interceptor - it shoots, so it scores AirHitChance rather than");
+            Console.WriteLine("  ResolveInterception. This is the only column in the harness where");
+            Console.WriteLine("  that roll's speed term is off its clamp (FINDINGS 40's fifth finding:");
+            Console.WriteLine("  every airframe the harness had ever flown at a gun was slow enough to");
+            Console.WriteLine("  land on the 1.15 ceiling, so the term could have been deleted).");
+            Console.WriteLine();
+            Console.WriteLine("  target                      mount kills it   speed term");
+            Console.WriteLine("  " + new string('-', 62));
+            for (int t = 0; t < targets.Length; t++)
+            {
+                UnitDef def = Catalog.ByName(targets[t]);
+                Fix raw = SimConstants.FiringSolutionReferenceSpeed / def.SpeedMetresPerSecond;
+                bool clamped = raw > Fix.FromDoubleContentOnly(1.15);
+                Console.WriteLine(string.Format("  {0,-18} {1,3} m/s   {2,12}   {3}",
+                    targets[t], def.SpeedMetresPerSecond.RoundToInt(),
+                    GunKillRate(targets[t]) + "%",
+                    clamped ? "on the clamp" : "live"));
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("  The first four rows do not move across the offset columns at all,");
+            Console.WriteLine("  and that is the result rather than a broken table: against anything");
+            Console.WriteLine("  under about 50 m/s an 85 m/s interceptor closes by pursuit whatever");
+            Console.WriteLine("  it was told and from wherever it started, so where the pad sits is");
+            Console.WriteLine("  worth nothing. They do move between the arms - 53% with a mast and");
+            Console.WriteLine("  40% without, in every cell - and that 13 points is the cue");
+            Console.WriteLine("  multiplier and not the lead: the interceptor was going to arrive");
+            Console.WriteLine("  either way, and what the mast changes is the roll it makes when it");
+            Console.WriteLine("  gets there.");
+            Console.WriteLine();
+            Console.WriteLine("  The Multirole Quad is the exception and it is a signature and not a");
+            Console.WriteLine("  speed. Its radar cross-section is 26 against the Heavy Strike Drone's");
+            Console.WriteLine("  52, and the mast does not hold it at the merge at all, so its two");
+            Console.WriteLine("  arms are the same number. A radar mast is not air defence for small");
+            Console.WriteLine("  drones. It is air defence for big ones, which is the roster saying");
+            Console.WriteLine("  out loud what it has always implied.");
+            Console.WriteLine();
+            Console.WriteLine("  The jet row is the experiment. Read it two ways. Across, the offset");
+            Console.WriteLine("  columns fall away to nothing: a pad off the raid's track has to make");
+            Console.WriteLine("  the lateral distance up out of a closing budget it does not have, and");
+            Console.WriteLine("  at 3,000 m off it never arrives. Down, the two arms differ by about");
+            Console.WriteLine("  a third at every offset the interceptor can reach at all, and that");
+            Console.WriteLine("  gap is the mast: a radar track flies the whole computed lead and");
+            Console.WriteLine("  scores the merge at 1.00, an optical one flies 0.55 of it and scores");
+            Console.WriteLine("  at 0.60. Against a 140 m/s target the missing 45% of the lead is most");
+            Console.WriteLine("  of a kilometre of aimpoint.");
+            Console.WriteLine();
+            Console.WriteLine("  So the sentence the roster has always implied is now measured: the");
+            Console.WriteLine("  interceptor is a good buy against everything it can catch and a");
+            Console.WriteLine("  coin-toss against the one thing it was bought for, and the coin is");
+            Console.WriteLine("  weighted by whether a mast is up.");
+        }
+
+        /// <summary>
+        /// One scramble, repeated. The share of trials in which the interceptor
+        /// removes the incoming airframe before it reaches the thing it was sent
+        /// at. <c>ResolveInterception</c> draws from RandomStream.Interception, so
+        /// unlike the radar sweep above this one genuinely needs trials.
+        /// </summary>
+        static int InterceptRate(string targetDefName, int padOffsetMetres, bool radar)
+        {
+            // 60. The differences this table reports between its two arms are
+            // tens of points, so the six-point standard error 60 trials carries is
+            // comfortably inside them; the differences between adjacent offset
+            // columns are smaller and are read as a shape rather than cell by cell.
+            const int trials = 60;
+            int killed = 0;
+            for (int trial = 0; trial < trials; trial++)
+                if (RunIntercept(targetDefName, padOffsetMetres, radar, (ulong)(trial + 1)))
+                    killed++;
+            return killed * 100 / trials;
+        }
+
+        static bool RunIntercept(string targetDefName, int padOffsetMetres, bool radar, ulong seed)
+        {
+            World w = MakeRealisticWorld(28800, 19200, 128, 8, seed, 2, 0,
+                StandardBorderMetres, 1, 2);
+
+            // The attacker: enough rear to launch one airframe and keep it linked.
+            w.Player(1).Materiel = Fix.FromInt(100000);
+            w.Spawn(Catalog.IdOf("Command Post"), 1, P(2400, 9360));
+            for (int q = 0; q < 3; q++) w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(1800 + q * 480, 10800));
+            w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(9600, 9360));
+
+            // The defence: the thing being flown at, a rear to launch from, and -
+            // in arm (a) only - the mast that turns a contact into a solution.
+            w.Player(2).Materiel = Fix.FromInt(100000);
+            EntityHandle objective = w.Spawn(Catalog.IdOf("Command Post"), 2, P(21600, 9360));
+            for (int q = 0; q < 3; q++) w.Spawn(Catalog.IdOf("Crew Quarters"), 2, P(22800 + q * 480, 10800));
+            w.Spawn(Catalog.IdOf("Relay Mast"), 2, P(20400, 9360));
+            if (radar) w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(21000, 9360));
+
+            int targetDef = Catalog.IdOf(targetDefName);
+            int interceptorDef = Catalog.IdOf("Interceptor FPV");
+            w.Enqueue(Command.LaunchSortie(1, targetDef, P(12000, 9360), objective, 0));
+
+            EntityHandle target = EntityHandle.None;
+            bool targetSeen = false;
+            bool scrambled = false;
+            Fix2 pad = P(19800, 9360 + padOffsetMetres);
+
+            for (int tick = 0; tick < 600 * SimConstants.TicksPerSecond; tick++)
+            {
+                w.Step();
+
+                // Whether the interceptor got it, asked of the simulation rather
+                // than inferred from the airframe having disappeared. That
+                // distinction is the whole measurement here: every target in this
+                // table is OneWay, so it kills itself the instant it strikes, and
+                // a first version of this counted "the target is no longer alive"
+                // and reported 100% for every armed airframe in every cell - an
+                // experiment measuring the roster's suicide rule and calling it
+                // interception. UnitDied carries the killer in B, so the question
+                // has a real answer: A is the raid and B is who removed it.
+                for (int e = 0; e < w.Events.Count; e++)
+                {
+                    SimEvent ev = w.Events[e];
+                    if (ev.Kind != SimEventKind.UnitDied) continue;
+                    if (targetSeen && ev.A == target)
+                        return ev.B != EntityHandle.None
+                            && ev.B.Index < w.Entities.Capacity
+                            && w.Entities.DefId[ev.B.Index] == interceptorDef;
+                }
+
+                if (!targetSeen)
+                {
+                    // The airframe, once it has left the pad. Index order is
+                    // launch order for the length of a trial (World.Spawn hands
+                    // out ascending slots) and there is exactly one team-1 sortie.
+                    for (int i = 1; i < w.Entities.HighWater; i++)
+                    {
+                        if (!w.Entities.IsSlotAlive(i)) continue;
+                        if (w.Entities.Team[i] != 1) continue;
+                        if (!w.Entities.Has(i, ComponentMask.Sortie)) continue;
+                        if (w.Entities.DefId[i] != targetDef) continue;
+                        target = w.Entities.HandleAt(i);
+                        targetSeen = true;
+                        break;
+                    }
+                    continue;
+                }
+
+                if (!w.Entities.IsAlive(target)) return false;
+
+                // Scramble when the raid is 6,000 m out, which is a scramble on
+                // warning rather than a standing patrol: the same trigger for
+                // every target, so the column that varies is the geometry and not
+                // how much notice the defence was given.
+                if (!scrambled
+                    && Fix2.Distance(w.Entities.Position[target.Index],
+                                     w.Entities.Position[objective.Index]) < F(6000))
+                {
+                    w.Enqueue(Command.LaunchSortie(2, interceptorDef, pad, target, 0));
+                    scrambled = true;
+                }
+
+                if (!w.Entities.IsAlive(objective)) return false;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// The same four airframes flown past an Autocannon Mount instead. The
+        /// mount is static and does not chase, so there is no offset axis: what is
+        /// being read is the hit roll, which is the half of the air-defence model
+        /// no interceptor ever reaches.
+        /// </summary>
+        static int GunKillRate(string targetDefName)
+        {
+            const int trials = 60;
+            int killed = 0;
+            int targetDef = Catalog.IdOf(targetDefName);
+            for (int trial = 0; trial < trials; trial++)
+            {
+                World w = MakeRealisticWorld(28800, 19200, 128, 8, (ulong)(trial + 1), 2, 0,
+                    StandardBorderMetres, 1, 2);
+                w.Player(1).Materiel = Fix.FromInt(100000);
+                w.Spawn(Catalog.IdOf("Command Post"), 1, P(2400, 9360));
+                for (int q = 0; q < 3; q++) w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(1800 + q * 480, 10800));
+                w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(9600, 9360));
+
+                EntityHandle mount = w.Spawn(Catalog.IdOf("Autocannon Mount"), 2, P(19800, 9360));
+                w.Enqueue(Command.LaunchSortie(1, targetDef, P(12000, 9360), mount, 0));
+
+                EntityHandle target = EntityHandle.None;
+                bool seen = false;
+                for (int tick = 0; tick < 600 * SimConstants.TicksPerSecond; tick++)
+                {
+                    w.Step();
+
+                    // The mount's kill, not the airframe's disappearance - same
+                    // reason as RunIntercept, and here it matters even more: the
+                    // airframes this arm is about are one-way, so "it is gone"
+                    // and "the mount got it" are different questions with very
+                    // different answers.
+                    bool done = false;
+                    for (int e = 0; e < w.Events.Count; e++)
+                    {
+                        SimEvent ev = w.Events[e];
+                        if (ev.Kind != SimEventKind.UnitDied) continue;
+                        if (seen && ev.A == target)
+                        {
+                            if (ev.B == mount) killed++;
+                            done = true;
+                        }
+                    }
+                    if (done) break;
+
+                    if (!seen)
+                    {
+                        for (int i = 1; i < w.Entities.HighWater; i++)
+                        {
+                            if (!w.Entities.IsSlotAlive(i)) continue;
+                            if (w.Entities.Team[i] != 1) continue;
+                            if (!w.Entities.Has(i, ComponentMask.Sortie)) continue;
+                            if (w.Entities.DefId[i] != targetDef) continue;
+                            target = w.Entities.HandleAt(i);
+                            seen = true;
+                            break;
+                        }
+                        continue;
+                    }
+                    if (!w.Entities.IsAlive(target)) break;
+                    if (!w.Entities.IsAlive(mount)) break;
+                }
+            }
+            return killed * 100 / trials;
+        }
+
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// What the thread costs, swept by how far back the launch pad is.
+        ///
+        /// <para><b>What it is for.</b> FINDINGS 39 built fiber's third
+        /// liability - a filament lying across the map that an enemy vehicle can
+        /// drive onto, giving that enemy a bearing home - and found by hand, on
+        /// the shipped scenario's one geometry, that it makes fiber "a decision
+        /// about where you launch": from the forward pad the thread costs the
+        /// player a relay mast, from the rear pad it costs a log line. FINDINGS
+        /// 40 then found that no experiment in this harness had ever spawned a
+        /// Fiber FPV Team at all, and that the discovery range could be
+        /// multiplied by ten without anything printing a different byte. This is
+        /// that decision turned into a sweep.</para>
+        ///
+        /// <para><b>The control column is the point of the table.</b> A launch
+        /// site is not secret: from a forward pad the defence's own sensors are
+        /// standing on it anyway, and the thread tells it nothing it did not
+        /// know. So the same sortie is flown twice from each pad - once on fiber
+        /// and once on radio, which drags no thread - and the difference between
+        /// the two "site held" columns is the price of the filament, isolated
+        /// from what the defence would have seen regardless. Without that column
+        /// the fiber figure is a statement about how far the defence's cameras
+        /// reach.</para>
+        ///
+        /// <para><b>Where the trial variance comes from.</b> The defence's tank
+        /// patrols a lane, and each trial starts it at a different point on that
+        /// lane. That is the honest variable: a thread is found because somebody
+        /// happened to drive over it, so whether one is found is a question about
+        /// where the traffic was when you launched. Seeding alone would not do
+        /// it - discovery is pure geometry, with no roll anywhere in it, which is
+        /// deliberate (FINDINGS 39: no stream gains a draw and no recorded result
+        /// reorders).</para>
+        /// </summary>
+        // MEASURES fiber: tether-discovery-range, tether-reveal-radius, spool-length
+        static void FiberExperiment()
+        {
+            Console.WriteLine();
+            Console.WriteLine("FIBER - the same sortie flown from further and further back");
+            Console.WriteLine("one Fiber FPV Team at a structure at 21,600 m, launched from a pad the");
+            Console.WriteLine("column below names, with a Relay Mast 600 m behind that pad as the");
+            Console.WriteLine("launch site. The defence's Main Tank patrols a lane across the approach");
+            Console.WriteLine("at 18,600 m; each trial starts it at a different point on that lane");
+            Console.WriteLine(string.Format("the airframe carries {0} m of spool and flies at 22 m/s",
+                Catalog.ByName("Fiber FPV Team").SpoolLengthMetres.RoundToInt()));
+            PrintWorldConfig(StandardBorderMetres, 1, 2);
+            Console.WriteLine();
+            Console.WriteLine("  Each cell is a share of 40 trials. 'site held' is whether the defence");
+            Console.WriteLine("  ever holds a contact on the relay mast standing at the launch pad -");
+            Console.WriteLine("  asked of World.TrackQualityOf, so it is the simulation's answer and");
+            Console.WriteLine("  not this harness's arithmetic. 'thread parts after' is how much line");
+            Console.WriteLine("  was out when it was cut, read off the tether.");
+
+            for (int arm = 0; arm < 2; arm++)
+            {
+                bool road = arm == 0;
+                Console.WriteLine();
+                Console.WriteLine(road
+                    ? "  (a) flown down the road, which is the route every other experiment in"
+                    : "  (b) the same sortie flown over open ground, 1,700 m north of the road");
+                Console.WriteLine(road
+                    ? "      this file stages on"
+                    : "");
+                Console.WriteLine();
+                Console.WriteLine("  pad at    out from target   parts after   thread found   site held   site held");
+                Console.WriteLine("                                                           on fiber    on radio");
+                Console.WriteLine("  " + new string('-', 88));
+
+                int[] standoffs = { 3000, 6000, 9000, 12000, 15000, 18000 };
+                for (int i = 0; i < standoffs.Length; i++)
+                {
+                    int found, heldFiber, heldRadio, spool;
+                    RunFiberSweep(standoffs[i], road, out found, out heldFiber,
+                                  out heldRadio, out spool);
+                    Console.WriteLine(string.Format(
+                        "  {0,7}   {1,14}   {2,11}   {3,12}   {4,9}   {5,9}",
+                        (FiberObjectiveX - standoffs[i]) + " m",
+                        standoffs[i] + " m",
+                        spool + " m",
+                        found + "%", heldFiber + "%", heldRadio + "%"));
+                }
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("  The two arms are the result, and they are not what this experiment");
+            Console.WriteLine("  was written to measure. A filament dragged down a road parts after");
+            Console.WriteLine("  about 1,500 m whatever the airframe is carrying: Terrain's snag rate");
+            Console.WriteLine("  is 1.5% per real second on a road and zero on open ground, and at");
+            Console.WriteLine("  22 m/s that is a thread with an expected life of a kilometre and a");
+            Console.WriteLine("  half. Over open ground it does not part at all until the spool runs");
+            Console.WriteLine("  out. So the 16,800 m in the catalogue is not the leash on the route");
+            Console.WriteLine("  every other experiment in this file flies - there the thread is gone");
+            Console.WriteLine("  at a tenth of it, and the number on the unit's card is a number the");
+            Console.WriteLine("  player will never see spent.");
+            Console.WriteLine();
+            Console.WriteLine("  That changes what the third liability is. A thread that parts 1,500 m");
+            Console.WriteLine("  from the pad can only be found by traffic within 1,500 m of the pad,");
+            Console.WriteLine("  so on the road arm the found column collapses as soon as the pad is");
+            Console.WriteLine("  further back than that: the cable is a liability only from a pad that");
+            Console.WriteLine("  was already standing in the enemy's lap. On the open arm the thread");
+            Console.WriteLine("  survives the whole flight and the found column reads 95-100% across a");
+            Console.WriteLine("  twelve-kilometre sweep of standoff. That is FINDINGS 39's hand");
+            Console.WriteLine("  measurement - seven threads found from the forward pad and seven from");
+            Console.WriteLine("  the rear one - reproduced as a sweep rather than as two runs, and it");
+            Console.WriteLine("  holds: how often a cable is found is not a function of where you");
+            Console.WriteLine("  launched. What you launched over decides that.");
+            Console.WriteLine();
+            Console.WriteLine("  The bottom row of the open arm is the spool, and it is the only place");
+            Console.WriteLine("  in this table where the catalogue figure binds: 18,000 m of flight on");
+            Console.WriteLine("  16,800 m of thread parts the line 1,200 m short, four fifths of the");
+            Console.WriteLine("  trials never get a thread across the lane at all, and the found column");
+            Console.WriteLine("  falls to 20%. A leash long enough to be irrelevant everywhere else is");
+            Console.WriteLine("  an asset exactly once.");
+            Console.WriteLine();
+            Console.WriteLine("  The 'site held on radio' column is the control and it is what makes");
+            Console.WriteLine("  the fiber column mean anything. The same sortie flown by an FPV Team");
+            Console.WriteLine("  drags no thread, so where the two agree the filament disclosed nothing");
+            Console.WriteLine("  the defence's own sensors had not - a launch site inside the Radar");
+            Console.WriteLine("  Mast's passive listening is held whatever took off from it, and on");
+            Console.WriteLine("  these rungs that boundary sits between 6,600 m and 9,600 m out. Past");
+            Console.WriteLine("  it the control is zero and the fiber column is not, and those three");
+            Console.WriteLine("  rows are the price of the thread with everything else divided out:");
+            Console.WriteLine("  from a pad the enemy could not otherwise find, one vehicle driving");
+            Console.WriteLine("  over a cable hands him the whole launch site.");
+        }
+
+        /// <summary>
+        /// One standoff's worth of trials, fiber and radio, sharing patrol phases
+        /// so that the two 'site held' columns are paired rather than independent.
+        /// </summary>
+        static void RunFiberSweep(int standoff, bool road, out int found, out int heldFiber,
+                                  out int heldRadio, out int spoolSpent)
+        {
+            const int trials = 40;
+            int f = 0, hf = 0, hr = 0;
+            long spoolTotal = 0;
+            for (int trial = 0; trial < trials; trial++)
+            {
+                // The tank's starting point on its lane, stepped evenly across it.
+                int phase = FiberLaneBottom
+                          + (trial * (FiberLaneTop - FiberLaneBottom)) / trials;
+                bool foundOne, heldOne;
+                int spooledOne;
+                RunFiberSortie("Fiber FPV Team", standoff, road, phase, (ulong)(trial + 1),
+                               out foundOne, out heldOne, out spooledOne);
+                if (foundOne) f++;
+                if (heldOne) hf++;
+                spoolTotal += spooledOne;
+
+                bool ignoredFound, heldRadioOne;
+                int ignoredSpool;
+                RunFiberSortie("FPV Team", standoff, road, phase, (ulong)(trial + 1),
+                               out ignoredFound, out heldRadioOne, out ignoredSpool);
+                if (heldRadioOne) hr++;
+            }
+            found = f * 100 / trials;
+            heldFiber = hf * 100 / trials;
+            heldRadio = hr * 100 / trials;
+            spoolSpent = (int)(spoolTotal / trials);
+        }
+
+        const int FiberObjectiveX = 21600;
+        const int FiberLaneX = 18600;
+        // A short lane, and the length is the one number in this experiment that
+        // had to be chosen rather than read off something. Too long and the
+        // vehicle is almost never on the cable when the sortie flies, so every
+        // standoff reads zero and the table measures nothing; too short and it is
+        // always on it, so every standoff reads 100% and the table measures
+        // nothing in the other direction. 1,920 m puts the 288 m discovery band
+        // across about a third of the lap, which leaves the found-thread column
+        // free to move. It is a condition of the experiment and not a result of
+        // it, and the prose under the table says so.
+        const int FiberLaneBottom = 8400;
+        const int FiberLaneTop = 12240;
+
+        /// <summary>
+        /// The two routes the sortie is flown on. 9,360 is the road band every
+        /// other experiment in this file stages on (PaintMixedTerrain puts a road
+        /// across y = 0.47 to 0.51 of the map); 11,040 is open ground 1,700 m
+        /// north of it. They are the experiment's second variable and they turned
+        /// out to matter more than the one it was written to sweep.
+        /// </summary>
+        const int FiberRoadY = 9360;
+        const int FiberOpenY = 11040;
+
+        /// <summary>
+        /// One sortie from one pad, with the defence's vehicle starting at
+        /// <paramref name="patrolPhase"/> on its lane.
+        /// </summary>
+        static void RunFiberSortie(string droneDefName, int standoff, bool road, int patrolPhase,
+                                   ulong seed, out bool threadFound, out bool siteHeld,
+                                   out int spoolSpent)
+        {
+            World w = MakeRealisticWorld(28800, 19200, 128, 8, seed, 2, 0,
+                StandardBorderMetres, 1, 2);
+
+            int padX = FiberObjectiveX - standoff;
+            int routeY = road ? FiberRoadY : FiberOpenY;
+
+            // The attacker: the pad, the structure standing on it that a found
+            // thread would reveal, and the rear that pays for the sortie. The
+            // relays sit behind the pad rather than in front of it so the radio
+            // arm is flown on the link the pad actually has, not on one strung
+            // out along a route the fiber arm does not need.
+            w.Player(1).Materiel = Fix.FromInt(100000);
+            // 600 m behind the pad rather than on top of it, and the offset is
+            // the point. A found thread reveals a *disc* around the launch point
+            // (SimConstants.TetherFoundRevealRadiusMetres, 1,080 m), so a
+            // structure standing exactly on the anchor is inside any disc at all
+            // and the radius is untested by construction - which is what the
+            // mutation guard said when the first version of this claimed to
+            // measure it and printed identical bytes with the radius cut to 24 m.
+            // Putting the mast where a mast would actually be, beside the pad and
+            // not on it, makes the question "how much of your rear does the cable
+            // give away" a question with an answer.
+            EntityHandle site = w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(padX - 600, routeY));
+            w.Spawn(Catalog.IdOf("Command Post"), 1, P(1800, 9360));
+            for (int q = 0; q < 3; q++) w.Spawn(Catalog.IdOf("Crew Quarters"), 1, P(1200 + q * 480, 10800));
+
+            // The defence: the objective, and the traffic that finds cables.
+            EntityHandle objective = w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(FiberObjectiveX, routeY));
+            EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 2, P(FiberLaneX, patrolPhase));
+            bool northbound = true;
+            w.Enqueue(Command.MoveTo(2, tank, P(FiberLaneX, FiberLaneTop)));
+
+            int droneDef = Catalog.IdOf(droneDefName);
+            w.Enqueue(Command.LaunchSortie(1, droneDef, P(padX, routeY), objective, 0));
+
+            threadFound = false;
+            siteHeld = false;
+            spoolSpent = 0;
+
+            bool airborne = false;
+            int goneAtTick = -1;
+
+            for (int tick = 0; tick < 3000 * SimConstants.TicksPerSecond; tick++)
+            {
+                w.Step();
+
+                // Turn the vehicle round at the ends of its lane, so it patrols
+                // rather than parking at the far end - a parked vehicle finds no
+                // cables, and half the trials would be measuring a tank standing
+                // still at one end of a lane.
+                if (w.Entities.IsSlotAlive(tank.Index))
+                {
+                    Fix y = w.Entities.Position[tank.Index].Y;
+                    if (northbound && y > F(FiberLaneTop - 32))
+                    { northbound = false; w.Enqueue(Command.MoveTo(2, tank, P(FiberLaneX, FiberLaneBottom))); }
+                    else if (!northbound && y < F(FiberLaneBottom + 32))
+                    { northbound = true; w.Enqueue(Command.MoveTo(2, tank, P(FiberLaneX, FiberLaneTop))); }
+                }
+
+                for (int e = 0; e < w.Events.Count; e++)
+                    if (w.Events[e].Kind == SimEventKind.TetherFound) threadFound = true;
+
+                if (w.TrackQualityOf(2, site) != TrackQuality.None) siteHeld = true;
+
+                // The most thread this sortie ever had out, read off the tether
+                // rather than computed from the distance flown: a thread follows
+                // the airframe's path and is cut when it runs out, so the two are
+                // not the same number and only one of them is the mechanic.
+                for (int id = 0; id < w.Tethers.Capacity; id++)
+                {
+                    TetherSystem.Tether t = w.Tethers.Get(id);
+                    if (t.State == TetherState.Free || t.Team != 1) continue;
+                    int spooled = t.Spooled.RoundToInt();
+                    if (spooled > spoolSpent) spoolSpent = spooled;
+                }
+
+                // Stop once the sortie is over and the reveal window with it. The
+                // thread lingers after the airframe dies (TetherLingerTicks) and
+                // what it can still disclose in that time is part of what the
+                // thread costs, so the run does not end the instant the drone does.
+                bool nowAirborne = CountTeamDronesAirborne(w, 1) > 0;
+                if (nowAirborne) airborne = true;
+                if (airborne && !nowAirborne)
+                {
+                    if (goneAtTick < 0) goneAtTick = tick;
+                    if (tick - goneAtTick > SimConstants.TetherLingerTicks
+                                          + SimConstants.TetherFoundRevealTicks) break;
+                }
+                if (!w.Entities.IsAlive(objective)) break;
+            }
+        }
+
+        static int CountTeamDronesAirborne(World w, byte team)
+        {
+            int n = 0;
+            for (int i = 1; i < w.Entities.HighWater; i++)
+            {
+                if (!w.Entities.IsSlotAlive(i)) continue;
+                if (w.Entities.Team[i] != team) continue;
+                if (w.Entities.EntityLayer[i] == Layer.Ground) continue;
+                if (!w.Entities.Has(i, ComponentMask.Sortie)) continue;
+                n++;
+            }
+            return n;
         }
 
         // ------------------------------------------------------------------
