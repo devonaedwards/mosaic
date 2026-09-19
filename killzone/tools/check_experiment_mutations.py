@@ -359,7 +359,10 @@ class TreeFailure(Exception):
     """A scratch tree would not build, or an experiment would not run in it."""
 
 
-def make_scratch(root, keep):
+def make_scratch(root):
+    """A copy of the tree to break. Never the working tree: a sweep is a dozen
+    deliberate corruptions of the source and an interrupted one must not be able
+    to leave a single one of them behind."""
     tree = tempfile.mkdtemp(prefix="kz-mutation-")
     for item in SCRATCH_CONTENTS:
         src = os.path.join(root, item)
@@ -533,7 +536,7 @@ def sweep(root, catalogue, claims, experiments, only, only_experiments, keep,
     needed = sorted(set(e for _, e in pairs))
     verdicts = []
 
-    clean = make_scratch(root, keep)
+    clean = make_scratch(root)
     try:
         log("  building the unmutated tree")
         build_tree(clean)
@@ -557,7 +560,7 @@ def sweep(root, catalogue, claims, experiments, only, only_experiments, keep,
             if not mine:
                 continue
             log("  %s: %s" % (m.name, m.breaks))
-            tree = make_scratch(root, keep)
+            tree = make_scratch(root)
             try:
                 try:
                     apply_mutation(tree, m)
