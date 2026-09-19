@@ -1,0 +1,74 @@
+
+RADAR - a mast against a vehicle on the ground
+Radar Mast at 14,400 m; a Main Tank at its catalogue 7.5 m/s driving a
+12,000 m leg past it. The sweep is the vehicle's closest approach and its
+heading, because what gates this channel is radial velocity and not range
+the mast holds a tank closing head-on out to 8044 m, and a tank crossing its face at 0 m
+one run per cell, not sixty: nothing in this engagement draws from a
+random stream, so a second trial is the same drive (see the comment)
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 21600 m (team 1 west / team 2 east), imagery granted over each side's own ground
+
+  (a) the notch. Each cell is the share of the drive's ticks the mast
+  holds the tank at all.
+
+  closest approach   driving in   driving across   parked
+  --------------------------------------------------------------
+             300 m          46%              29%       0%
+            1200 m          47%              31%       0%
+            2400 m          53%              39%       0%
+            3600 m          50%              79%       0%
+            4800 m          28%              49%       0%
+            6000 m          13%              26%       0%
+            7200 m           0%               0%       0%
+
+  The parked column is the notch in its pure form: zero at every range,
+  because a vehicle at rest has no radial component and no cross-section
+  and no proximity can buy its way out of a hard gate. That is the one
+  cell-for-cell comparison in the table - same position, same tank, same
+  mast, nothing different but whether the engine is running.
+
+  The two moving columns are NOT a controlled comparison of heading and
+  should not be read as one. Both legs are 12,000 m, but a leg driven at
+  the mast spans every range from 13 km down to the stated one while a
+  leg driven across its face never leaves the stated one by more than
+  half its length, so the crossing column is fought much closer in. That
+  is why it overtakes the closing column past about 3 km rather than
+  being quieter everywhere: inside the envelope the notch costs the
+  crosser most of its contact, and outside it the closer has no contact
+  to lose. Both facts are about a real manoeuvre and neither is about
+  the other.
+
+  The crossing column peaking at 3,600 m is the sharpest thing here and
+  is left standing rather than smoothed. Nearer than that, a crossing
+  tank spends most of its leg inside the angle where the radial falls
+  into the 1.5-4 m/s band - short reach and 30% reliability, so the
+  contact is both closer and intermittent. Further out, the band is
+  irrelevant because the whole leg is past what the mast reaches. 3,600 m
+  is where the geometry puts the whole crossing inside the medium band
+  and inside the envelope at once, and it is the best place on this map
+  to be a tank the mast can see.
+
+  (b) emission control - FINDINGS 37's order, issued through
+  Command.SetEmitting and never before in a balance table. Two rows and
+  not a sweep, and the comment on this method says why.
+
+  the mast is    heard at   a listener at 3,000 m holds it   its own pass
+  ----------------------------------------------------------------------------
+  radiating        4425 m                   100% of ticks            47%
+  dark             2400 m                     0% of ticks             0%
+
+  'heard at' is how far an EW Truck's passive listening reaches the mast,
+  read off a spawned truck in a stepped world. 'its own pass' is the
+  1,200 m closing drive from (a), so the last column is what the order
+  costs and the first two are what it buys.
+
+  Switching off does not hide the mast. It moves the range at which the
+  other side hears it from a little over four kilometres to a little
+  under two and a half - a factor of about 1.8 - because a quiet mast is
+  still a structure with a radio signature of its own. What it pays for
+  that is everything: against a ground target a dark mast holds nothing
+  at any range on any heading, because its only other sensor is passive
+  RF and a Main Tank's radio signature is zero. So the order is not a
+  posture a player can hold while still working - it is a decision to
+  stop seeing in exchange for halving the radius inside which somebody
+  can find you.

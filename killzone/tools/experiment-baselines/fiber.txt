@@ -1,0 +1,81 @@
+
+FIBER - the same sortie flown from further and further back
+one Fiber FPV Team at a structure at 21,600 m, launched from a pad the
+column below names, with a Relay Mast 600 m behind that pad as the
+launch site. The defence's Main Tank patrols a lane across the approach
+at 18,600 m; each trial starts it at a different point on that lane
+the airframe carries 16800 m of spool and flies at 22 m/s
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 21600 m (team 1 west / team 2 east), imagery granted over each side's own ground
+
+  Each cell is a share of 40 trials. 'site held' is whether the defence
+  ever holds a contact on the relay mast standing at the launch pad -
+  asked of World.TrackQualityOf, so it is the simulation's answer and
+  not this harness's arithmetic. 'thread parts after' is how much line
+  was out when it was cut, read off the tether.
+
+  (a) flown down the road, which is the route every other experiment in
+      this file stages on
+
+  pad at    out from target   parts after   thread found   site held   site held
+                                                           on fiber    on radio
+  ----------------------------------------------------------------------------------------
+  18600 m           3000 m        1373 m            35%        100%        100%
+  15600 m           6000 m        1550 m             5%        100%        100%
+  12600 m           9000 m        1568 m             0%          0%          0%
+   9600 m          12000 m        1568 m             0%          0%          0%
+   6600 m          15000 m        1568 m             0%          0%          0%
+   3600 m          18000 m        1568 m             0%          0%          0%
+
+  (b) the same sortie flown over open ground, 1,700 m north of the road
+
+
+  pad at    out from target   parts after   thread found   site held   site held
+                                                           on fiber    on radio
+  ----------------------------------------------------------------------------------------
+  18600 m           3000 m        2787 m            95%        100%        100%
+  15600 m           6000 m        5786 m           100%        100%        100%
+  12600 m           9000 m        8636 m           100%        100%          0%
+   9600 m          12000 m       11786 m           100%        100%          0%
+   6600 m          15000 m       14785 m           100%        100%          0%
+   3600 m          18000 m       16803 m            20%         20%          0%
+
+  The two arms are the result, and they are not what this experiment
+  was written to measure. A filament dragged down a road parts after
+  about 1,500 m whatever the airframe is carrying: Terrain's snag rate
+  is 1.5% per real second on a road and zero on open ground, and at
+  22 m/s that is a thread with an expected life of a kilometre and a
+  half. Over open ground it does not part at all until the spool runs
+  out. So the 16,800 m in the catalogue is not the leash on the route
+  every other experiment in this file flies - there the thread is gone
+  at a tenth of it, and the number on the unit's card is a number the
+  player will never see spent.
+
+  That changes what the third liability is. A thread that parts 1,500 m
+  from the pad can only be found by traffic within 1,500 m of the pad,
+  so on the road arm the found column collapses as soon as the pad is
+  further back than that: the cable is a liability only from a pad that
+  was already standing in the enemy's lap. On the open arm the thread
+  survives the whole flight and the found column reads 95-100% across a
+  twelve-kilometre sweep of standoff. That is FINDINGS 39's hand
+  measurement - seven threads found from the forward pad and seven from
+  the rear one - reproduced as a sweep rather than as two runs, and it
+  holds: how often a cable is found is not a function of where you
+  launched. What you launched over decides that.
+
+  The bottom row of the open arm is the spool, and it is the only place
+  in this table where the catalogue figure binds: 18,000 m of flight on
+  16,800 m of thread parts the line 1,200 m short, four fifths of the
+  trials never get a thread across the lane at all, and the found column
+  falls to 20%. A leash long enough to be irrelevant everywhere else is
+  an asset exactly once.
+
+  The 'site held on radio' column is the control and it is what makes
+  the fiber column mean anything. The same sortie flown by an FPV Team
+  drags no thread, so where the two agree the filament disclosed nothing
+  the defence's own sensors had not - a launch site inside the Radar
+  Mast's passive listening is held whatever took off from it, and on
+  these rungs that boundary sits between 6,600 m and 9,600 m out. Past
+  it the control is zero and the fiber column is not, and those three
+  rows are the price of the thread with everything else divided out:
+  from a pad the enemy could not otherwise find, one vehicle driving
+  over a cable hands him the whole launch site.

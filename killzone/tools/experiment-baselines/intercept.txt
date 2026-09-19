@@ -1,0 +1,73 @@
+
+INTERCEPTION - one Interceptor FPV against one incoming airframe
+the target flies west to east at a structure at 21,600 m; the defence
+scrambles one interceptor from a pad at 19,800 m, offset from the track
+by the column heading. 85 m/s against targets from 28 to 140
+  world: mixed terrain (road, forest, rubble over open ground), weather Clear, ground Firm, territory split at 21600 m (team 1 west / team 2 east), imagery granted over each side's own ground
+
+  (a) with a Radar Mast radiating behind the defence
+
+  target                         on track   900 m off  1800 m off  3000 m off
+  ----------------------------------------------------------------------------
+  Multirole Quad      28 m/s          40%         40%         40%         40%
+  Loitering Munition  36 m/s          53%         53%         53%         53%
+  Mid-Range Striker   45 m/s          53%         53%         53%         53%
+  Heavy Strike Drone  50 m/s          53%         53%         53%         53%
+  Jet Strike Drone   140 m/s          25%         25%         25%          0%
+
+  (b) the same, with no radar on the defence at all
+
+  target                         on track   900 m off  1800 m off  3000 m off
+  ----------------------------------------------------------------------------
+  Multirole Quad      28 m/s          40%         40%         40%         40%
+  Loitering Munition  36 m/s          40%         40%         40%         40%
+  Mid-Range Striker   45 m/s          40%         40%         40%         40%
+  Heavy Strike Drone  50 m/s          40%         40%         40%         40%
+  Jet Strike Drone   140 m/s          16%         16%          0%          0%
+
+  (c) the same five airframes against an Autocannon Mount, which is not
+  an interceptor - it shoots, so it scores AirHitChance rather than
+  ResolveInterception. This is the only column in the harness where
+  that roll's speed term is off its clamp (FINDINGS 40's fifth finding:
+  every airframe the harness had ever flown at a gun was slow enough to
+  land on the 1.15 ceiling, so the term could have been deleted).
+
+  target                      mount kills it   speed term
+  --------------------------------------------------------------
+  Multirole Quad      28 m/s            98%   on the clamp
+  Loitering Munition  36 m/s            96%   on the clamp
+  Mid-Range Striker   45 m/s            98%   live
+  Heavy Strike Drone  50 m/s           100%   live
+  Jet Strike Drone   140 m/s            46%   live
+
+  The first four rows do not move across the offset columns at all,
+  and that is the result rather than a broken table: against anything
+  under about 50 m/s an 85 m/s interceptor closes by pursuit whatever
+  it was told and from wherever it started, so where the pad sits is
+  worth nothing. They do move between the arms - 53% with a mast and
+  40% without, in every cell - and that 13 points is the cue
+  multiplier and not the lead: the interceptor was going to arrive
+  either way, and what the mast changes is the roll it makes when it
+  gets there.
+
+  The Multirole Quad is the exception and it is a signature and not a
+  speed. Its radar cross-section is 26 against the Heavy Strike Drone's
+  52, and the mast does not hold it at the merge at all, so its two
+  arms are the same number. A radar mast is not air defence for small
+  drones. It is air defence for big ones, which is the roster saying
+  out loud what it has always implied.
+
+  The jet row is the experiment. Read it two ways. Across, the offset
+  columns fall away to nothing: a pad off the raid's track has to make
+  the lateral distance up out of a closing budget it does not have, and
+  at 3,000 m off it never arrives. Down, the two arms differ by about
+  a third at every offset the interceptor can reach at all, and that
+  gap is the mast: a radar track flies the whole computed lead and
+  scores the merge at 1.00, an optical one flies 0.55 of it and scores
+  at 0.60. Against a 140 m/s target the missing 45% of the lead is most
+  of a kilometre of aimpoint.
+
+  So the sentence the roster has always implied is now measured: the
+  interceptor is a good buy against everything it can catch and a
+  coin-toss against the one thing it was bought for, and the coin is
+  weighted by whether a mast is up.
