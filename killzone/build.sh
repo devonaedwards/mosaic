@@ -9,6 +9,7 @@
 #   ./build.sh build        compile only
 #   ./build.sh deadsymbols  run only the dead-symbol guard
 #   ./build.sh driftcheck   run only the experiment-drift guard
+#   ./build.sh mutations    break the simulation on purpose and see who notices
 #
 # Works with either the .NET SDK or Mono. The simulation deliberately has no
 # engine dependency, so it builds anywhere a C# compiler exists.
@@ -112,6 +113,37 @@ check_experiment_drift() {
   python3 tools/check_experiment_drift.py --exe "$EXE" "$@"
 }
 
+# The mutation guard, the third sibling. It breaks one declared constant at a
+# time, rebuilds a scratch copy of the tree, re-runs the experiments that claim
+# that constant, and fails if one of them prints the same bytes with the thing
+# it says it measures switched off.
+#
+# It is NOT in the default path above, and that is a decision. It costs a
+# rebuild and a full experiment run per mutation - minutes, not seconds - and
+# docs/EXPERIMENT-DRIFT.md has already recorded what this project thinks of a
+# slow check in the default path: it gets skipped, and a skipped check reads as
+# evidence while being none. Better a guard somebody runs deliberately than one
+# everybody learns to pass with --no-verify.
+#
+# How often: whenever a balance experiment is written or rewritten (this is that
+# experiment's acceptance test), whenever a mutation is added for a freshly
+# wired system, and before FINDINGS.md cites an experiment as evidence that a
+# system works. Otherwise about once a session.
+check_experiment_mutations() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo ""
+    echo "!! mutation guard SKIPPED: no python3 on this machine."
+    return 0
+  fi
+  echo ""
+  if ! python3 tools/check_experiment_mutations.py --selftest >/dev/null; then
+    echo "!! the mutation guard failed its own self-test - it is not to be trusted"
+    python3 tools/check_experiment_mutations.py --selftest
+    return 1
+  fi
+  python3 tools/check_experiment_mutations.py "$@"
+}
+
 compile() {
   echo "building with $COMPILER"
 
@@ -161,6 +193,12 @@ case "${1:-test}" in
     compile
     shift || true
     check_experiment_drift "$@"
+    ;;
+  mutations)
+    # No compile first: this guard builds its own scratch trees, so whatever is
+    # in build/ is not what it runs and compiling here would only be misleading.
+    shift || true
+    check_experiment_mutations "$@"
     ;;
   test|*)
     compile

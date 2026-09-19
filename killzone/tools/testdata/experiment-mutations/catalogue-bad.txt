@@ -1,0 +1,21 @@
+# The self-test's malformed catalogue. Every entry here is one way of writing a
+# mutation that the checker has to refuse rather than half-accept, and each one
+# has been a real mistake in a file of this shape.
+
+  file    src/Orphan.cs
+
+mutation noreason
+  file    src/Fixture.cs
+  from    Gamma = 3
+  to      Gamma = 7
+
+mutation nofrom
+  file    src/Fixture.cs
+  to      Delta = 6
+  breaks  nothing, because it never says what to replace
+
+mutation selfreplacing
+  file    src/Fixture.cs
+  from    Epsilon = 5
+  to      Epsilon = 5
+  breaks  nothing at all, which is the point of this entry

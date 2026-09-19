@@ -1,0 +1,15 @@
+# The self-test's clean catalogue. Two mutations, one of which nothing in the
+# fixture balance source claims, so the uncovered-mutation warning has something
+# to find.
+
+mutation alpha
+  file    src/Fixture.cs
+  from    Alpha = 1
+  to      Alpha = 9
+  breaks  the first thing, so that a claimed mutation exists
+
+mutation beta
+  file    src/Fixture.cs
+  from    Beta = 2
+  to      Beta = 8
+  breaks  the second thing, so that a mutation with no claimant exists

@@ -1,0 +1,140 @@
+# KILL ZONE - the mutation guard's catalogue.
+#
+#   mutation <name>
+#     file    <path from the repository root>
+#     from    <text that must appear in that file exactly once>
+#     to      <what to replace it with>
+#     breaks  <one line saying what the simulation stops doing>
+#
+# This is the list of things that can be broken on purpose. An experiment
+# declares which of them it survives, in its own source, on a `// MEASURES`
+# line - see check_experiment_mutations.py's header for why the claim lives
+# there and the description lives here.
+#
+# Three rules, and each one has already been a real mistake in a file of this
+# shape:
+#
+#   The `from` text must match exactly once. Zero matches means the constant has
+#   been renamed or rewritten and this mutation has been testing nothing; two
+#   means there is no saying which one it broke. Both stop the sweep rather than
+#   skipping the entry, because a mutation that has stopped applying reads as
+#   coverage while being none.
+#
+#   `breaks` is required and is prose, not a restatement of the diff. It is what
+#   a reader needs to judge "should this experiment have noticed?", which is the
+#   only question the tool's output leaves to a person.
+#
+#   A mutation nothing claims is a warning rather than an error, and it is the
+#   most useful line the tool prints. It is a named system with no experiment
+#   behind it - FINDINGS 40's finding, standing rather than written down once.
+#   Adding one for a system you have just wired, before any experiment covers
+#   it, is the intended use and not an abuse.
+#
+# Values are chosen to be visibly wrong rather than subtly wrong. This is not a
+# sensitivity analysis: the question is whether a path exists at all, so the
+# mutation should be large enough that an experiment with a path cannot miss it
+# and small enough that the tree still compiles and still runs.
+
+# ---------------------------------------------------------------------------
+# Detection. The control row, and the one FINDINGS 40 used to prove the method
+# works before trusting any of its other rows: a change to detection is felt by
+# eight of the ten experiments, which is what a live harness looks like.
+
+mutation track-hold
+  file    src/KZ.Sim/Core/SimConstants.cs
+  from    TrackHoldTicks = Seconds(2)
+  to      TrackHoldTicks = Seconds(8)
+  breaks  the tracker's two-second coast, so every fringe contact is held four times as long
+
+mutation night-optics
+  file    src/KZ.Sim/Core/SimConstants.cs
+  from    NightOpticalDetectionScale = Fix.FromDoubleContentOnly(0.20)
+  to      NightOpticalDetectionScale = Fix.FromDoubleContentOnly(1.00)
+  breaks  darkness: a camera after dark reaches as far as it does at noon
+
+# ---------------------------------------------------------------------------
+# Radar (FINDINGS 38) and emission control (FINDINGS 37). Every one of these
+# was uncovered when FINDINGS 40 measured it.
+
+mutation radar-notch
+  file    src/KZ.Sim/Core/SimConstants.cs
+  from    RadarNotchMetresPerSecond = Fix.FromDoubleContentOnly(1.5)
+  to      RadarNotchMetresPerSecond = Fix.FromDoubleContentOnly(0.0)
+  breaks  the Doppler notch's hard gate, so a parked tank and a crossing one are returns like any other
+
+mutation radar-slow-band
+  file    src/KZ.Sim/Core/SimConstants.cs
+  from    RadarSlowReachScale = Fix.FromDoubleContentOnly(0.40)
+  to      RadarSlowReachScale = Fix.FromDoubleContentOnly(1.00)
+  breaks  the notch's shoulder: a return barely clear of the clutter reaches as far as a fast one
+
+mutation radar-ground-clutter
+  file    src/KZ.Sim/Core/SimConstants.cs
+  from    RadarGroundScale = Fix.FromDoubleContentOnly(0.40)
+  to      RadarGroundScale = Fix.FromDoubleContentOnly(0.01)
+  breaks  the ground-clutter band, so a radar keeps almost no reach at all against anything on the earth
+
+mutation radar-dark
+  file    src/KZ.Sim/Core/World.cs
+  from    return !Entities.Has(i, ComponentMask.Emitter) || Entities.Emitter[i].Active;
+  to      return false;
+  breaks  every radar in the match, by reporting all of them as not transmitting
+
+mutation emission-order
+  file    src/KZ.Sim/Core/World.cs
+  from    Entities.Emitter[i].Active = on;
+  to      Entities.Emitter[i].Active = true;
+  breaks  the emission-control order itself: an emitter can be told to switch off and does not
+
+# ---------------------------------------------------------------------------
+# Interception (FINDINGS 36) and the air hit roll.
+
+mutation intercept-lead-radar
+  file    src/KZ.Sim/Core/SimConstants.cs
+  from    InterceptLeadRadarTrack = Fix.FromDoubleContentOnly(1.00)
+  to      InterceptLeadRadarTrack = Fix.FromDoubleContentOnly(0.05)
+  breaks  the vectoring a radar track buys: a radar-cued interceptor flies a pursuit curve instead of a solution
+
+mutation intercept-lead-optical
+  file    src/KZ.Sim/Core/SimConstants.cs
+  from    InterceptLeadOpticalTrack = Fix.FromDoubleContentOnly(0.55)
+  to      InterceptLeadOpticalTrack = Fix.FromDoubleContentOnly(0.05)
+  breaks  the lead an optically-cued interceptor flies, which is the half of the lead table a mast does not buy
+
+mutation firing-solution-speed
+  file    src/KZ.Sim/Core/SimConstants.cs
+  from    FiringSolutionReferenceSpeed = Fix.FromInt(45)
+  to      FiringSolutionReferenceSpeed = Fix.FromInt(200)
+  breaks  the speed term of every air hit roll, by scoring a 33 m/s quad against a reference four times its own speed
+
+# ---------------------------------------------------------------------------
+# Fiber (FINDINGS 39).
+
+mutation tether-discovery-range
+  file    src/KZ.Sim/Core/SimConstants.cs
+  from    TetherDiscoveryRangeMetres = Fix.FromInt(288)
+  to      TetherDiscoveryRangeMetres = Fix.FromInt(2880)
+  breaks  how close a vehicle has to drive to a filament to find it, by a factor of ten
+
+mutation tether-reveal-radius
+  file    src/KZ.Sim/Core/SimConstants.cs
+  from    TetherFoundRevealRadiusMetres = Fix.FromInt(1080)
+  to      TetherFoundRevealRadiusMetres = Fix.FromInt(24)
+  breaks  what finding a thread reveals, by shrinking the disc around the launch site to nothing
+
+mutation spool-length
+  file    src/KZ.Sim/Content/Defs.cs
+  from    SpoolLengthMetres = M(16800)
+  to      SpoolLengthMetres = M(4800)
+  breaks  the fiber airframe's leash, so a sortie runs out of thread well short of where it used to
+
+# ---------------------------------------------------------------------------
+# Mines. Flat by nature (FINDINGS 10, 40) and still not exempt: a flat
+# experiment can be flat because the mechanic is flat or because the mechanic
+# is not reached, and only a mutation separates those two.
+
+mutation mine-arming
+  file    src/KZ.Sim/Core/SimConstants.cs
+  from    MineArmingTicks = Millis(1500)
+  to      MineArmingTicks = Millis(600000)
+  breaks  a mine's fuze, so nothing laid during a match ever arms inside it
