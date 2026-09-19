@@ -72,3 +72,45 @@ random stream, so a second trial is the same drive (see the comment)
   posture a player can hold while still working - it is a decision to
   stop seeing in exchange for halving the radius inside which somebody
   can find you.
+
+  (c) the rest of the ground roster against the same mast, each vehicle
+  closing head-on at its own catalogue speed. The band is the Doppler
+  band that speed lands in; the reach and the share of the pass are
+  measured off a driving vehicle rather than computed from it.
+
+  Four vehicles and not the whole roster, for two reasons that are the
+  same reason. The two ground robots are radio-controlled, so without a
+  command post they stop of their own accord and a parked robot is the
+  notch rather than a measurement. And the EW Truck and the Logistics
+  UGV carry radio signatures the mast hears on its ESM, which would make
+  the share of the pass a measurement of something other than radar.
+  Every vehicle below is crewed and radio-silent, so the only thing that
+  can find it here is the channel this experiment is about.
+
+  vehicle              speed   cross-section   band     held out to   the pass
+  ------------------------------------------------------------------------------------
+  Motorcycle Squad    17 m/s              64   full           4240 m        33%
+  Supply Truck        14 m/s              88   full           8460 m        69%
+  IFV                  9 m/s              90   medium         7169 m        55%
+  Main Tank          7.5 m/s              94   medium         8044 m        47%
+
+  Speed and size pull in opposite directions on this channel, and the
+  roster puts them in opposition. Everything armoured is slow - the tank
+  at 7.5 m/s and the IFV at 9 - so both are stuck in the 4-10 m/s band
+  whatever they do, a fifth of the mast's reach against them is spent
+  before the engagement starts, and no manoeuvre can get it back. The
+  only ground units that can be a full-strength return are the two
+  soft-skinned ones, and they are also the two with the smallest
+  cross-sections.
+
+  Which way that trade lands is not obvious and the table is the only
+  place it is answered. For the Supply Truck the band wins: 88 of
+  cross-section at full Doppler reaches further than the tank's 94 at
+  0.80 of it, so the loudest thing on the ground to a radar mast is a
+  supply truck and not a tank. For the Motorcycle Squad it loses badly:
+  64 of cross-section is about half the tank's reach even at full
+  Doppler, and it crosses what is left at seventeen metres a second.
+
+  So a radar mast is at its best against exactly the traffic it was not
+  bought for, and a player who wants to move armour under one has the
+  answer in the first table rather than this one: do not drive at it.

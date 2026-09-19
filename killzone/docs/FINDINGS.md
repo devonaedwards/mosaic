@@ -3060,13 +3060,32 @@ survives the sweep intact.
 
 Three things came out of it that were not in item 38.
 
-**A Main Tank can never be a full-strength radar return in this game.** The
-Doppler bands are: under 1.5 m/s not detected, 1.5–4 at ×0.40 reach and 30%
-reliability, 4–10 at ×0.80 and 70%, over 10 full. A Main Tank's catalogue speed
-is 7.5 m/s, so even driving flat at the mast it sits in the middle band, and no
-manoeuvre available to it does better. Nothing on the ground in the catalogue
-moves faster than 9 m/s. **The top band of a four-band mechanic is unreachable by
-any ground vehicle in the game.**
+**Armour can never be a full-strength radar return in this game, and the loudest
+thing on the ground is a supply truck.** The Doppler bands are: under 1.5 m/s not
+detected, 1.5–4 at ×0.40 reach and 30% reliability, 4–10 at ×0.80 and 70%, over
+10 full. Everything armoured is below 10 m/s — Main Tank 7.5, IFV 9 — so it sits
+in the middle band whatever it does, and no manoeuvre available to it gets the
+missing fifth of the mast's reach back. Only the two soft-skinned vehicles can
+reach the top band, and they are also the two with the smallest cross-sections,
+so the trade could go either way. A third table asks which way, measured off a
+driving vehicle rather than computed:
+
+| vehicle | speed | cross-section | band | held out to | share of the pass |
+|---|---|---|---|---|---|
+| Motorcycle Squad | 17 m/s | 64 | full | 4,240 m | 33% |
+| Supply Truck | 14 m/s | 88 | full | **8,460 m** | 69% |
+| IFV | 9 m/s | 90 | medium | 7,169 m | 55% |
+| Main Tank | 7.5 m/s | 94 | medium | 8,044 m | 47% |
+
+For the Supply Truck the band wins: 88 of cross-section at full Doppler out-reaches
+the tank's 94 at 0.80 of it. For the Motorcycle Squad it loses badly — 64 of
+cross-section is about half the tank's reach even at full Doppler. **A radar mast
+is at its best against exactly the traffic it was not bought for.** (Four rows and
+not the whole roster: the two ground robots need a link to move and a parked robot
+is the notch rather than a measurement, and the EW Truck and Logistics UGV carry
+radio signatures the mast hears on its ESM, which would make the last column a
+measurement of something other than radar. The four above are crewed and
+radio-silent.)
 
 **The parked column is the notch in its pure form** — same tank, same mast, same
 position, nothing different but whether the engine is running — and it is the one

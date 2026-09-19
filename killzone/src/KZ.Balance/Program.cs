@@ -1995,6 +1995,64 @@ namespace KZ.Balance
             Console.WriteLine("  posture a player can hold while still working - it is a decision to");
             Console.WriteLine("  stop seeing in exchange for halving the radius inside which somebody");
             Console.WriteLine("  can find you.");
+
+            Console.WriteLine();
+            Console.WriteLine("  (c) the rest of the ground roster against the same mast, each vehicle");
+            Console.WriteLine("  closing head-on at its own catalogue speed. The band is the Doppler");
+            Console.WriteLine("  band that speed lands in; the reach and the share of the pass are");
+            Console.WriteLine("  measured off a driving vehicle rather than computed from it.");
+            Console.WriteLine();
+            Console.WriteLine("  Four vehicles and not the whole roster, for two reasons that are the");
+            Console.WriteLine("  same reason. The two ground robots are radio-controlled, so without a");
+            Console.WriteLine("  command post they stop of their own accord and a parked robot is the");
+            Console.WriteLine("  notch rather than a measurement. And the EW Truck and the Logistics");
+            Console.WriteLine("  UGV carry radio signatures the mast hears on its ESM, which would make");
+            Console.WriteLine("  the share of the pass a measurement of something other than radar.");
+            Console.WriteLine("  Every vehicle below is crewed and radio-silent, so the only thing that");
+            Console.WriteLine("  can find it here is the channel this experiment is about.");
+            Console.WriteLine();
+            Console.WriteLine("  vehicle              speed   cross-section   band     held out to   the pass");
+            Console.WriteLine("  " + new string('-', 84));
+
+            string[] vehicles = { "Motorcycle Squad", "Supply Truck", "IFV", "Main Tank" };
+            for (int v = 0; v < vehicles.Length; v++)
+            {
+                UnitDef def = Catalog.ByName(vehicles[v]);
+                Fix speed = def.SpeedMetresPerSecond;
+                string band = speed < SimConstants.RadarNotchMetresPerSecond ? "notched"
+                            : speed < SimConstants.RadarSlowMetresPerSecond ? "slow"
+                            : speed < SimConstants.RadarMediumMetresPerSecond ? "medium"
+                            : "full";
+                Console.WriteLine(string.Format("  {0,-18} {1,7}   {2,13}   {3,-7}   {4,11}   {5,8}",
+                    vehicles[v],
+                    speed.ToString() + " m/s",
+                    def.SigRadar,
+                    band,
+                    RadarClosingReach(vehicles[v]).RoundToInt() + " m",
+                    RadarPass(RadarDrive.In, 1200, true, vehicles[v]) + "%"));
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("  Speed and size pull in opposite directions on this channel, and the");
+            Console.WriteLine("  roster puts them in opposition. Everything armoured is slow - the tank");
+            Console.WriteLine("  at 7.5 m/s and the IFV at 9 - so both are stuck in the 4-10 m/s band");
+            Console.WriteLine("  whatever they do, a fifth of the mast's reach against them is spent");
+            Console.WriteLine("  before the engagement starts, and no manoeuvre can get it back. The");
+            Console.WriteLine("  only ground units that can be a full-strength return are the two");
+            Console.WriteLine("  soft-skinned ones, and they are also the two with the smallest");
+            Console.WriteLine("  cross-sections.");
+            Console.WriteLine();
+            Console.WriteLine("  Which way that trade lands is not obvious and the table is the only");
+            Console.WriteLine("  place it is answered. For the Supply Truck the band wins: 88 of");
+            Console.WriteLine("  cross-section at full Doppler reaches further than the tank's 94 at");
+            Console.WriteLine("  0.80 of it, so the loudest thing on the ground to a radar mast is a");
+            Console.WriteLine("  supply truck and not a tank. For the Motorcycle Squad it loses badly:");
+            Console.WriteLine("  64 of cross-section is about half the tank's reach even at full");
+            Console.WriteLine("  Doppler, and it crosses what is left at seventeen metres a second.");
+            Console.WriteLine();
+            Console.WriteLine("  So a radar mast is at its best against exactly the traffic it was not");
+            Console.WriteLine("  bought for, and a player who wants to move armour under one has the");
+            Console.WriteLine("  answer in the first table rather than this one: do not drive at it.");
         }
 
         enum RadarDrive { In, Across, Parked }
@@ -2023,6 +2081,12 @@ namespace KZ.Balance
         /// </summary>
         static int RadarPass(RadarDrive mode, int closestApproach, bool radiating)
         {
+            return RadarPass(mode, closestApproach, radiating, "Main Tank");
+        }
+
+        static int RadarPass(RadarDrive mode, int closestApproach, bool radiating,
+                             string vehicleDefName)
+        {
             World w = MakeRealisticWorld(28800, 19200, 64, 4, 1, 2, 0,
                 StandardBorderMetres, 1, 2);
 
@@ -2048,14 +2112,16 @@ namespace KZ.Balance
                     break;
             }
 
-            EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 1, start);
+            EntityHandle tank = w.Spawn(Catalog.IdOf(vehicleDefName), 1, start);
             if (mode != RadarDrive.Parked)
                 w.Enqueue(Command.MoveTo(1, tank, destination));
 
             // The leg's own duration, plus a quarter. A Main Tank is LinkKind.None
             // - a crewed vehicle, not a robot - so nothing stops it for want of a
             // command post, and the drive is the whole of the trial.
-            int budget = (RadarLegMetres * SimConstants.TicksPerRealSecond * 5) / (4 * 7)
+            int speed = Catalog.ByName(vehicleDefName).SpeedMetresPerSecond.RoundToInt();
+            if (speed < 1) speed = 1;
+            int budget = (RadarLegMetres * SimConstants.TicksPerRealSecond * 5) / (4 * speed)
                        + SimConstants.TicksPerSecond;
             int held = 0, ticks = 0;
             for (int t = 0; t < budget; t++)
@@ -2075,12 +2141,14 @@ namespace KZ.Balance
         /// to be moving before the range is asked for, because a stationary tank
         /// returns zero and that is the mechanic rather than a measurement error.
         /// </summary>
-        static Fix RadarClosingReach()
+        static Fix RadarClosingReach() { return RadarClosingReach("Main Tank"); }
+
+        static Fix RadarClosingReach(string vehicleDefName)
         {
             World w = MakeRealisticWorld(28800, 19200, 64, 4, 1, 2, 0,
                 StandardBorderMetres, 1, 2);
             EntityHandle mast = w.Spawn(Catalog.IdOf("Radar Mast"), 2, P(RadarMastX, RadarMastY));
-            EntityHandle tank = w.Spawn(Catalog.IdOf("Main Tank"), 1, P(RadarMastX - 6000, RadarMastY));
+            EntityHandle tank = w.Spawn(Catalog.IdOf(vehicleDefName), 1, P(RadarMastX - 6000, RadarMastY));
             w.Enqueue(Command.MoveTo(1, tank, P(RadarMastX, RadarMastY)));
             for (int t = 0; t < SimConstants.TicksPerSecond * 4; t++) w.Step();
             return w.DetectionRangeFor(mast.Index, tank.Index, SensorChannel.Radar);
