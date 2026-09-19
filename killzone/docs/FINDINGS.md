@@ -2953,3 +2953,350 @@ They are ten variations on one engagement — a mount, a pad, and FPV Teams — 
 the way to find that out was to break the simulation on purpose and see who
 complained.
 
+
+### Amended by FINDINGS 41: the method is a tool now, and two of the three specifications needed correcting
+
+*The sweep is `tools/check_experiment_mutations.py`.* The procedure this entry
+describes — break a constant, rebuild, run all ten, compare byte for byte — is a
+standing guard with its own subcommand and its own self-test, and the eight
+experiments this entry measured under the track hold reproduce exactly. What the
+tool adds is that an experiment now **declares** the constants it claims to
+measure, in its own source, and a claim that stops being true fails rather than
+going stale the way this table would have.
+
+*Specification 2 was wrong where it said an interception experiment would take
+`AirHitChance`'s speed term off its clamp.* It would not: `CombatSystem` branches
+to `ResolveInterception` before `AirHitChance` is reached, which this entry says
+itself two sections earlier. The experiment carries a third arm — the same
+airframes against an Autocannon Mount, which shoots rather than intercepts — and
+that is what reaches the term. Measured there for the first time: 100% against a
+50 m/s airframe, 46% against the 140 m/s jet.
+
+*Specification 1 was wrong where it said "the same table with the mast radiating
+and dark" would give emission control its first sweep.* Run dark, that table is
+eighteen cells of zero — a Radar Mast's only other sensor is passive RF and a
+Main Tank's radio signature is 0 — and there is no continuously varying quantity
+behind the order to sweep. It is recorded as a two-row comparison instead.
+
+*Specification 3 held as written.* The fiber sweep is the one that changed a
+conclusion, and not the one it was aimed at: what decides whether a filament is
+ever found is the ground it is dragged over, not the distance it is dragged.
+
+## 41. The three experiments, and the tool that says whether they work
+
+KILL ZONE is a video game. Everything below is measured inside a fictional
+simulation against fictional factions; the numbers are the game's, not anyone's.
+
+Item 40 diagnosed the harness and named three experiments it did not write. This
+is those three, plus the instrument its diagnosis was made with, turned into
+something that stays.
+
+### The tool first, because the experiments are only worth what it says they are
+
+`tools/check_experiment_mutations.py`. Item 40's method, unchanged: take a
+constant, change it to something visibly wrong, rebuild, run the experiments,
+compare byte for byte against the same run on the unmodified tree. **An
+experiment that does not move has no path to that constant.** What is new is that
+it is a standing guard with its own subcommand (`./build.sh mutations`) and its
+own self-test, and that the claim it checks is written where an experiment's
+author has to look at it.
+
+Two files, and which fact lives in which was the only real design decision. The
+**claim** goes in `src/KZ.Balance/Program.cs`, on a `// MEASURES <experiment>:
+<mutation>, ...` line beside the experiment, because a manifest is a second place
+to remember and the person rewriting an experiment does not open it. The
+**mutation** goes in `tools/experiment-mutations.txt` — file, the exact text to
+replace, what to replace it with, and one line of prose saying what the
+simulation stops doing — described once, so the hundredth mutation costs four
+lines. `docs/EXPERIMENT-DRIFT.md` has the rest, including why it is deliberately
+not in the default `./build.sh`.
+
+The rule with a failure behind it: **a mutation's `from` text must match its file
+exactly once**, and zero matches is a hard error rather than a skip. A mutation
+that has stopped applying has been testing nothing since whatever renamed the
+line, and it reads as coverage while being none — which is this repository's own
+argument about checkers, applied to a checker.
+
+**Fourteen mutations, twenty-six claims, twenty-six verified.** The ten existing
+experiments were given claims only after the sweep proved them, so the guard
+starts green with no baseline file: anything unverified appears as an uncovered
+mutation, which is a warning and a visible gap rather than suppressed debt.
+
+It found the first thing nobody was looking for within a minute of first running:
+breaking a mine's fuze made `mines` divide by an observed zero and crash. A
+harness that crashes rather than reporting "the mechanic did nothing" cannot be
+asked whether the mechanic matters. Fixed, and the fix changes no output on the
+unmodified tree.
+
+It also took a line off the dead-symbol ledger without being asked. `SimEvent.B`
+— the killer on a `UnitDied` event — had been write-only since it was written.
+Two of the three experiments below read it, because "the raid is no longer alive"
+and "the defence killed the raid" are different questions.
+
+### Radar: the notch is not a modifier on the radar, it is the radar
+
+`radar`. A Radar Mast at 14,400 m, a Main Tank driving a 12,000 m leg past it,
+swept by the vehicle's closest approach and its heading. No trial loop: nothing
+here draws from a random stream — the edge-of-envelope roll in `World.Reaches` is
+keyed to the tick and the pair — so one run is the answer, the same argument
+`mines` makes.
+
+Each cell is the share of the drive's ticks the mast holds the tank at all.
+
+| closest approach | driving in | driving across | parked |
+|---|---|---|---|
+| 300 m | 46% | 29% | 0% |
+| 1,200 m | 47% | 31% | 0% |
+| 2,400 m | 53% | 39% | 0% |
+| 3,600 m | 50% | **79%** | 0% |
+| 4,800 m | 28% | 49% | 0% |
+| 6,000 m | 13% | 26% | 0% |
+| 7,200 m | 0% | 0% | 0% |
+
+The headline is in the experiment's header rather than its table: **a mast holds
+a tank closing head-on out to 8,044 m and a tank crossing its face at 0 m, at any
+range whatever.** That is item 38's mechanic swept for the first time, and it
+survives the sweep intact.
+
+Three things came out of it that were not in item 38.
+
+**A Main Tank can never be a full-strength radar return in this game.** The
+Doppler bands are: under 1.5 m/s not detected, 1.5–4 at ×0.40 reach and 30%
+reliability, 4–10 at ×0.80 and 70%, over 10 full. A Main Tank's catalogue speed
+is 7.5 m/s, so even driving flat at the mast it sits in the middle band, and no
+manoeuvre available to it does better. Nothing on the ground in the catalogue
+moves faster than 9 m/s. **The top band of a four-band mechanic is unreachable by
+any ground vehicle in the game.**
+
+**The parked column is the notch in its pure form** — same tank, same mast, same
+position, nothing different but whether the engine is running — and it is the one
+cell-for-cell comparison in the table. It is excused in
+`tools/experiment-ceiling-allow.txt` as a `control`, with the two moving columns
+at the same seven offsets recorded in the reason as the measurement that it is
+the motion and not the rungs.
+
+**The crossing column peaking at 3,600 m is left standing rather than smoothed.**
+Nearer than that, a crossing tank spends most of its leg at an angle where the
+radial falls into the 1.5–4 m/s band — short reach *and* 30% reliability, so the
+contact is both closer and intermittent. Further out the whole leg is past what
+the mast reaches. 3,600 m is where the geometry puts the entire crossing inside
+the medium band and inside the envelope at once. The two moving columns are not a
+controlled comparison of heading and the experiment says so in its own output:
+both legs are 12,000 m, but one spans every range from 13 km down and the other
+never leaves the stated range by more than half its length.
+
+### Emission control has no sweep in it, and that is the measurement
+
+Item 40 specified "the same table with the mast radiating and dark". The dark arm
+is eighteen cells of zero. A Radar Mast's only other sensor is passive RF and a
+Main Tank's radio signature is **0**, so a dark mast is blind to a tank by
+construction rather than by degree — and eighteen cells of zero is item 32's unit
+test asserting `true`, inverted. It is printed as two rows instead:
+
+| the mast is | heard at | a listener at 3,000 m holds it | its own 1,200 m pass |
+|---|---|---|---|
+| radiating | 4,425 m | 100% of ticks | 47% |
+| dark | 2,400 m | 0% of ticks | 0% |
+
+**Switching off does not hide the mast.** It moves the range at which the other
+side's passive listening reaches it from 4,425 m to 2,400 m — a factor of 1.8,
+because a quiet mast is still a structure with a radio signature of its own — and
+it pays for that with the entire ground picture. Item 37's order is not a posture
+a player holds while still working; it is a decision to stop seeing in exchange
+for halving the radius inside which somebody can find you.
+
+A ladder over the listener's range was tried first and rejected: passive
+listening is the most reliable channel in the model, so the share is 100% out to
+the reach and 0% past it with almost nothing in between, and a seven-rung ladder
+of 100s and 0s is a ceiling at both ends pretending to be a sweep. Two honest
+rows beat it.
+
+### Interception: flat until the target outruns the interceptor, and then it is everything
+
+`intercept`. One Interceptor FPV — an airframe the catalogue has always shipped
+and no experiment had ever spawned — scrambled from a pad 19,800 m out against
+one incoming raid, swept by the raid's speed and by how far off its track the pad
+sits. Share of 60 trials in which the interceptor removes the raid, asked of
+`UnitDied`'s killer field and not of whether the airframe disappeared: every
+target here is one-way and kills itself the instant it strikes, and the first
+version of this counted "no longer alive" and reported 100% in every cell.
+
+With a Radar Mast radiating behind the defence:
+
+| target | on track | 900 m off | 1,800 m off | 3,000 m off |
+|---|---|---|---|---|
+| Multirole Quad, 28 m/s | 40% | 40% | 40% | 40% |
+| Loitering Munition, 36 m/s | 53% | 53% | 53% | 53% |
+| Mid-Range Striker, 45 m/s | 53% | 53% | 53% | 53% |
+| Heavy Strike Drone, 50 m/s | 53% | 53% | 53% | 53% |
+| Jet Strike Drone, 140 m/s | **25%** | **25%** | **25%** | **0%** |
+
+With no radar at all, every one of the first four rows reads 40% in every cell,
+and the jet reads 16%, 16%, 0%, 0%.
+
+**Interception in this game is not a spectrum.** Against anything under about
+50 m/s an 85 m/s interceptor closes by pursuit whatever it was told and from
+wherever it started, so the lead table is worth nothing and the pad's position is
+worth nothing: those rows move between the arms and not across them, and the 13
+points between 40% and 53% is the *cue* multiplier at the merge rather than the
+vectoring. Item 36 built the vectoring and called it the missing system. It is
+built, it is correct, and **it pays against exactly one airframe in the
+catalogue.**
+
+**The Multirole Quad is the exception and it is a signature, not a speed.** Its
+radar cross-section is 26 against the Heavy Strike Drone's 52, and the mast does
+not hold it at the merge at all, so both of its arms read 40%. A radar mast is
+not air defence for small drones. It is air defence for big ones.
+
+**The jet row is the experiment.** Across, the offset columns fall to nothing: a
+pad off the raid's track has to make the lateral distance up out of a closing
+budget it does not have. Down, the two arms differ by about a third at every
+offset the interceptor reaches at all — a radar track flies the whole computed
+lead and scores the merge at 1.00, an optical one flies 0.55 and scores at 0.60,
+and against 140 m/s the missing 45% of the lead is most of a kilometre of
+aimpoint.
+
+And a design fact the sweep surfaced rather than measured: **the roster has
+nothing between 50 m/s and 140 m/s.** The mechanic that makes detection quality
+pay has no gradient to work over, because there is no airframe in the middle of
+it.
+
+### The speed term, off its clamp at last
+
+Item 40 says this experiment would be "the first experiment in which
+`AirHitChance`'s speed term is off its clamp". **It would not have been**, and
+the reason is two sections earlier in item 40 itself: `CombatSystem` branches to
+`ResolveInterception` before `AirHitChance` is reached, so an interceptor never
+scores an air hit roll at all. The repair is a third arm — the same five
+airframes flown at an **Autocannon Mount**, which is not an interceptor and
+therefore does score that roll.
+
+| target | mount kills it | speed term |
+|---|---|---|
+| Multirole Quad, 28 m/s | 98% | on the clamp |
+| Loitering Munition, 36 m/s | 96% | on the clamp |
+| Mid-Range Striker, 45 m/s | 98% | live |
+| Heavy Strike Drone, 50 m/s | 100% | live |
+| Jet Strike Drone, 140 m/s | **46%** | live |
+
+`firing-solution-speed` is now a claimed mutation that moves an experiment, so
+item 40's fifth finding is discharged. Two things it says:
+
+**Item 15's sentence now has an experiment behind it, and the effect is large.**
+*"A turbojet strike drone crossing at three times the speed of a quadcopter is
+not hard to shoot at, it is hard to hit, and the speed term does that on its
+own."* Measured: 100% against the 50 m/s airframe and 46% against the 140 m/s
+one — same mount, same geometry, same approach.
+
+**The clamp boundary itself is invisible.** The term is clamped under 39 m/s, and
+the two rungs chosen to sit either side of that line — 36 and 45 m/s — read 96%
+and 98%, which is noise at 60 trials. Only the jet is far enough past the clamp
+for the term to do anything, so the boundary is not a place where the game
+changes and nobody should tune against it.
+
+### Fiber: the decision is not only where you launch, it is what you drag the cable over
+
+`fiber`. One Fiber FPV Team — the first this harness has ever spawned — flown at
+a structure 21,600 m out from a pad the sweep moves back in 3,000 m steps, with a
+Relay Mast 600 m behind the pad as the launch site, against a Main Tank
+patrolling a lane across the approach. Each trial starts the tank at a different
+point on its lane: discovery is pure geometry with no roll in it (item 39 kept it
+that way on purpose), so the honest trial variable is where the traffic was when
+you launched.
+
+The experiment was written to sweep standoff. The variable that turned out to
+matter is the one it was not written to sweep.
+
+**(a) flown down the road — the route every other experiment in this file stages on**
+
+| pad at | out from target | parts after | thread found | site held, fiber | site held, radio |
+|---|---|---|---|---|---|
+| 18,600 m | 3,000 m | 1,373 m | 35% | 100% | 100% |
+| 15,600 m | 6,000 m | 1,550 m | 5% | 100% | 100% |
+| 12,600 m | 9,000 m | 1,568 m | 0% | 0% | 0% |
+| 9,600 m | 12,000 m | 1,568 m | 0% | 0% | 0% |
+| 6,600 m | 15,000 m | 1,568 m | 0% | 0% | 0% |
+| 3,600 m | 18,000 m | 1,568 m | 0% | 0% | 0% |
+
+**(b) the same sortie over open ground, 1,700 m north of the road**
+
+| pad at | out from target | parts after | thread found | site held, fiber | site held, radio |
+|---|---|---|---|---|---|
+| 18,600 m | 3,000 m | 2,787 m | 95% | 100% | 100% |
+| 15,600 m | 6,000 m | 5,786 m | 100% | 100% | 100% |
+| 12,600 m | 9,000 m | 8,636 m | 100% | **100%** | **0%** |
+| 9,600 m | 12,000 m | 11,786 m | 100% | **100%** | **0%** |
+| 6,600 m | 15,000 m | 14,785 m | 100% | **100%** | **0%** |
+| 3,600 m | 18,000 m | 16,803 m | 20% | 20% | 0% |
+
+**A filament dragged down a road parts after about 1,500 m whatever the airframe
+is carrying.** `Terrain.SnagRatePerSecond` is 1.5% per real second on a road and
+zero on open ground; at 22 m/s that is a thread with an expected life of a
+kilometre and a half. So the **16,800 m spool in the catalogue is not the leash**
+on the route this harness flies — the thread is gone at a tenth of it, and the
+number on the unit's card is one the player will never see spent. It is spent
+exactly once in this table: the bottom row of the open arm, where 18,000 m of
+flight on 16,800 m of thread parts the line 1,200 m short and four fifths of the
+trials never get a cable across the lane at all.
+
+**That changes what fiber's third liability is.** A thread that parts 1,500 m
+from the pad can only be found by traffic within 1,500 m of the pad, so on the
+road arm the found column collapses as soon as the pad is further back, and the
+cable is a liability only from a pad already standing in the enemy's lap. On the
+open arm the thread survives and the found column reads 95–100% across a
+twelve-kilometre sweep of standoff.
+
+**Half of item 39 holds and the sweep says so.** Its hand measurement — seven
+threads found from the forward pad, seven from the rear — is reproduced across
+six standoffs rather than two runs: how often a cable is found is not a function
+of where you launched.
+
+**The other half is refined rather than contradicted.** Item 39 concluded that
+from a rear pad the found cable "is a log line", because the revealed site was
+out of the defence's reach. The control column is what isolates that: the same
+sortie flown by a radio FPV Team drags no thread, so where the two "site held"
+columns agree the filament disclosed nothing the defence's own sensors had not.
+They agree out to about 6,600 m and part past about 9,600 m — the edge of the
+Radar Mast's passive listening. **Those three rows are the price of the thread
+with everything else divided out: from a pad the enemy could not otherwise find
+at all, one vehicle driving over a cable hands him the whole launch site.** So a
+rear pad is not automatically safe. It is safe on a road, where the cable never
+reaches him; over open ground it is the *worst* place to launch from, because the
+thread is found just as often and there was nothing else to give the site away.
+
+### What was excused, what is recorded as debt, and what is still uncovered
+
+Two entries added to `tools/experiment-ceiling-allow.txt`, both matched by value
+so they stop applying the day the numbers move: the radar experiment's parked
+column (`control`), and the shape `100,100,0,0,0,0`, which covers three of
+fiber's columns at once (`structural` — a launch site is held when the defence's
+passive listening reaches it and not when it does not, and no rung choice moves a
+sensor reach).
+
+**Three of fiber's columns warn and are left warning rather than excused.** They
+are pinned because the underlying mechanics are hard gates — a thread is found or
+it is not, a site is inside a sensor's reach or it is not — but "the mechanic is a
+gate" is an argument, and this project's rule is that an allowlist entry is for a
+ceiling *measured* not to move with the rungs. That measurement has not been made
+for these three, so they stay visible.
+
+Every one of the fourteen mutations in the catalogue is now claimed by at least
+one experiment. That is not a clean bill of health and the tool says so in its own
+header: the catalogue is written by hand, so it can only ask about systems
+somebody thought to name, and an unmutated constant is invisible to it.
+
+### The general form
+
+Item 30: a green suite proves nothing about the paths it does not walk. Item 32:
+a saturated experiment proves nothing about the variables it cannot move. Item
+40: an experiment proves nothing about a system it never instantiates, and there
+is no way to tell which those are by looking at it. This is the fourth, and it is
+about what to do with the first three:
+
+**A claim about what an experiment measures is worth exactly as much as the
+mechanism that can falsify it.** Item 40's table was right and it was a
+paragraph, and a paragraph goes stale the first time somebody renames a constant.
+The same table as a guard costs four lines per mutation and fails on the day the
+claim stops being true. Every conclusion in this entry is one `./build.sh
+mutations` away from being checked, which is the only reason any of it should be
+believed.

@@ -197,8 +197,9 @@ percent sign declares them.
 
 And it says nothing at all about **coverage**. An experiment can be perfectly
 unpinned and still exercise none of the systems that changed this week. That is
-a different question, this guard has never been able to answer it, and FINDINGS
-40 answers it by hand for the current ten.
+a different question and this guard has never been able to answer it. FINDINGS
+40 answered it by hand for the ten that existed then, and the last section of
+this document is the tool that asks it now.
 
 ## The first run
 
@@ -299,10 +300,111 @@ verified or a fix this task made.
   and the guess was wrong more often than it was right; it now says nothing
   about coverage at all. That is honest and it is also a real gap — FINDINGS 40
   worked the current ten out by hand, one mutation at a time, and the answer
-  was worse than anybody had assumed.
+  was worse than anybody had assumed. **That gap is what the third guard at the
+  end of this document is**, and the division of labour is worth stating: this
+  file asks whether an experiment's answer changed, and
+  `check_experiment_mutations.py` asks whether it *could*.
 - A change that only affects an experiment's *prose* (the commentary strings
   printed alongside a table) counts as drift the same as a change to its
   numbers, because the checker reads the whole of stdout. That is deliberate —
   the harness's own commentary is content the audit above already leans on —
   but it means a wording fix and a balance change look identical to this tool
   until a human reads the diff it prints.
+
+---
+
+# The third guard: mutation
+
+`tools/check_experiment_mutations.py` answers the one question the two guards
+above are structurally unable to ask, and the reason it exists is written in
+this document already:
+
+> It has no notion of *which* systems an experiment exercises. It will never say
+> "Stacking should have moved because the gun's range changed and Stacking
+> spawns a gun mount." ... FINDINGS 40 worked the current ten out by hand, one
+> mutation at a time, and the answer was worse than anybody had assumed.
+
+That hand sweep is now a tool. The method is FINDINGS 40's, unchanged: take a
+constant, change it to something visibly wrong, rebuild, run the experiments,
+compare byte for byte against the same run on the unmodified tree. **An
+experiment that does not move has no path to that constant** — not an opinion
+about coverage, a measurement of it.
+
+## What it reads, and where each thing is written down
+
+Two files, and which fact lives in which was the only real design decision.
+
+| where | what | why there |
+|---|---|---|
+| `src/KZ.Balance/Program.cs`, a `// MEASURES <experiment>: <mutation>, ...` line beside each experiment | the **claim** — which mutations this experiment says it survives | a manifest is a second place to remember and the person rewriting an experiment does not open it. A line three lines above the method is in the diff of every rewrite. |
+| `tools/experiment-mutations.txt` | the **mutation** — file, the exact text to replace, what to replace it with, and one line of prose saying what the simulation stops doing | described once, so the cost of the hundredth mutation is four lines. The experiments reference it by name. |
+
+A claim is keyed by the experiment's dispatch name rather than by whatever
+method it happens to sit above, so a claim that drifts away from its experiment
+during an edit stops matching loudly instead of re-attaching itself to the
+neighbour.
+
+## The rules, and each one has a failure behind it
+
+- **A `from` text must match its file exactly once.** Zero matches means the
+  constant has been renamed, retyped or deleted and the mutation has been
+  testing nothing ever since; two means there is no saying which one it broke.
+  Both stop the sweep rather than skipping the entry — this repository's whole
+  argument about checkers is that one which has quietly stopped catching things
+  is worse than none, and a mutation that no longer applies is exactly that.
+- **`breaks` is required.** It is the one thing the tool's output leaves to a
+  person: whether this experiment *should* have noticed. An entry without it is
+  `dead-symbols-allow.txt`'s unreasoned entry, and the checker rejects it the
+  same way.
+- **A claimed mutation the experiment does not notice fails.** That is the whole
+  point and it is the acceptance test for a new experiment.
+- **A mutation nothing claims warns**, and it is the most useful line the tool
+  prints: a named system with no experiment behind it. FINDINGS 40's finding,
+  standing rather than written down once and going stale. Adding a mutation for
+  a system you have just wired, before any experiment covers it, is the intended
+  use.
+- **An experiment that declares nothing fails.** There is no baseline file and
+  no ratchet, deliberately: unlike the dead-symbol guard this one did not
+  inherit a backlog, because a claim is only ever added after the sweep has
+  verified it. Everything unverified shows up as an uncovered mutation instead,
+  which is a warning and a visible gap rather than a suppressed failure.
+
+## Why it is not in `./build.sh`
+
+It is a rebuild and a full experiment run per mutation — minutes, not seconds.
+This document has already recorded what this project thinks of a slow check in
+the default path, in the passage about the drift guard costing "roughly as long
+as `./build.sh balance` does". A check that is slow enough to be skipped gets
+skipped, and then it reads as evidence while being none. So it has its own
+subcommand:
+
+```
+./build.sh mutations                         the sweep
+./build.sh mutations --list                  the declarations, no build
+./build.sh mutations --only <mutation>       one mutation
+./build.sh mutations --experiment <name>     one experiment's claims
+python3 tools/check_experiment_mutations.py --selftest    its own corpus
+```
+
+**How often.** When a balance experiment is written or rewritten — it is that
+experiment's acceptance test, and "it moves when the thing it measures is
+broken" is the claim being made. When a mutation is added for a freshly wired
+system. And before `docs/FINDINGS.md` cites an experiment as evidence that a
+system works, because that citation is precisely the claim this tool exists to
+falsify. Otherwise about once a session.
+
+It builds scratch copies of the tree and never touches the working tree, so it
+is safe to run while reading something else, and `--keep` leaves the mutated
+trees behind when a result wants looking at.
+
+## What it cannot see, stated so nobody trusts it too far
+
+- It proves an experiment has a **path** to a constant. It does not prove the
+  experiment measures it well, reports it honestly, or that the prose beside the
+  number means what it says. A one-cell twitch counts as movement.
+- It reads stdout, like the drift guard, so two different internal states that
+  format identically read as unchanged.
+- **Its catalogue is written by hand**, so it can only ask about systems somebody
+  thought to name. An unmutated constant is invisible to it. That is why the
+  uncovered-mutation line is phrased as a gap and never as a clean bill of
+  health: the tool's silence about a system is silence, not evidence.
