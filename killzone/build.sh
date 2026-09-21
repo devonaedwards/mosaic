@@ -151,9 +151,6 @@ compile() {
   $COMPILER -target:library $LANGFLAG -out:"$OUT/KZ.Sim.dll" \
     $(find src/KZ.Sim -name '*.cs')
 
-  $COMPILER -target:exe $LANGFLAG -r:"$OUT/KZ.Sim.dll" -out:"$OUT/KZ.Tests.exe" \
-    $(find src/KZ.Tests -name '*.cs')
-
   $COMPILER -target:exe $LANGFLAG -r:"$OUT/KZ.Sim.dll" -out:"$OUT/KZ.Headless.exe" \
     $(find src/KZ.Headless -name '*.cs')
 
@@ -162,8 +159,21 @@ compile() {
 
   # The playable interface. Its web assets are not compiled - they are served
   # from src/KZ.Play/web at run time, so the page can be edited without a build.
+  #
+  # It is built before the tests, and the tests reference it, which is new. The
+  # shipped scenario and the match loop are production code - the scenario is
+  # the only thing a player ever plays and the match loop owns the win and loss
+  # conditions - and until now nothing could test either, because KZ.Tests saw
+  # only KZ.Sim. That is how MatchLoop's losing branch shipped for three
+  # sessions unreachable and unexercised: not one test in the suite could have
+  # named it. WIRING-SPEC's rule is that a wire is not wired until a test drives
+  # it through the production path, and for a scenario the production path runs
+  # through Scenario.DefenderOrders and MatchLoop.StepOnce.
   $COMPILER -target:exe $LANGFLAG -r:"$OUT/KZ.Sim.dll" -out:"$OUT/KZ.Play.exe" \
     $(find src/KZ.Play -name '*.cs')
+
+  $COMPILER -target:exe $LANGFLAG -r:"$OUT/KZ.Sim.dll" -r:"$OUT/KZ.Play.exe" \
+    -out:"$OUT/KZ.Tests.exe" $(find src/KZ.Tests -name '*.cs')
 }
 
 case "${1:-test}" in

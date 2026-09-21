@@ -15,6 +15,7 @@ namespace KZ.Tests
             TestRunner runner = new TestRunner();
             MathTests.Register(runner);
             SimTests.Register(runner);
+            ScenarioTests.Register(runner);
             DeterminismTests.Register(runner);
             return runner.Report();
         }
