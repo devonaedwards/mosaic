@@ -1834,6 +1834,15 @@ condition that can actually fire.
 The renderer is now adequate to see whether any of that helped, which was the
 entire point of building it crude.
 
+**All three are discharged now.** Interception was built in finding 36. The crew
+cap was measured in the same pass and correctly left alone - it was never the
+constraint, and the premise that the scenario ran at 6 crews was wrong; it runs
+at 14 and never used them. The losing condition is finding 42, and the reason it
+had been impossible turned out not to be the five thousand hit points this entry
+complains about: the defence could not deliver a warhead to the command post at
+all, at any raid rate. Forty-three sorties aimed at nothing else took zero hit
+points off it.
+
 ## 36. Interception: it was a missing system, not a missing interface — and the crew cap is not the constraint
 
 KILL ZONE is a video game. Everything below is measured inside a fictional
@@ -2159,6 +2168,17 @@ branch that never fires, which is the failure item 30 is named after. The
 coupling is recorded here instead, where anyone changing those three numbers will
 find it.
 
+### Amended by finding 42: this entry's scenario numbers are still reproducible, but not by playing the scenario
+
+The table above and every count in it - 17 defender sorties, 13 links black, 11
+drifted aimpoints, 717 hit points off the player, 112 of 120 samples - are
+reproduced to the digit on the tree finding 42 left behind. They are no longer
+what a passive run of the shipped scenario *prints*, because a passive run of the
+shipped scenario now ends with the sector lost at T+488: the defence has an
+armoured advance and an escort jammer it did not have when this was measured.
+Remove the escort on tick 1, so the column withdraws and never fires, and every
+number above comes back exactly. Nothing in this entry's argument moves.
+
 ### What was deliberately not done
 
 The radio signature column is **not** converted to log power. AUDIT F8 asks for it
@@ -2450,6 +2470,17 @@ scenario change and not a simulation one.
 F9 gives the defence nothing either, because team 2's only listener is a Command
 Post at x=25,200, eight kilometres behind the tank everything is shot at.
 
+**Amended by finding 42, and half of this is no longer true.** This section's own
+prescription was "the interesting version of this is a forward radar the player
+has to push up and defend, which is a scenario change and not a simulation one".
+The scenario change that happened is the opposite one and costs no new unit: the
+*defence* pushes armour west, and the player's Radar Mast holds a Main Tank from
+about 13.4 km in, intermittently, as the vehicle's heading swings its radial
+component through the notch. F7 is live in the shipped geometry and there is a
+test asserting it. F9's cross-fix is still inert - team 1's two listeners are
+still on one line of latitude - so the sentence below holds for one of the two
+mechanics rather than both.
+
 So the honest summary is: **two mechanics, both measured, both correct, both
 inert where the game is actually played.** That is not an argument for reverting
 them — the audit items were real and the old behaviour was wrong in ways the
@@ -2620,6 +2651,23 @@ rear, you spend most of the spool to put the launch site outside the enemy's
 reach and the found cable is a log line. That is the mechanic being interesting
 rather than either inert or unavoidable, and it is the thing to check first if
 anyone moves the defence's pad west.
+
+### Superseded by finding 42: this table was measured against a patrolling tank
+
+The scenario no longer has one. The Main Tank used to walk a north-south patrol
+across the lane the player's threads are dragged down, which is what made the
+vehicle being struck the vehicle standing on the cable. It now bounds *west along
+that lane*, so it drives along the threads rather than across them, and the same
+fiber probe reads **22 threads found** against the 7, 9 and 8 above, **468 hit
+points off the player** against 600, and **no structure lost** against the
+forward Relay Mast every time - the relay survives because the raid that is
+revealing the threads is also killing the column that used to finish it off.
+
+Every conclusion in this entry stands: discovery is geometry, it is not a
+function of where you launched, and fiber's third liability is a decision about
+where you launch and what you drag the cable over. The counts are simply not this
+scenario's any more, and finding 41's sweep is the better record of the mechanic
+in any case because it does not depend on one scenario's geometry at all.
 
 ### The scenario change, and what it cost
 
@@ -3319,3 +3367,373 @@ The same table as a guard costs four lines per mutation and fails on the day the
 claim stops being true. Every conclusion in this entry is one `./build.sh
 mutations` away from being checked, which is the only reason any of it should be
 believed.
+
+## 42. You can lose it now, and the reason it could not be lost was not the hit points
+
+KILL ZONE is a video game. Everything below is measured inside a fictional
+simulation against fictional factions; the numbers are the game's, not anyone's.
+
+FINDINGS 35 found "you cannot lose" at the first play-test and listed three
+remedies. Interception was built (36). The crew cap was measured and correctly
+left alone (36). This is the third, and it is the last item on that finding's own
+prescription list.
+
+### The premise was wrong, and it was wrong in a way that mattered
+
+The brief for this work said the losing condition is unreachable by about an
+order of magnitude: a 5,000-hit-point Command Post against 600 hit points taken
+off the player in the hardest measured run. That is the wrong diagnosis, and the
+first thing done was to check it.
+
+Forty-three FPV Teams, launched from the defender's own pad at the player's
+Command Post and at nothing else, every four play-seconds for ten play-minutes:
+
+| | |
+|---|---|
+| defender sorties | **43** |
+| hit points off the **Command Post** | **0** — it finishes 5,000/5,000 |
+| its own links going black | 56 |
+| finishing on a drifted coordinate | 38 |
+
+Not few. None. And the autonomous arm is no better: nine Jet Strike Drones aimed
+at the same building produce eight drifted aimpoints and zero hit points on it.
+
+Two independent reasons, both geometric:
+
+- **Radio does not reach.** The defence's only radio anchor is its Relay Mast at
+  x=19,200, `SimConstants.RadioRangeMetres` is 12,000, and the Command Post sits
+  at x=3,600. Every raid goes black at x=7,200 and finishes on a remembered
+  coordinate three and a half kilometres short. `Scenario.cs` says this in as
+  many words already — "12 km of radio from here covers the player's pad, relay
+  and forward teams and stops dead short of the command post" — as a design
+  virtue. It is also a hard ceiling on the losing condition, and nobody had read
+  it that way.
+- **Autonomy does not navigate.** Team 2 holds reference imagery only east of
+  the border, so anything autonomous over the player's ground has no
+  scene-matching lock and `NavMissedAimpoint` fires. That is FINDINGS 36's third
+  open problem, still open, now with a second consequence attached.
+
+And the counterfactual, which is what makes the diagnosis a diagnosis rather than
+a story: give the same raid a pad and an anchor it can reach from — both moved to
+x=13,000, nothing else changed — and the sector **falls at T+399**. Move them to
+x=9,000 and it falls at T+241. The 5,000 hit points are about twenty connecting
+sorties and the defence flies that in six play-minutes.
+
+**The loss was never a damage problem. It was a delivery problem.** Multiplying
+the defence's raid rate — the thing the brief warned against and the thing the
+arithmetic invited — would have produced exactly nothing, at any multiplier.
+
+### So the thing that delivers is the one part of the defence that needs neither
+
+Armour needs no link and no map. `Main Tank` has carried a 340-damage kinetic
+gun with 3,000 m of reach since it was written and has never been pointed at
+anything; at 0.65 against `ArmourClass.Structure` that is a Relay Mast in three
+shots and a Command Post in twenty-three.
+
+**The advance.** The defence's forward echelon — Main Tank and IFV — stops
+patrolling and bounds 1,200 m along an axis toward the player's Command Post
+every 40 play-seconds, closing up to 600 m onto the axis each bound and stopping
+1,800 m short of it, which is inside the shorter of the two guns in the column.
+Nothing was added to the simulation. It is orders, through `w.Enqueue`, a pure
+function of the world at a tick, drawing no randomness, exactly like every other
+line of the defence's doctrine.
+
+**It is gated rather than scheduled**, because a clock the player cannot touch is
+a cutscene. The column advances only while it has electronic cover, and the cover
+is an `EW Truck` — a catalogue unit written months ago and never spawned anywhere
+a player could see it, only in `KZ.Balance`'s radar experiment as a passive
+listener. Its 4,200 m bubble travels with the column. Kill it and the column
+bounds the other way, 1,200 m at a time, back to its own relay.
+
+The argument for that gate is the setting's own: armour on a drone-saturated
+front moves under jamming and cages or it does not move. The argument *for
+putting it in the interface's hands* is that a jamming dome is the single most
+legible object this renderer draws — `Snapshot` puts a bubble on the map the
+moment its emitter is a contact — so the answer to the loss condition is a
+circle crawling toward the player's base.
+
+### Both halves, measured
+
+Same seed, the shipped scenario, headless through the same two calls
+`MatchLoop.StepOnce` makes. `hp off` is every hit point taken off anything the
+player owns, counting a destroyed thing's whole bar.
+
+| what the player does | 10 play-min | 20 play-min | sorties | materiel | hp off |
+|---|---|---|---|---|---|
+| **nothing** | **LOST T+488** | **LOST T+488** | 0 | 0 | 11,340 |
+| radio FPVs at the escort jammer | survived | survived | 16 | 3,200 | 717 |
+| fiber FPVs at the escort jammer | survived | survived | 12 | 5,040 | 717 |
+| FPVs at the column, on sight | survived | survived | 24 | 4,800 | 717 |
+| the objective list, every 8 s | survived | survived | 38 | 7,600 | 1,040 |
+| the objective list, in the quiet window | survived | **LOST T+749** | 13 | 2,600 | 9,100 |
+| FPVs at the forward tank every 10 s | survived | survived | 60 | 12,000 | 1,040 |
+| interceptors at the defence's scout | **LOST T+491** | **LOST T+491** | 25 | 7,500 | 11,340 |
+| fiber at the forward tank every 10 s | survived | survived | 28 | 11,760 | 717 |
+
+Read the two extremes first, because they are the requirement: **nobody
+intervenes and the sector falls; the cheapest right answer is 3,200 materiel of a
+12,000 balance and it does not.** The middle rows are the part worth arguing
+about.
+
+**Three doctrines lose.** Doing nothing loses. Chasing the defence's scout with
+interceptors loses, expensively — 7,500 materiel to stop the raids while the
+thing that actually kills you drives past underneath. And playing the objective
+list carefully, in the emission-control window FINDINGS 37 established as the
+right way to fly, loses at T+749 — four play-minutes later than doing nothing,
+and still a loss. The objective list is not a survival plan, and that is the
+sentence this whole entry exists to produce.
+
+**The order of the collapse is the warning.** Nobody at the keyboard, identical
+on three seeds: Motorcycle Squad T+174, Designator Team T+178, forward Relay Mast
+T+200, Radar Mast T+337, Crew Quarters T+380, Crew Quarters T+423, Drone Workshop
+T+427, Command Post T+488. The base is taken apart from the front, each piece
+narrated, over five play-minutes. Losing the crew quarters is losing the ability
+to launch, which is the compounding FINDINGS 35 asked for: neglect removes the
+means of answering before it removes the match.
+
+**Three seeds — 20260917, 11111, 22222 — give identical counts on every row**, to
+the hit point and the play-second, while their state hashes differ. That is
+FINDINGS 37's caveat again and it holds for the same reason: in a match where the
+opposition is doctrine and the player is a fixed script, nothing rolls for
+anything that decides the outcome. The comparison is clean and it is narrow. A
+person doing things would move it.
+
+### What it cost the rest of the scenario, exactly
+
+**Nothing, and this is checkable.** Remove the escort jammer on tick 1 — the
+column then withdraws and never fires a shot — and the passive scenario
+reproduces the baseline items 37, 38 and 39 all cite, to the digit:
+
+| | recorded (items 37/38/39) | this tree, escort removed at t=1 |
+|---|---|---|
+| defender sorties | 17 | **17** |
+| links black | 13 | **13** |
+| drifted aimpoints | 11 | **11** |
+| hit points off the player | 717 | **717** |
+| things of the player's destroyed | 1 (forward Relay Mast) | **1 (forward Relay Mast)** |
+| five-second samples with an enemy airframe in sight | 112/120 | **112/120** |
+| longest stretch with nothing in sight | 15 s | **15 s** |
+
+So the advance and its escort are the only things that changed. **The ten balance
+experiments show 0 drift** and needed no baseline update, which is expected
+rather than lucky: `KZ.Balance` does not reference `KZ.Play` and has never
+instantiated this scenario. 145 tests pass, seven of them new.
+
+**Two recorded findings are superseded rather than amended, and it is worth
+saying which way round.**
+
+- **FINDINGS 39's scenario table was measured against a patrolling tank and this
+  scenario no longer has one.** Its fiber probe — one Fiber FPV Team at the
+  forward tank every ten play-seconds — recorded 7, 9 and 8 threads found across
+  three seeds, 600 hit points off the player and the forward Relay Mast destroyed
+  every time. The same probe now reads **22 threads found, 468 hit points off the
+  player at ten play-minutes and no structure lost**: the tank drives *down* the
+  lane the threads are dragged along instead of across it, so discovery fires
+  roughly three times as often, and the relay survives because the column is
+  being killed by the raid that is revealing the threads. Item 39's conclusion —
+  that fiber's third liability is real and is a decision about where you launch —
+  is untouched. Its numbers are not this scenario's any more.
+- **FINDINGS 38's "both inert where the game is actually played" is now half
+  wrong, in the good direction.** Its own prescription was "the interesting
+  version of this is a forward radar the player has to push up and defend, which
+  is a scenario change and not a simulation one". The advance is the other way to
+  get there and costs no unit: the player's Radar Mast at x=5,400 holds an
+  advancing Main Tank from about 13.4 km in, intermittently, as the vehicle's
+  heading swings its radial component through the Doppler notch — which is why
+  the readout in the interface flickers between the tank and the escort behind
+  it. Ground search radar is live in the shipped geometry and there is a test
+  asserting it. The **cross-fix** (F9) is still inert: the player's two listeners
+  are still colinear.
+
+### The interface, because a loss you cannot see coming is a cutscene
+
+`MatchLoop` now computes a `ThreatReport` — the nearest enemy ground vehicle, its
+range to the player's Command Post, and whether it is standing inside a jamming
+bubble the player can see — and narrates four bands on the way in. It is a view
+over the world and not state in it: nothing is hashed, nothing is a command, and
+deleting the whole function changes no simulation result.
+
+It reports **contacts only**, by the same `IsDetectedBy` rule the map draws by.
+That cuts the wrong way on purpose and the measurement shows it doing so: in the
+passive run the player's Designator Team dies at T+178 and the Radar Mast at
+T+337, so the column goes dark and is regained at **1,434 m**. The log of the
+losing run, verified against the running server rather than by reading:
+
+```
+T+80   armour is moving on us - a Main Tank inside twelve kilometres of the command post
+T+216  the Main Tank is eight kilometres out and still coming
+T+407  the command post is inside a tank's gun - this is how the sector is lost
+T+488  your command post is gone
+```
+
+The four-kilometre band never fires in that run, because by then the player has
+no sensors left. That is the right behaviour and it is also the thing a human
+needs to judge: going blind to the thing killing you is either the best moment in
+the build or an interface that stopped working.
+
+**Two defects came out of driving the live server and would not have come out of
+reading.** Both were in the narration and both were wrong in a way that would
+have taught a player something false.
+
+1. The log said **"their column has nothing jamming for it - it is giving
+   ground"** at T+140, with the escort alive and merely in the quiet half of its
+   emission cycle, while the column carried on advancing. The gate on the advance
+   is whether the escort is *alive*; the dome is whether it is *radiating*; the
+   log had quietly conflated them. It now reads the only thing the player can
+   themselves verify — the range going up — and requires it to hold for a whole
+   bound, because the reported range legitimately steps 10,246 → 12,298 → 9,369 →
+   10,698 over the first two hundred play-seconds as the nearest *held* vehicle
+   flips between the tank and the escort two kilometres behind it. One sample of
+   that is indistinguishable from a retreat.
+2. The four-kilometre and three-kilometre warnings fired on the same
+   play-second, because a contact regained at 1,434 m crosses both at once. It
+   announces the nearest band crossed rather than all of them.
+
+### Two things that were measured and turned out not to be what the comment said
+
+**The escort's emission-control cycle does not decide whether it can be killed by
+radio.** The first version of this work had the truck radiating permanently and
+measured fifty-eight radio FPV Teams taking zero hit points off a 380-hit-point
+vehicle — a 4,200 m bubble denies a robustness-40 link inside about 1,850 m of
+itself and the drone has to close to 96 m — with fiber killing it before T+120.
+That was a true measurement of a tree that no longer exists: the later fix to the
+advance axis brings the column onto the same latitude as the player's forward
+pad, and the approach becomes short and straight down the lane. **On this tree a
+radio raid kills the escort by T+180 whether it cycles or not.** The comment in
+`Scenario.cs` was corrected rather than kept, and the correction is the entry:
+the cycle is worth the 191 play-seconds between T+749 and T+558 to a player
+flying the objective list in the window, and it is worth 717 hit points of
+collateral to the *defence*, because its own FPV raid needs the same window and a
+permanently radiating escort blacks out its own side's drones. FINDINGS 37's
+team-blind bubble, arriving on a vehicle.
+
+**A stop line that happens to sit outside a weapon's envelope is a bug that looks
+like restraint.** The advance was first written as a line of longitude, x=4,800.
+With the tank killed and only the IFV left, the IFV parked at (4823, 11000) and
+the Command Post sat at (3600, 9360) — **2,046 m away, forty-six metres outside
+its 2,000 m gun** — and the run went nine hundred play-seconds with an intact
+enemy vehicle in the player's base doing nothing whatever. It is a standoff from
+an axis point now, at 1,800 m, sized on the shorter gun in the column.
+
+A third, smaller: a jammer whose column has been killed used to stand where the
+last vehicle died — measured, at (12786, 11400) for the remaining nine
+play-minutes — throwing a bubble across the middle of the player's ground with
+nothing under it and no reason to go and get it. That is a permanent penalty for
+having won. It withdraws now.
+
+### The tests could not have existed, and that is its own finding
+
+`MatchLoop` owns the win and the loss condition. `Scenario` is the only thing a
+player ever plays. **Until this commit nothing in the suite could reach either**,
+because `KZ.Tests` was compiled against `KZ.Sim` alone — so the losing branch
+shipped for three sessions unreachable, unexercised, and not one test in a
+144-test suite could have named it. `build.sh` builds `KZ.Play` before the tests
+now and the tests reference it.
+
+Seven new tests, all through the production path — `MatchLoop.StepOnce`, which is
+the function the host's timer calls, and `MatchLoop.Enqueue`, which is the queue
+the browser posts onto, or `Scenario.DefenderOrders` + `World.Step` in the order
+`StepOnce` calls them. Nothing writes a component, spawns a unit of its own or
+calls a system directly. **None of them needed a new public member**, which was
+a constraint rather than a happy accident: a row of accessors only the test file
+calls is the dead-symbol guard's loudest category, and it would have been this
+repository's own disease wearing a lab coat.
+
+The acceptance check WIRING-SPEC asks for, run and recorded: with the advance's
+order block disabled, **six of the seven fail** —
+
+```
+FAIL  an unanswered armoured advance takes the sector
+FAIL  the match warns about the advance long before it lands
+FAIL  a player who answers the advance keeps the sector
+FAIL  the column closes on the command post while it has cover
+FAIL  killing the escort jammer turns the column round
+FAIL  the advance is what makes ground radar matter in this scenario
+pass  a radio raid off the defender's pad cannot reach the command post
+```
+
+— and the seventh passes because it is about the shipped geometry that hid the
+loss, which this change does not touch and which is worth pinning: that fact is a
+property of three numbers in three different files, and moving any of them
+silently changes what the opposition is capable of.
+
+Cost: the suite goes from about four seconds to ten, and that is real. Two of the
+new tests run a nine-play-minute match, which is 17,280 ticks of the full
+scenario each. A cheaper assertion was available — check that the tank's position
+decreases — and was not enough on its own, because "the column moves" and "the
+match ends in a loss" are different claims and the second is the one FINDINGS 35
+complained about.
+
+### No mutation was added, and here is why rather than a shrug
+
+`./build.sh mutations` rebuilds the tree and re-runs the balance experiments. The
+experiments live in `KZ.Balance`, which does not reference `KZ.Play` and cannot
+instantiate `Scenario`. So a mutation to `AdvanceBoundMetres` or to
+`ColumnHasCover` is unclaimable by construction: it would appear forever in the
+tool's output as an uncovered mutation, which is noise in the one report whose
+value is that every line in it means something. The six failing tests above are
+this change's falsification mechanism, and they are the same mechanism a mutation
+would be — a deliberate break, and a named thing that notices.
+
+If scenario doctrine acquires a third or fourth mechanic, the honest fix is a
+scenario harness in `KZ.Balance` rather than a mutation with nothing to claim it.
+It is not needed for one.
+
+### Is it interesting? Partly measured, and the rest needs a human
+
+The honest split, because a player who loses to something boring is worse off
+than one who cannot lose.
+
+**What the measurement supports.** It is a decision and not a clock: three of the
+nine doctrines lose and six survive, the cheapest survival costs 3,200 materiel of
+12,000, and the two losing doctrines that are *doing* something lose for
+different and legible reasons. It is not a cutscene: the run where the answer is
+made keeps every structure but the forward relay. It compounds: the crew quarters
+die at T+380 and T+423, before the command post at T+488, so an unanswered
+advance removes the means of answering it. And the thing you must kill is cheap
+(380 hit points) while the thing it protects is expensive (2,250 with a cage
+fitted), which is the shape a good decision has.
+
+**What the measurement does not support, and I will not pretend it does.**
+
+- **Whether eight play-minutes reads as dread or as a chore** is a question about
+  a person watching a circle move, and nothing headless can answer it. The 4x
+  speed the first play-test settled on will compress it to two real minutes,
+  which may be the wrong length in either direction.
+- **Whether going blind at T+337 is dramatic or broken.** The design says the
+  interface must not tell the player what their sensors have not earned, and the
+  consequence is that the last hundred and fifty play-seconds of a losing run
+  have a threat panel that says nothing. I believe that is right. I would not be
+  surprised to be told it feels like the game stopped working.
+- **Whether "kill the truck" is discoverable.** A player who reads the dome and
+  the log will find it. A player who does not may fly twenty-four sorties at the
+  tank instead, which also works — measured, 4,800 materiel against 3,200 — so
+  the puzzle is forgiving. Whether it is *legible* rather than merely forgiving is
+  a play-test question.
+- **Whether a losing run is worth watching at all.** In the passive run
+  `samples in sight` falls from 112/120 to 62/97 and the longest stretch with
+  nothing airborne in sight reaches 100 s. That is not the advance being quiet —
+  it is the player's sensors being destroyed and the defence's own raids being
+  blacked out by the escort's travelling bubble. FINDINGS 35's complaint was
+  ninety seconds of nothing; a hundred seconds of nothing while you are being
+  dismantled is a different thing with the same number on it, and which one a
+  person experiences is exactly the judgement a headless run cannot make.
+
+### What was deliberately not done
+
+- **The defence's raid rate was not touched.** Not one number in its doctrine
+  moved. The loss comes from a mechanic the defence did not have, which is
+  FINDINGS 39's shape and the thing the brief asked for.
+- **`SimConstants.RadioRangeMetres`, the defender's pad and the anchor list were
+  left exactly as they are**, even though moving any one of them is the shortest
+  route to a reachable Command Post. That route makes the loss arrive by air, in
+  a scenario whose air threat is already the part the player has an answer to,
+  and it would have quietly rewritten every link-ladder conclusion in items 36,
+  37 and 39. The geometry is under test instead.
+- **FINDINGS 36's third open problem is still open.** Team 2 still holds imagery
+  only east of the border, so its autonomous strikes still miss every time. This
+  entry adds a second reason to care and does not fix it: imagery coverage in the
+  scenario would open a *second* delivery route to the Command Post, and one
+  losing condition wants measuring before a second is added.
+- **No airframe was added between 50 and 140 m/s.** Item 41 named that gap and it
+  is real; it is a catalogue question and this was a scenario one.
