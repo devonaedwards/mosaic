@@ -464,6 +464,23 @@ function updatePanels() {
     alert.className = 'cell alert';
   }
 
+  // The ground threat, and the reason this scenario can be lost at all: an
+  // armoured column bounds west while it has a jammer over it and shells the
+  // command post when it arrives. A player who never reads the map still gets
+  // told, because eight play-minutes of warning that nothing draws is no
+  // warning - and the "no cover" state is told too, because that is the half
+  // that says the answer is working.
+  var ground = document.getElementById('ground');
+  if (V.threat && V.threat.any) {
+    var km = (V.threat.metres / 1000).toFixed(1);
+    ground.textContent = '▬ ' + V.threat.name + ' ' + km + ' km'
+      + (V.threat.jammed ? ' · jammed' : ' · clear');
+    ground.className = 'cell ground on' + (V.threat.metres <= 4000 ? ' urgent' : '');
+  } else {
+    ground.textContent = '';
+    ground.className = 'cell ground';
+  }
+
   var obj = [];
   for (var i = 0; i < V.objectives.length; i++) {
     obj.push((V.objectives[i].alive ? '□ ' : '■ ') + V.objectives[i].name);

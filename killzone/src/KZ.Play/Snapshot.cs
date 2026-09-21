@@ -208,6 +208,25 @@ namespace KZ.Play
                 j.EndObject();
             }
             j.EndArray();
+
+            // What is driving at the command post. The losing condition in this
+            // scenario is a ground advance, and FINDINGS 35's complaint about the
+            // defence was that it "never threatens" rather than that it never
+            // damages - so the one thing the interface owes the player is a line
+            // that says which vehicle, how far, and whether the thing that stops
+            // it is still standing. MatchLoop.ThreatReport only ever reports a
+            // contact, so this leaks nothing the map is not already drawing.
+            MatchLoop.ThreatReport threat = loop.Threat;
+            j.Object("threat");
+            j.Field("any", threat.Any);
+            if (threat.Any)
+            {
+                j.Field("name", threat.Name);
+                j.Field("metres", threat.Metres);
+                j.Field("jammed", threat.Jammed);
+            }
+            j.EndObject();
+
             j.Field("outcome", loop.Outcome);
 
             j.EndObject();
