@@ -6,6 +6,7 @@
 #   ./build.sh headless     compile and run a scripted match
 #   ./build.sh balance      run balance experiments and print the results
 #   ./build.sh play         compile and serve the playable interface on :8080
+#                           (add --lan to reach it from a phone on the same network)
 #   ./build.sh build        compile only
 #   ./build.sh deadsymbols  run only the dead-symbol guard
 #   ./build.sh driftcheck   run only the experiment-drift guard

@@ -45,6 +45,7 @@ namespace KZ.Play
             ulong seed = 20260915UL;
             int startTick = 0;
             bool open = false;
+            bool lan = false;
 
             for (int i = 0; i < args.Length; i++)
             {
@@ -52,6 +53,7 @@ namespace KZ.Play
                 else if (args[i] == "--seed" && i + 1 < args.Length) seed = ulong.Parse(args[++i]);
                 else if (args[i] == "--night") startTick = SimConstants.PlaySeconds(3 * 3600);
                 else if (args[i] == "--open") open = true;
+                else if (args[i] == "--lan") lan = true;
             }
 
             string webRoot = FindWebRoot();
@@ -63,9 +65,25 @@ namespace KZ.Play
 
             loop = new MatchLoop(seed, startTick);
 
+            // Loopback by default, every interface with --lan.
+            //
+            // The game is built for a phone (docs/SCALE.md) and the only way to
+            // hold one and play is to reach a desktop over the local network, so
+            // --lan exists - but it is opt-in, because binding every interface is
+            // not something a build command should do to somebody's machine
+            // without being asked. There is no authentication of any kind here:
+            // anyone who can route to this port can drive the match. That is fine
+            // on a home network and is not fine anywhere else.
             HttpListener listener = new HttpListener();
-            listener.Prefixes.Add("http://127.0.0.1:" + port + "/");
-            listener.Prefixes.Add("http://localhost:" + port + "/");
+            if (lan)
+            {
+                listener.Prefixes.Add("http://+:" + port + "/");
+            }
+            else
+            {
+                listener.Prefixes.Add("http://127.0.0.1:" + port + "/");
+                listener.Prefixes.Add("http://localhost:" + port + "/");
+            }
             listener.Start();
 
             Thread ticker = new Thread(ServiceLoop);
@@ -73,6 +91,12 @@ namespace KZ.Play
             ticker.Start();
 
             Console.WriteLine("KILL ZONE - open http://localhost:" + port + "/");
+            if (lan)
+            {
+                foreach (string ip in LocalAddresses())
+                    Console.WriteLine("       or on this network: http://" + ip + ":" + port + "/");
+                Console.WriteLine("(--lan: no password, no encryption - anyone who can reach this port can play)");
+            }
             Console.WriteLine("serving " + webRoot);
             if (open) Console.WriteLine("(paused at tick 0 - press space in the page to start)");
 
@@ -232,6 +256,37 @@ namespace KZ.Play
         /// they can be edited without a rebuild. Looked up rather than configured
         /// because a path in a config file is one more thing to get wrong.
         /// </summary>
+        /// <summary>
+        /// The addresses a phone on the same network would use. Printed rather
+        /// than guessed at, because the first thing anyone does with --lan is ask
+        /// what to type into the phone.
+        /// </summary>
+        static System.Collections.Generic.List<string> LocalAddresses()
+        {
+            System.Collections.Generic.List<string> found = new System.Collections.Generic.List<string>();
+            try
+            {
+                foreach (System.Net.NetworkInformation.NetworkInterface ni
+                         in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
+                    if (ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
+                    foreach (System.Net.NetworkInformation.UnicastIPAddressInformation a
+                             in ni.GetIPProperties().UnicastAddresses)
+                    {
+                        if (a.Address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) continue;
+                        found.Add(a.Address.ToString());
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Not worth failing a game server over. The localhost line above
+                // still prints and a person can find their own address.
+            }
+            return found;
+        }
+
         static string FindWebRoot()
         {
             string[] candidates =
