@@ -86,6 +86,106 @@ namespace KZ.Play
         const int EmissionLaunchWindowPlaySeconds = 20;
 
         /// <summary>
+        /// The advance, and the whole of why this sector can be lost.
+        ///
+        /// FINDINGS 35 said "you cannot lose" and FINDINGS 36 listed it last of
+        /// three and never did it. The stated reason was the Command Post's five
+        /// thousand hit points against six hundred taken off the player in the
+        /// hardest measured run, and that reason is wrong: measured, forty-three
+        /// FPV Teams launched from the defender's pad at the player's Command Post
+        /// and at nothing else take **zero** hit points off it. Not few - none.
+        /// The defence's only radio anchor is its Relay Mast at x=19,200 and
+        /// SimConstants.RadioRangeMetres is 12,000, so a raid goes black at
+        /// x=7,200 and finishes on a remembered coordinate three and a half
+        /// kilometres short; and the one autonomous airframe it owns has no
+        /// scene-matching lock west of the border, so NavMissedAimpoint fires
+        /// every time (FINDINGS 36's third open problem). Give the same raid a pad
+        /// and an anchor it can reach from - both at x=13,000, nothing else
+        /// changed - and the same thirty-four sorties finish the Command Post at
+        /// T+399. **The loss was never a damage problem. It was a delivery
+        /// problem.**
+        ///
+        /// So the thing that can deliver is the one part of the defence that
+        /// needs no link and no map: its armour. The forward echelon bounds west
+        /// down the lane, and a Main Tank's 340-damage kinetic round at 0.65
+        /// against Structure armour takes a Relay Mast off the map in three
+        /// shots and a Command Post in twenty-three. Nothing in the simulation
+        /// had to be added for that; the tank has had the gun all along and has
+        /// never been pointed anywhere.
+        ///
+        /// It is gated rather than scheduled, because a clock the player cannot
+        /// touch is a cutscene. **The column advances only while it has
+        /// electronic cover** - the EW Truck spawned beside it in Build. That is
+        /// the setting's own argument about armour (ground-force.md: armour
+        /// survives a drone-saturated front under jamming, cages and darkness,
+        /// not on its own), and it makes the answer legible in the one way this
+        /// interface is already good at: the player watches a jamming dome crawl
+        /// toward their base, because Snapshot draws a bubble as soon as its
+        /// emitter is a contact. Kill the truck and the column turns round.
+        ///
+        /// Three numbers, all designer estimates, all geometry read off the map
+        /// rather than tuned to a feel. The bound is 1,200 m because at 30 m per
+        /// play-second - 7.5 m/s of tank at the global 4x - that is exactly what
+        /// a tank covers in the 40-play-second bound, so the column is
+        /// continuously moving while it has cover and stops within one bound of
+        /// losing it. Where it stops is AdvanceStandoffMetres, and that number
+        /// has its own history. Thirteen kilometres at 1,200 m a bound is eleven
+        /// bounds, so an unanswered advance arrives in about seven play-minutes
+        /// and finishes the command post at T+488 - long enough to be a warning,
+        /// short enough to be a match.
+        /// </summary>
+        const int AdvanceBoundPlaySeconds = 40;
+        const int AdvanceBoundMetres = 1200;
+
+        /// <summary>
+        /// How close the column closes before it stops driving and starts
+        /// shooting: 1,800 m, which is inside the shorter of the two guns in it -
+        /// the IFV's 2,000 m 30 mm, not the tank's 3,000 m main gun.
+        ///
+        /// It is stated as a standoff from the axis point rather than as a line
+        /// of longitude because the first version was a line of longitude and it
+        /// produced a dead match. With the tank killed and only the IFV left, the
+        /// IFV parked at (4823, 11000) and the Command Post sat at (3600, 9360) -
+        /// **2,046 m away, forty-six metres outside its gun** - and the run went
+        /// nine hundred play-seconds with an intact enemy vehicle in the player's
+        /// base doing nothing at all. A stop line that happens to sit outside a
+        /// weapon's envelope is not a balance number, it is a bug that looks like
+        /// restraint.
+        /// </summary>
+        const int AdvanceStandoffMetres = 1800;
+
+        /// <summary>
+        /// How much of the difference in latitude a vehicle closes per bound, so
+        /// that a column which started on a flank ends up on the axis rather than
+        /// abreast of it. Designer estimate; half a bound.
+        /// </summary>
+        const int AdvanceLateralMetres = 600;
+
+        /// <summary>
+        /// How far east a column with no cover will give ground before it stops:
+        /// its own relay at x=19,200. A vehicle that withdrew off the map would
+        /// take objective two with it, and one that withdrew nowhere would park.
+        /// </summary>
+        const int AdvanceFallBackMetres = 19200;
+
+        /// <summary>
+        /// Where the jammer rides: 600 m behind the lead vehicle and 400 m off its
+        /// flank, so the 4,200 m bubble still covers the whole echelon and the
+        /// truck is not the first thing over the crest. Both designer estimates.
+        /// </summary>
+        const int AdvanceEscortTrailMetres = 600;
+        const int AdvanceEscortOffsetMetres = 400;
+
+        /// <summary>
+        /// The axis of advance: the player's Command Post, which is where Build
+        /// puts it and where a sector held for months would have had it. Written
+        /// out rather than looked up, so the advance is a map reference rather
+        /// than a contact - see Bound.
+        /// </summary>
+        const int AdvanceAxisX = 3600;
+        const int AdvanceAxisY = 9360;
+
+        /// <summary>
         /// What the player can put in the air. A subset of the catalogue rather
         /// than all of it, because a hangar bar is a row of cards and the
         /// interface spec's one-second rule does not survive forty of them.
@@ -196,6 +296,18 @@ namespace KZ.Play
             w.Spawn(Catalog.IdOf("Main Tank"), 2, P(16800, 9600));
             w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(19000, 8400));
             w.Spawn(Catalog.IdOf("IFV"), 2, P(20600, 11000));
+            // The column's electronic cover, and the reason the column can move
+            // at all - see the advance in DefenderOrders below. It starts inside
+            // the EW Post's own bubble, behind the tank, and drives out from
+            // under it.
+            //
+            // An EW Truck has been in the catalogue since it was written and has
+            // never been spawned anywhere a player could see it: only
+            // KZ.Balance's radar experiment has ever built one, as a passive
+            // listener. It is here because a jammer that moves is the only thing
+            // in the catalogue that can give a vehicle cover somewhere other than
+            // where a building already stands.
+            w.Spawn(Catalog.IdOf("EW Truck"), 2, P(19400, 9800));
             w.Spawn(Catalog.IdOf("Supply Truck"), 2, P(22800, 10300));
             w.Spawn(Catalog.IdOf("Gun Mount"), 2, P(24600, 9360));
             w.Spawn(Catalog.IdOf("Command Post"), 2, P(25200, 9360));
@@ -276,6 +388,36 @@ namespace KZ.Play
                 EntityHandle post = FindFirst(w, 2, "EW Post");
                 if (!post.IsNone)
                     w.Enqueue(Command.SetEmitting(2, post, emissionPhase == 0));
+
+                // The column's jammer keeps the same cycle, because an emitter
+                // exempt from the defence's own doctrine would be a special case
+                // with no argument behind it.
+                //
+                // What it is worth was measured rather than assumed, and it is
+                // not what the first version of this comment claimed. It does
+                // **not** decide whether the escort can be killed by radio: a
+                // radio FPV raid at it off the player's forward pad kills it by
+                // T+180 either way, because the advance closes onto the axis the
+                // pad itself sits on and the approach ends up short and down the
+                // lane. What the cycle decides is everything either side of that.
+                // Same seed, ten play-minutes:
+                //
+                //   - a player flying the objective list inside the quiet window
+                //     loses the sector at T+749 with the cycle and at T+558
+                //     without it;
+                //   - a player who strikes the column instead takes 717 hit
+                //     points of collateral with the cycle and **zero** without,
+                //     because the defence's own FPV raid needs the same window to
+                //     fly in and a permanently radiating escort blacks out its own
+                //     side's drones. That is FINDINGS 37's team-blind bubble
+                //     arriving on a vehicle.
+                //
+                // Keeping it is therefore not tidiness: the quiet window is the
+                // player's, and it is also the only forty seconds in eighty when
+                // the opposition can hurt them back.
+                EntityHandle escort = FindFirst(w, 2, "EW Truck");
+                if (!escort.IsNone)
+                    w.Enqueue(Command.SetEmitting(2, escort, emissionPhase == 0));
             }
             bool quiet = emissionPhase >= quietFrom;
             bool inLaunchWindow = quiet
@@ -387,19 +529,108 @@ namespace KZ.Play
                                                    P(26400, 11400), mast, 0));
             }
 
-            // The tank walks its patrol between two points rather than standing
-            // still, because a stationary target teaches the player nothing about
-            // whether a strike arrives where it was aimed.
-            int leg = SimConstants.PlaySeconds(50);
-            if (tick % leg == 0)
+            // The advance. See AdvanceBoundPlaySeconds for what it is for and why
+            // it is a gate rather than a clock.
+            //
+            // This replaces a north-south patrol the tank used to walk between
+            // (16800, 7600) and (16800, 11600). The patrol's stated purpose was
+            // that "a stationary target teaches the player nothing about whether a
+            // strike arrives where it was aimed", and that purpose is kept: the
+            // column is moving in both arms of the gate, west under cover and east
+            // without it. An echelon that simply parked when its jammer died would
+            // also fall into the Doppler notch and stop being a radar contact at
+            // all (FINDINGS 38), which would hide the thing the player had just
+            // earned the right to hunt.
+            if (tick > 0 && tick % SimConstants.PlaySeconds(AdvanceBoundPlaySeconds) == 0)
             {
+                bool cover = ColumnHasCover(w);
                 EntityHandle tank = FindFirst(w, 2, "Main Tank");
-                if (w.Entities.IsAlive(tank))
+                EntityHandle ifv = FindFirst(w, 2, "IFV");
+                Bound(w, tank, cover);
+                Bound(w, ifv, cover);
+
+                // The jammer tucks in behind whatever is leading, rather than
+                // taking a bound of its own: a 8 m/s truck given the same order as
+                // a 7.5 m/s tank ends up in front of the column it is covering,
+                // which is both wrong and free for the player.
+                EntityHandle lead = w.Entities.IsAlive(tank) ? tank : ifv;
+                EntityHandle truck = FindFirst(w, 2, "EW Truck");
+                if (w.Entities.IsAlive(truck))
                 {
-                    bool north = (tick / leg) % 2 == 0;
-                    w.Enqueue(Command.MoveTo(2, tank, north ? P(16800, 7600) : P(16800, 11600)));
+                    // A jammer with nothing left to cover goes home rather than
+                    // parking. Without this it stood where the last vehicle died
+                    // - measured, at (12786, 11400) for the remaining nine
+                    // play-minutes - throwing a 4,200 m bubble across the middle
+                    // of the player's ground with no column under it and no
+                    // reason for the player to go and get it. That is a
+                    // permanent penalty for having won, which is the wrong
+                    // reward.
+                    if (w.Entities.IsAlive(lead))
+                    {
+                        Fix2 at = w.Entities.Position[lead.Index];
+                        w.Enqueue(Command.MoveTo(2, truck,
+                            new Fix2(at.X + Fix.FromInt(AdvanceEscortTrailMetres),
+                                     at.Y + Fix.FromInt(AdvanceEscortOffsetMetres))));
+                    }
+                    else Bound(w, truck, false);
                 }
             }
+        }
+
+        /// <summary>
+        /// Whether the echelon has a jammer with it. ground-force.md's whole
+        /// argument about armour on a drone-saturated front is that it moves
+        /// under electronic cover or it does not move, so this is the one
+        /// condition on the advance - and it is the one the player can see,
+        /// because a live jammer draws itself a dome on their map.
+        /// </summary>
+        static bool ColumnHasCover(World w)
+        {
+            EntityHandle truck = FindFirst(w, 2, "EW Truck");
+            return w.Entities.IsAlive(truck);
+        }
+
+        /// <summary>
+        /// One bound, for one vehicle: 1,200 m along the axis under cover, 1,200 m
+        /// back off it without, plus up to 600 m of closing onto the axis itself.
+        /// Issued as a MoveTo from where the vehicle actually is, so it is a pure
+        /// function of the world at this tick and needs no stored waypoint to hash
+        /// or to disagree about.
+        ///
+        /// The axis is a map reference and deliberately not a contact. Everything
+        /// else the defence does reads the world through IsDetectedBy, because the
+        /// opposition playing the same fog the player does is the thing that makes
+        /// it an opponent rather than an oracle - but an axis of advance is not
+        /// reconnaissance. It is a line drawn on a map before the match started,
+        /// toward a building that has stood in the same place for months, and
+        /// writing it as a constant is what keeps it out of the entity table.
+        /// </summary>
+        static void Bound(World w, EntityHandle h, bool forward)
+        {
+            if (!w.Entities.IsAlive(h)) return;
+            Fix2 at = w.Entities.Position[h.Index];
+            Fix2 axis = P(AdvanceAxisX, AdvanceAxisY);
+
+            Fix standoff = Fix.FromInt(AdvanceStandoffMetres);
+            if (forward && Fix2.SqrDistance(at, axis) <= standoff * standoff) return;
+
+            Fix step = Fix.FromInt(AdvanceBoundMetres);
+            Fix x = forward ? at.X - step : at.X + step;
+            Fix back = Fix.FromInt(AdvanceFallBackMetres);
+            if (x > back) x = back;
+
+            // Only on the way in. A vehicle giving ground has no reason to form
+            // up on the axis it is leaving.
+            Fix dy = Fix.Zero;
+            if (forward)
+            {
+                dy = axis.Y - at.Y;
+                Fix lat = Fix.FromInt(AdvanceLateralMetres);
+                if (dy > lat) dy = lat;
+                if (dy < -lat) dy = -lat;
+            }
+
+            w.Enqueue(Command.MoveTo(2, h, new Fix2(x, at.Y + dy)));
         }
 
         /// <summary>
