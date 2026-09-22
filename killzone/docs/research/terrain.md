@@ -114,6 +114,15 @@ I cite all four rather than duplicating them.
    prices fibre's cost (snag rate in Forest 0.040/s, PowerLine 0.090/s). It does
    not yet pay fibre its benefit, because there is nothing to be immune to.
 
+   **Correction, added later: those two rates are the game's own numbers, not
+   findings of this document.** They are designer estimates in
+   `Terrain.SnagRatePerSecond` and nothing here sources them - this paragraph
+   was describing the implementation and has been read since as though it were
+   citing one. The sourced material above is about *direction only*: that fibre
+   is terrain-immune on the link and pays for it in snag. No rate, and no figure
+   anywhere in this corpus for how often a thread parts per sortie. Research
+   queue brief N is open on exactly that.
+
 8. **Overhead cover is the defining fortification fact of 2026, and it is
    thinner than it sounds.** Reported practice: **20–40 cm of compacted earth
    over steel reinforcement** on fighting positions [R, single aggregator

@@ -463,6 +463,71 @@ the `JamEmitter.Team` gap, and the EW Post's signature row in `Defs.cs`.
 
 ---
 
+## N. Fiber control: spool length, and how often a thread actually parts
+
+**Why the game needs it.** Fiber is unjammable, and the game has just measured how
+decisive that is: a radio-linked raid through a jammed corridor flew 59 sorties for
+zero damage where a fiber raid killed its target in 22 (`FINDINGS 37`). The thread
+is supposed to be the price. The game charges that price with a **snag rate per
+second of thread lying on each terrain class** — and those five numbers are
+invented.
+
+They are worse than invented, because they read as researched. `Terrain.cs` carries
+them with no citation (open 0, road 0.015, rubble 0.030, forest 0.040, power line
+0.090 per second), and the only two places they appear in the research corpus are
+`terrain.md` §7 quoting the code back — *"The game already prices fibre's cost
+(snag rate in Forest 0.040/s, PowerLine 0.090/s)"* — and `terrain.md` again saying
+outright *"That is the game's `SnagRatePerSecond(Forest) = 0.040` rendered in
+prose."* The citation runs code → document, so a reader checking the number finds
+what looks like a source and is looking at a mirror.
+
+This is now load-bearing. `FINDINGS 43`'s fiber sweep produced the conclusion that
+**a filament dragged down a road parts after about 1,500 m**, and where you launch
+from is a real decision because of it. That conclusion rests entirely on the
+unsourced 0.015.
+
+What the corpus *does* have, and what should be kept rather than re-asked: fiber
+drone range **5–20 km** (`beyond-ukraine.md`), and good qualitative sourcing that
+snagging is terrain-coupled — *"to maximise range, operators need to fly low and in
+a straight line to prevent the cable from sagging or snagging on obstacles."*
+Direction, not rate.
+
+**Questions.**
+1. **Spool length as fielded.** What lengths are actually flown, and is there a
+   standard set of sizes rather than a continuum? Does a longer spool cost speed,
+   endurance or payload, and by how much? The game treats spool as one number on a
+   card; if the real trade is spool against warhead, that is a better mechanic.
+2. **How often does a thread part, per sortie?** The number the game most needs.
+   Any denominator at all helps — a fraction of sorties lost to the cable rather
+   than to the enemy, an operator's rule of thumb, an attrition breakdown that
+   separates "shot down" from "lost the line".
+3. **What parts a thread.** Terrain and vegetation, being driven over, the drone's
+   own manoeuvring, wind, repeated passes over the same ground, the reel itself
+   failing. Which dominates? The game models only ground type, and if the real
+   answer is manoeuvre or reel failure then it is modelling the wrong variable.
+4. **Does it scale with length, with time, or with both?** The game charges per
+   second per node of thread on the ground, so a slow drone pays more than a fast
+   one over the same route. Is that right, or is the risk per metre laid?
+5. **Relative rates across ground.** Even an ordering would discipline the table:
+   is a power-line corridor really six times a road? Is open ground actually free?
+6. **What happens to a drone whose thread parts** — does it go down immediately,
+   glide, hold its last command, or revert to something? The game destroys the
+   link and the airframe becomes uncontrolled; that is a guess.
+7. **The discarded cable as a physical object.** `terrain.md` has *"silvery strands
+   drape over the treetops... trailing across"* — does spent fiber accumulate
+   enough to be a hazard to later flights, a navigation feature, or a way of
+   reading where an operator has been working? The game now lets an enemy driving
+   over a live thread find it (AUDIT F14); whether a *dead* thread is equally
+   findable is unmodelled and would change what a launch site gives away over a
+   long match.
+
+**Where it lands.** A new `docs/research/fiber.md`, then `Terrain.SnagRatePerSecond`
+and the spool figures in `Defs.cs` — and an amendment to `terrain.md` §7, which
+must stop quoting the game's own numbers as though it were sourcing them.
+
+
+---
+
 ## How to hand the results back
 
 Each returned document goes in `docs/research/` as markdown with numbered sections,

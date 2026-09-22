@@ -73,6 +73,27 @@ namespace KZ.Sim
         /// How likely a fiber thread lying across this ground is to part, as a
         /// probability per second per node-length of thread. Open ground is free;
         /// a power-line corridor will eat a drone in about ten seconds.
+        ///
+        /// **All five are designer estimates and none of them is sourced.** That
+        /// has to be said here because it is not obvious anywhere else: terrain.md
+        /// §7 and its consequence-four passage both recite these figures, which
+        /// makes them look researched, but the document is quoting this table
+        /// rather than sourcing it - it says so itself two hundred lines further
+        /// down ("that is the game's SnagRatePerSecond(Forest) = 0.040 rendered in
+        /// prose"). The citation runs code to document, so a reader checking the
+        /// number finds a mirror.
+        ///
+        /// What the research does support is the *direction*: snagging is real and
+        /// terrain-coupled ("to maximise range, operators need to fly low and in a
+        /// straight line to prevent the cable from sagging or snagging on
+        /// obstacles", terrain.md §7). Not one rate, and no figure anywhere in the
+        /// corpus for how often a thread parts per sortie.
+        ///
+        /// This matters more than a normal unsourced constant: FINDINGS 43's fiber
+        /// sweep concluded that a filament dragged down a road parts after about
+        /// 1,500 m, and where a player launches from is a decision because of it.
+        /// That conclusion rests on the 0.015 below. Research queue brief N asks
+        /// for the replacements.
         /// </summary>
         public static Fix SnagRatePerSecond(TileClass c)
         {
