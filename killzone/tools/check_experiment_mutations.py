@@ -89,6 +89,7 @@
 #   ... --keep                           leave the scratch trees for inspection
 #   ... --warn-only                      report but never fail
 #   ... --root DIR / --catalogue FILE    point at a different tree
+#   ... --help                           the same list, from the tool itself
 
 import os
 import re
@@ -699,6 +700,25 @@ def selftest():
             return False
         return True
 
+    # --- the argument parser -----------------------------------------------
+    # Because the failure this replaces was silent and expensive: an
+    # unrecognised flag fell through to "run everything", so `--help` was a
+    # multi-minute rebuild sweep and a mistyped `--experimnet` swept the lot
+    # while looking like it had swept one.
+    ok &= check("no arguments is the sweep", parse_argv([]), None)
+    ok &= check("a known flag is the sweep", parse_argv(["--keep"]), None)
+    ok &= check("a flag's value is not read as a flag",
+                parse_argv(["--only", "--keep"]), None)
+    ok &= check("--help prints usage",
+                (parse_argv(["--help"]) or "").startswith("check_experiment_mutations.py"),
+                True)
+    ok &= check("an unrecognised flag is refused",
+                "unrecognised argument" in (parse_argv(["--experimnet", "radar"]) or ""),
+                True)
+    ok &= check("a flag missing its value is refused",
+                (parse_argv(["--only"]) or "").startswith("--only needs a value"),
+                True)
+
     # --- the catalogue parser ----------------------------------------------
     good = os.path.join(FIXTURE, "catalogue-good.txt")
     cat = load_catalogue(good)
@@ -817,8 +837,66 @@ def selftest():
 # ---------------------------------------------------------------------------
 
 
+# The flags this tool knows, and which of them eat the argument after them.
+# Declared rather than inferred from main() below so that adding a flag without
+# adding it here is a visible omission rather than a silent one.
+FLAGS_NO_VALUE = ("--selftest", "--list", "--keep", "--warn-only", "--help", "-h")
+FLAGS_WITH_VALUE = ("--root", "--catalogue", "--runner", "--only", "--experiment")
+
+USAGE = """check_experiment_mutations.py - break the simulation on purpose and see who notices
+
+  python3 tools/check_experiment_mutations.py                 the sweep
+  python3 tools/check_experiment_mutations.py --selftest      its own corpus
+  python3 tools/check_experiment_mutations.py --list          declarations only,
+                                                              no build
+
+  --only <mutation>[,<mutation>]    sweep just these
+  --experiment <name>[,<name>]      sweep just these experiments' claims
+  --keep                            leave the scratch trees for inspection
+  --warn-only                       report but never fail
+  --root DIR                        point at a different tree
+  --catalogue FILE                  point at a different mutation catalogue
+  --runner CMD                      how to run a built exe (e.g. mono)
+  --help                            this
+
+The sweep rebuilds the tree once per mutation and re-runs the experiments that
+claim it. That is minutes, not seconds, which is why it is not in the default
+./build.sh - see docs/EXPERIMENT-DRIFT.md."""
+
+
+def parse_argv(argv):
+    """Return None if the arguments are good, or the message to print and stop on.
+
+    A tool that treats an argument it does not recognise as "do the default
+    thing" is a tool whose --help is a multi-minute rebuild sweep, which is what
+    this one did. The rule here is the same one the catalogue parser already
+    lives by: an instruction that does not match anything is an error, never a
+    skip."""
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a in ("--help", "-h"):
+            return USAGE
+        if a in FLAGS_WITH_VALUE:
+            if i + 1 >= len(argv):
+                return "%s needs a value.\n\n%s" % (a, USAGE)
+            i += 2
+            continue
+        if a in FLAGS_NO_VALUE:
+            i += 1
+            continue
+        return "unrecognised argument %r.\n\n%s" % (a, USAGE)
+    return None
+
+
 def main(argv):
     global RUNNER
+
+    complaint = parse_argv(argv)
+    if complaint is not None:
+        bad = not complaint.startswith("check_experiment_mutations.py")
+        print(complaint, file=sys.stderr if bad else sys.stdout)
+        return 2 if bad else 0
 
     root = ROOT
     if "--root" in argv:
