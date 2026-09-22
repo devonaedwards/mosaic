@@ -470,12 +470,28 @@ function updatePanels() {
   // told, because eight play-minutes of warning that nothing draws is no
   // warning - and the "no cover" state is told too, because that is the half
   // that says the answer is working.
+  //
+  // Three states, not two. A live hold reads as a position; a stale one reads
+  // as a memory with its age on it and is deliberately not styled urgent,
+  // because urgency off a thirty-second-old range is the panel claiming to know
+  // something it does not. The blind state is the one that matters: it says the
+  // silence is the player's own sensors being gone rather than the vehicle
+  // having driven off, and it is computed from the player's own units only.
   var ground = document.getElementById('ground');
   if (V.threat && V.threat.any) {
     var km = (V.threat.metres / 1000).toFixed(1);
-    ground.textContent = '▬ ' + V.threat.name + ' ' + km + ' km'
-      + (V.threat.jammed ? ' · jammed' : ' · clear');
-    ground.className = 'cell ground on' + (V.threat.metres <= 4000 ? ' urgent' : '');
+    if (V.threat.live) {
+      ground.textContent = '▬ ' + V.threat.name + ' ' + km + ' km'
+        + (V.threat.jammed ? ' · jammed' : ' · clear');
+      ground.className = 'cell ground on' + (V.threat.metres <= 4000 ? ' urgent' : '');
+    } else {
+      var blind = V.threat.eyeslost > 0;
+      ground.textContent = '▬ ' + V.threat.name + ' last seen ' + km + ' km · '
+        + V.threat.stale + 's ago'
+        + (blind ? ' · ' + V.threat.eyes
+                   + (V.threat.eyes === 1 ? ' eye left' : ' eyes left') : '');
+      ground.className = 'cell ground stale' + (blind ? ' blind' : '');
+    }
   } else {
     ground.textContent = '';
     ground.className = 'cell ground';

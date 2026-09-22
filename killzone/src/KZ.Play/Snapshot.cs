@@ -214,8 +214,12 @@ namespace KZ.Play
             // defence was that it "never threatens" rather than that it never
             // damages - so the one thing the interface owes the player is a line
             // that says which vehicle, how far, and whether the thing that stops
-            // it is still standing. MatchLoop.ThreatReport only ever reports a
-            // contact, so this leaks nothing the map is not already drawing.
+            // it is still standing.
+            //
+            // The range is the last one the player's own sensors earned and the
+            // age beside it says how long ago, so this leaks nothing the map was
+            // not already drawing at the time it was drawn. See
+            // MatchLoop.ThreatReport for why a stale number beats a blank panel.
             MatchLoop.ThreatReport threat = loop.Threat;
             j.Object("threat");
             j.Field("any", threat.Any);
@@ -224,6 +228,10 @@ namespace KZ.Play
                 j.Field("name", threat.Name);
                 j.Field("metres", threat.Metres);
                 j.Field("jammed", threat.Jammed);
+                j.Field("live", threat.Live);
+                j.Field("stale", threat.StaleSeconds);
+                j.Field("eyes", threat.Eyes);
+                j.Field("eyeslost", threat.EyesLost);
             }
             j.EndObject();
 

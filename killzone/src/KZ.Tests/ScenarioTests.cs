@@ -121,6 +121,80 @@ namespace KZ.Tests
                             "the log has told the player their answer is working");
             });
 
+            // FINDINGS 42 shipped a threat panel that reported live contacts only,
+            // and measured it going blank for 61 unbroken play-seconds of the
+            // passive losing run - T+339 to T+399, while the tank closed from
+            // 4,483 m to 2,610 m. A panel that stops is indistinguishable from a
+            // panel that has broken, so it now reports the player's last
+            // observation and its age instead of nothing.
+            //
+            // This drives the real loop for the whole 489 play-seconds of the
+            // loss, because the thing under test is a window in the middle of it
+            // that only exists once the player's sensors have been destroyed.
+            r.Run("the panel never goes blank once the player has seen the column", delegate
+            {
+                MatchLoop m = new MatchLoop(Seed, 0);
+                bool everHeld = false;
+                int blank = 0, stale = 0, staleAndBlinded = 0;
+                for (int s = 0; s < 540 && m.Outcome == "playing"; s++)
+                {
+                    Run(m, 1);
+                    if (m.Threat.Any) everHeld = true;
+                    else if (everHeld) blank++;
+                    if (m.Threat.Any && !m.Threat.Live)
+                    {
+                        stale++;
+                        if (m.Threat.EyesLost > 0) staleAndBlinded++;
+                    }
+                }
+                Assert.Equal("lost", m.Outcome, "this is the losing run");
+                Assert.True(everHeld, "the player held the column at some point");
+                Assert.Equal(0, blank, "play-seconds with nothing on the panel after first contact");
+                Assert.True(stale > 30,
+                            "the run has a long stretch where the panel is a memory");
+                Assert.Equal(stale, staleAndBlinded,
+                             "every stale play-second is one where the player has lost eyes");
+            });
+
+            // The other half, and the half that makes it an event rather than an
+            // absence: the log has to say the contact was lost, say the player's
+            // own sensors are what went, and say the range has gone stale. All
+            // three through ViewJson, which is the string the browser reads.
+            r.Run("going blind is narrated as something that happened to the player", delegate
+            {
+                MatchLoop m = new MatchLoop(Seed, 0);
+                Run(m, 400);
+                string v = m.ViewJson(0);
+                Assert.True(v.Contains("we have lost the Main Tank"),
+                            "the log says the contact was lost, and names it");
+                Assert.True(v.Contains("things we had watching that ground"),
+                            "the log says the player's own eyes are what went");
+                Assert.True(v.Contains("it is not at"),
+                            "the log says the range on the panel has stopped being a position");
+            });
+
+            // And the constraint that makes all of the above worth having rather
+            // than a fog-of-war leak: a remembered range is frozen at the
+            // observation. If it tracked the vehicle the panel would be telling
+            // the player where an enemy is with no sensor on it, which would be
+            // worse than the blank panel it replaced.
+            r.Run("a stale range does not follow the vehicle", delegate
+            {
+                MatchLoop m = new MatchLoop(Seed, 0);
+                int frozen = -1;
+                int staleSeconds = 0;
+                for (int s = 0; s < 540 && m.Outcome == "playing"; s++)
+                {
+                    Run(m, 1);
+                    if (!m.Threat.Any || m.Threat.Live) { frozen = -1; continue; }
+                    if (frozen < 0) frozen = m.Threat.Metres;
+                    staleSeconds++;
+                    Assert.Equal(frozen, m.Threat.Metres,
+                                 "the remembered range at T+" + s + " is the one that was observed");
+                }
+                Assert.True(staleSeconds > 30, "the run had a stale stretch to check");
+            });
+
             r.Group("the shipped scenario: the advance, and stopping it");
 
             // The column is gated rather than scheduled: it moves only while it

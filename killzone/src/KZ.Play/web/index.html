@@ -76,12 +76,19 @@
   .row.inbound { background: #2a1a18; }
   .cell.alert { color: var(--dim); }
   .cell.alert.on { color: #ffd0cc; font-weight: 600; }
-  /* The ground threat. Two states rather than one, because "a column is
-     coming" and "a column is coming and nothing is stopping it" are different
-     pieces of news and the second is the one that loses the sector. */
+  /* The ground threat. Four states rather than one, because "a column is
+     coming", "a column is coming and nothing is stopping it", "we last saw it
+     somewhere" and "we last saw it somewhere and we cannot see any more" are
+     four different pieces of news. The stale states are deliberately duller
+     than the live ones and never take the urgent treatment: a remembered range
+     styled as an alarm is the panel shouting about something it does not know.
+     Blind is the loud one of the two, in the colour the log uses for a loss,
+     because it is the only one that tells the player to go and rebuild. */
   .cell.ground { color: var(--dim); }
   .cell.ground.on { color: #ffd0cc; font-weight: 600; }
   .cell.ground.urgent { color: #1a1013; background: #ff8e7f; font-weight: 700; }
+  .cell.ground.stale { color: #8d7f6a; font-style: italic; }
+  .cell.ground.stale.blind { color: #d8a24a; font-style: italic; font-weight: 600; }
   .own { color: var(--own); }
   #log { font-size: 11px; }
   #log div { padding: 1px 0; color: var(--dim); border-bottom: 1px solid #161b20; }
