@@ -101,6 +101,16 @@ mutation intercept-lead-optical
   to      InterceptLeadOpticalTrack = Fix.FromDoubleContentOnly(0.05)
   breaks  the lead an optically-cued interceptor flies, which is the half of the lead table a mast does not buy
 
+# The rung FINDINGS 41 said the roster was missing. Its whole justification is
+# that it sits between 50 and 140 m/s, so a mutation that puts it back on top of
+# its neighbour is the one question worth asking of it: if the sweep cannot tell
+# a 90 m/s airframe from a 50 m/s one, the row is decoration.
+mutation cruise-jet-speed
+  file    src/KZ.Sim/Content/Defs.cs
+  from    SpeedMetresPerSecond = M(90.0), TurnRateDegreesPerSecond = 29
+  to      SpeedMetresPerSecond = M(50.0), TurnRateDegreesPerSecond = 29
+  breaks  the middle of the jet band: the Cruise Jet Drone flies at the piston drone's speed, so the interception sweep has the gap back
+
 mutation firing-solution-speed
   file    src/KZ.Sim/Core/SimConstants.cs
   from    FiringSolutionReferenceSpeed = Fix.FromInt(45)

@@ -31,7 +31,6 @@ sim-constant    SimConstants.MeshAcquisitionPenaltyTicksPerHop
 sim-constant    SimConstants.TetherSegmentsPerTick
 sim-constant    SimConstants.VisionCellMetres
 unitdef-single  UnitDef.AutonomyQuality
-unitdef-single  UnitDef.HasCelestialHeading
 unitdef-single  UnitDef.MineDamage
 unitdef-single  UnitDef.MinesCarried
 unitdef-single  UnitDef.NightOnly

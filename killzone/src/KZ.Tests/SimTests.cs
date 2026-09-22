@@ -2794,6 +2794,54 @@ namespace KZ.Tests
                             "the mount should spend more than one engagement on a drone it has already laid on");
             });
 
+            r.Run("the roster has a rung between the piston drone and the jet", delegate
+            {
+                // FINDINGS 41 measured that every airframe from 28 to 50 m/s reads
+                // the same interception percentage in every cell of the sweep and
+                // the 140 m/s jet reads a different world, with nothing between
+                // them - so FINDINGS 36's vectoring had a cliff to work over
+                // rather than a curve. The Cruise Jet Drone is the missing rung,
+                // at the 300-350 km/h cruise terrain.md §8.4 gives the Geran-4
+                // class and point-defence.md records as the turbojet's observed
+                // speed as against its designed one.
+                //
+                // Asserted on where three airframes actually get to after the
+                // world has stepped, rather than on the numbers in Defs.cs: the
+                // failure this repository is organised around is a test that reads
+                // back the constant it is about. All three are launched by a
+                // queued LaunchSortie at the same objective from the same pad.
+                Fix2 pad = P(16000, 8000);
+                string[] airframes = { "Heavy Strike Drone", "Cruise Jet Drone", "Jet Strike Drone" };
+                int[] metresFlown = new int[3];
+
+                for (int a = 0; a < airframes.Length; a++)
+                {
+                    World w = MakeWorld(4411);
+                    w.Player(2).Materiel = Fix.FromInt(100000);
+                    EntityHandle objective = w.Spawn(Catalog.IdOf("Relay Mast"), 1, P(4000, 8000));
+                    w.Enqueue(Command.LaunchSortie(2, Catalog.IdOf(airframes[a]), pad, objective, 0));
+
+                    // Fifteen play-seconds is sixty seconds of world at the 4x
+                    // TimeMultiplier: long enough to be off the pad and clear of
+                    // the egress hold, short enough that even the 140 m/s airframe
+                    // is still eight kilometres short of its target. All three are
+                    // measured in level cruise, and none of them arrives - a
+                    // one-way airframe that strikes is not there to be measured.
+                    for (int n = 0; n < 15 * SimConstants.TicksPerSecond; n++) w.Step();
+
+                    EntityHandle flier = FirstOfTeam(w, 2, airframes[a]);
+                    Assert.True(w.Entities.IsAlive(flier), airframes[a] + " is airborne");
+                    metresFlown[a] = Fix2.Distance(pad, w.Entities.Position[flier.Index]).RoundToInt();
+                }
+
+                Assert.True(metresFlown[1] > metresFlown[0] + 500,
+                            "the cruise jet outruns the piston drone: "
+                            + metresFlown[1] + " m against " + metresFlown[0] + " m in fifteen play-seconds");
+                Assert.True(metresFlown[2] > metresFlown[1] + 500,
+                            "and the sprinting jet outruns the cruise jet: "
+                            + metresFlown[2] + " m against " + metresFlown[1] + " m");
+            });
+
             r.Run("an interceptor is vectored ahead of a crossing target, not at it", delegate
             {
                 // The whole of the interception path existed - IsInterceptor,

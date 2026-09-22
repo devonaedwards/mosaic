@@ -13,6 +13,7 @@ by the column heading. 85 m/s against targets from 28 to 140
   Loitering Munition  36 m/s          53%         53%         53%         53%
   Mid-Range Striker   45 m/s          53%         53%         53%         53%
   Heavy Strike Drone  50 m/s          53%         53%         53%         53%
+  Cruise Jet Drone    90 m/s          35%         35%         35%         35%
   Jet Strike Drone   140 m/s          25%         25%         25%          0%
 
   (b) the same, with no radar on the defence at all
@@ -23,9 +24,10 @@ by the column heading. 85 m/s against targets from 28 to 140
   Loitering Munition  36 m/s          40%         40%         40%         40%
   Mid-Range Striker   45 m/s          40%         40%         40%         40%
   Heavy Strike Drone  50 m/s          40%         40%         40%         40%
+  Cruise Jet Drone    90 m/s          18%         18%         18%          0%
   Jet Strike Drone   140 m/s          16%         16%          0%          0%
 
-  (c) the same five airframes against an Autocannon Mount, which is not
+  (c) the same six airframes against an Autocannon Mount, which is not
   an interceptor - it shoots, so it scores AirHitChance rather than
   ResolveInterception. This is the only column in the harness where
   that roll's speed term is off its clamp (FINDINGS 40's fifth finding:
@@ -38,6 +40,7 @@ by the column heading. 85 m/s against targets from 28 to 140
   Loitering Munition  36 m/s            96%   on the clamp
   Mid-Range Striker   45 m/s            98%   live
   Heavy Strike Drone  50 m/s           100%   live
+  Cruise Jet Drone    90 m/s            78%   live
   Jet Strike Drone   140 m/s            46%   live
 
   The first four rows do not move across the offset columns at all,
@@ -57,17 +60,39 @@ by the column heading. 85 m/s against targets from 28 to 140
   drones. It is air defence for big ones, which is the roster saying
   out loud what it has always implied.
 
-  The jet row is the experiment. Read it two ways. Across, the offset
-  columns fall away to nothing: a pad off the raid's track has to make
-  the lateral distance up out of a closing budget it does not have, and
-  at 3,000 m off it never arrives. Down, the two arms differ by about
-  a third at every offset the interceptor can reach at all, and that
-  gap is the mast: a radar track flies the whole computed lead and
-  scores the merge at 1.00, an optical one flies 0.55 of it and scores
-  at 0.60. Against a 140 m/s target the missing 45% of the lead is most
-  of a kilometre of aimpoint.
+  Read the last three rows down the page and the cliff FINDINGS 41
+  reported is a slope. With a mast: 53, 35, 25. Without one: 40, 18,
+  16. The 90 m/s rung is new and it is the whole reason this table now
+  says anything about *how fast* rather than only about fast or slow.
 
-  So the sentence the roster has always implied is now measured: the
-  interceptor is a good buy against everything it can catch and a
-  coin-toss against the one thing it was bought for, and the coin is
-  weighted by whether a mast is up.
+  And the mast is worth most in the middle, which nothing predicted.
+  The gap between the arms is 13 points at 50 m/s and under, 17 at 90,
+  and 9 at 140 - as a multiplier, 1.33, 1.94 and 1.56. Against a slow
+  target a radar track is worth a better roll at a merge that was
+  happening anyway. Against the jet it is worth a great deal per merge
+  and there are fewer merges to have it at. At 90 m/s both apply: the
+  interceptor still reaches, and the lead it flies decides the merge.
+  A radar mast is not bought against the fastest thing in the sky. It
+  is bought against the fastest thing an interceptor can still catch.
+
+  The jet row is still the extreme, and the offsets are where it shows.
+  Across, the offset columns fall away to nothing: a pad off the raid's
+  track has to make the lateral distance up out of a closing budget it
+  does not have. Where that happens is now a gradient too, and it is a
+  gradient in two variables at once - at 50 m/s and under the pad may
+  sit anywhere; at 90 it may sit anywhere with a mast up and no further
+  than 1,800 m off without one; at 140 it is 1,800 m with a mast and
+  900 m without. The mast does not only improve the shot. It widens the
+  ground you are allowed to have put the pad on, and the faster the
+  target the more of that width it is buying.
+
+  Arm (c) is the same slope with the vectoring taken out of it: 100%,
+  78%, 46% at 50, 90 and 140 m/s against a mount that simply shoots.
+  Read with the arms above, that is the separation worth having - the
+  gun degrades smoothly with speed and the interceptor does not, and
+  the interceptor's cliff is about arriving rather than about hitting.
+
+  Caveat, in the table's own terms: 60 trials carry about six points of
+  standard error. The differences read above are 9 to 18 points and the
+  ones deliberately not read - 96 against 98 in arm (c), 35 against 35
+  across an offset row - are inside it.

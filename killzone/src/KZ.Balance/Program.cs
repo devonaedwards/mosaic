@@ -2246,7 +2246,7 @@ namespace KZ.Balance
         /// 140 m/s is the first thing in this harness to take the term off the
         /// 1.15 ceiling it has sat on since it was written.</para>
         /// </summary>
-        // MEASURES intercept: intercept-lead-radar, intercept-lead-optical, firing-solution-speed
+        // MEASURES intercept: intercept-lead-radar, intercept-lead-optical, firing-solution-speed, cruise-jet-speed
         static void InterceptionExperiment()
         {
             Console.WriteLine();
@@ -2261,12 +2261,18 @@ namespace KZ.Balance
             // AirHitChance's clamp: the speed term is reference/speed clamped at
             // 1.15, so it is pinned for anything under 39 m/s and live above it.
             // The Loitering Munition at 36 and the Mid-Range Striker at 45 sit
-            // either side of that line. The gap from 50 to 140 is the roster's
-            // own - there is nothing in the catalogue between them - and it is
-            // why the jet reads as a different kind of problem rather than a
-            // harder version of the same one.
+            // either side of that line.
+            //
+            // The Cruise Jet Drone at 90 is new and it is the rung FINDINGS 41
+            // said was missing: every airframe from 28 to 50 read the same cell
+            // in every column and the jet at 140 read a different world, so this
+            // sweep could show that the vectoring matters and could not show
+            // where it starts to. It differs from the Heavy Strike Drone above it
+            // in speed and in nothing the mast cares about - same 52 of radar
+            // cross-section, same layer, same one-way autonomy - so the two rows
+            // are as close to a one-variable comparison as a catalogue allows.
             string[] targets = { "Multirole Quad", "Loitering Munition", "Mid-Range Striker",
-                                 "Heavy Strike Drone", "Jet Strike Drone" };
+                                 "Heavy Strike Drone", "Cruise Jet Drone", "Jet Strike Drone" };
             int[] offsets = { 0, 900, 1800, 3000 };
 
             for (int arm = 0; arm < 2; arm++)
@@ -2297,7 +2303,7 @@ namespace KZ.Balance
             }
 
             Console.WriteLine();
-            Console.WriteLine("  (c) the same five airframes against an Autocannon Mount, which is not");
+            Console.WriteLine("  (c) the same six airframes against an Autocannon Mount, which is not");
             Console.WriteLine("  an interceptor - it shoots, so it scores AirHitChance rather than");
             Console.WriteLine("  ResolveInterception. This is the only column in the harness where");
             Console.WriteLine("  that roll's speed term is off its clamp (FINDINGS 40's fifth finding:");
@@ -2335,20 +2341,42 @@ namespace KZ.Balance
             Console.WriteLine("  drones. It is air defence for big ones, which is the roster saying");
             Console.WriteLine("  out loud what it has always implied.");
             Console.WriteLine();
-            Console.WriteLine("  The jet row is the experiment. Read it two ways. Across, the offset");
-            Console.WriteLine("  columns fall away to nothing: a pad off the raid's track has to make");
-            Console.WriteLine("  the lateral distance up out of a closing budget it does not have, and");
-            Console.WriteLine("  at 3,000 m off it never arrives. Down, the two arms differ by about");
-            Console.WriteLine("  a third at every offset the interceptor can reach at all, and that");
-            Console.WriteLine("  gap is the mast: a radar track flies the whole computed lead and");
-            Console.WriteLine("  scores the merge at 1.00, an optical one flies 0.55 of it and scores");
-            Console.WriteLine("  at 0.60. Against a 140 m/s target the missing 45% of the lead is most");
-            Console.WriteLine("  of a kilometre of aimpoint.");
+            Console.WriteLine("  Read the last three rows down the page and the cliff FINDINGS 41");
+            Console.WriteLine("  reported is a slope. With a mast: 53, 35, 25. Without one: 40, 18,");
+            Console.WriteLine("  16. The 90 m/s rung is new and it is the whole reason this table now");
+            Console.WriteLine("  says anything about *how fast* rather than only about fast or slow.");
             Console.WriteLine();
-            Console.WriteLine("  So the sentence the roster has always implied is now measured: the");
-            Console.WriteLine("  interceptor is a good buy against everything it can catch and a");
-            Console.WriteLine("  coin-toss against the one thing it was bought for, and the coin is");
-            Console.WriteLine("  weighted by whether a mast is up.");
+            Console.WriteLine("  And the mast is worth most in the middle, which nothing predicted.");
+            Console.WriteLine("  The gap between the arms is 13 points at 50 m/s and under, 17 at 90,");
+            Console.WriteLine("  and 9 at 140 - as a multiplier, 1.33, 1.94 and 1.56. Against a slow");
+            Console.WriteLine("  target a radar track is worth a better roll at a merge that was");
+            Console.WriteLine("  happening anyway. Against the jet it is worth a great deal per merge");
+            Console.WriteLine("  and there are fewer merges to have it at. At 90 m/s both apply: the");
+            Console.WriteLine("  interceptor still reaches, and the lead it flies decides the merge.");
+            Console.WriteLine("  A radar mast is not bought against the fastest thing in the sky. It");
+            Console.WriteLine("  is bought against the fastest thing an interceptor can still catch.");
+            Console.WriteLine();
+            Console.WriteLine("  The jet row is still the extreme, and the offsets are where it shows.");
+            Console.WriteLine("  Across, the offset columns fall away to nothing: a pad off the raid's");
+            Console.WriteLine("  track has to make the lateral distance up out of a closing budget it");
+            Console.WriteLine("  does not have. Where that happens is now a gradient too, and it is a");
+            Console.WriteLine("  gradient in two variables at once - at 50 m/s and under the pad may");
+            Console.WriteLine("  sit anywhere; at 90 it may sit anywhere with a mast up and no further");
+            Console.WriteLine("  than 1,800 m off without one; at 140 it is 1,800 m with a mast and");
+            Console.WriteLine("  900 m without. The mast does not only improve the shot. It widens the");
+            Console.WriteLine("  ground you are allowed to have put the pad on, and the faster the");
+            Console.WriteLine("  target the more of that width it is buying.");
+            Console.WriteLine();
+            Console.WriteLine("  Arm (c) is the same slope with the vectoring taken out of it: 100%,");
+            Console.WriteLine("  78%, 46% at 50, 90 and 140 m/s against a mount that simply shoots.");
+            Console.WriteLine("  Read with the arms above, that is the separation worth having - the");
+            Console.WriteLine("  gun degrades smoothly with speed and the interceptor does not, and");
+            Console.WriteLine("  the interceptor's cliff is about arriving rather than about hitting.");
+            Console.WriteLine();
+            Console.WriteLine("  Caveat, in the table's own terms: 60 trials carry about six points of");
+            Console.WriteLine("  standard error. The differences read above are 9 to 18 points and the");
+            Console.WriteLine("  ones deliberately not read - 96 against 98 in arm (c), 35 against 35");
+            Console.WriteLine("  across an offset row - are inside it.");
         }
 
         /// <summary>

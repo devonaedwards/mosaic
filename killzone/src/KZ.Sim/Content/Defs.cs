@@ -1140,6 +1140,83 @@ namespace KZ.Sim
                 SigRadio = 0, SigThermal = 92, SigAcoustic = 95, SigVisual = 34, SigRadar = 50
             });
 
+            // The middle of the jet band, and the airframe the roster skipped.
+            //
+            // FINDINGS 41 measured the consequence of its absence: every target
+            // from 28 to 50 m/s reads the same interception percentage in every
+            // cell of the sweep, the 140 m/s jet reads a different world, and
+            // there is nothing in between - so the vectoring FINDINGS 36 built
+            // has a cliff to work over rather than a curve.
+            //
+            // It is not an invention to fill that gap. The corpus names this
+            // airframe three times and the catalogue took the fast figure each
+            // time. point-defence.md §"The target set these systems have to beat"
+            // records the turbojet row as "designed 550-600 km/h; observed
+            // 300-350 cruise with terminal sprint", and its own open-questions
+            // section says both numbers are real and "describe different phases".
+            // terrain.md §8.4 goes further and gives the cruise its own class:
+            // "a Geran-4 class target cruises at 300-350 km/h at 4,000-5,000 m".
+            // economics.md §5 says that class is the one actually being built -
+            // "~3,000 jet Geran-4/5 per month ... jet output has overtaken
+            // piston" - and autonomy.md §4 calls it "the pressure point ...
+            // cruising at close to twice the speed of the propeller Shaheds
+            // interceptor crews learned on", which against this catalogue's own
+            // 50 m/s piston airframe is 100 m/s.
+            //
+            // So the Jet Strike Drone below is the sprint and this is the cruise,
+            // and the cruise is the one that arrives in numbers.
+            Add(new UnitDef
+            {
+                Name = "Cruise Jet Drone", Tier = 3, Propulsion = Propulsion.Turbojet,
+                AutonomyTier = AutonomyTier.TerminalGuidance,
+                NavAid = NavAid.SceneMatching, HasCelestialHeading = true,
+                // Between the piston drone's 22 s and the sprinting jet's 34 s,
+                // on the same reasoning as the cost. Designer estimate.
+                CostMateriel = 1200, BuildTicks = SimConstants.PlaySeconds(27),
+                // economics.md §"Up in aggregate for the offence": the move from
+                // piston to jet "buys speed at the cost of a more expensive
+                // airframe with a harder-to-source engine", and the same section
+                // has a mini jet engine shortage pushing the engine up. So it
+                // costs more than the 800 piston airframe. It costs less than the
+                // 1,900 sprinting jet because that one is the one the corpus says
+                // was "designed specifically to beat interceptors"
+                // (spec-futures-2027-2028.md §3) and this one is the production
+                // article. Where between them is a designer estimate.
+                Hp = M(190), Armour = ArmourClass.AirFixed, Layer = Layer.High,
+                // 324 km/h, the midpoint of terrain.md §8.4's "300-350 km/h at
+                // 4,000-5,000 m" for the Geran-4 class. §8.6 uses 350 km/h
+                // (97 m/s) in its own worked example of local warning, so the top
+                // of the band is the one the research reasons with; the midpoint
+                // is taken because this is a cruise figure and a sprint already
+                // exists in the catalogue below.
+                SpeedMetresPerSecond = M(90.0), TurnRateDegreesPerSecond = 29,
+                BlackPolicy = BlackPolicy.LastMile,  // one-way and terminally guided: it finishes on the last point it was given
+                Link = LinkKind.Autonomy, LinkRobustness = SimConstants.UnjammableRobustness,
+                ConsumesCrew = false, OneWay = true,
+                CanChangeAltitude = true,
+                // Between the piston drone's 520 and the sprinting jet's 380, on
+                // the trade the whole family is about: warhead against speed.
+                // Designer estimate, and the turn rate above is the same
+                // interpolation between 35 and 22.
+                WeaponDamage = M(450), WeaponType = DamageType.Shaped,
+                WeaponRangeMetres = M(120),
+                SensorOptical = M(2300),
+                // thermal-optical.md §11's "Turbojet strike drone" row, unchanged:
+                // thermal 92, visual 34. The same row governs the airframe below
+                // because it is the same engine and the same class, and §11 does
+                // not split it by cruise setting.
+                //
+                // The radar cross-section is deliberately the Heavy Strike
+                // Drone's 52 rather than a third number. FINDINGS 41 found that
+                // the Multirole Quad's row in the interception sweep is about its
+                // 26 of cross-section and not its speed at all - the mast simply
+                // does not hold it - and a new rung whose signature also moved
+                // would have had the same defect built in. This one has to be a
+                // measurement of speed, so speed is the only thing that differs
+                // from the rung above it.
+                SigRadio = 0, SigThermal = 92, SigAcoustic = 95, SigVisual = 34, SigRadar = 52
+            });
+
             // Plywood, foam and a corner reflector. It carries nothing and hurts
             // nobody. Its entire purpose is to look like the expensive thing on
             // somebody else's radar, so that the shot which should have stopped a

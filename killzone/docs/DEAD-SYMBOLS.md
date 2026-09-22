@@ -221,7 +221,7 @@ count as a carrier, because a fixture carrying a stat is not the game using it.
 | `UnitDef.SensorAcoustic` | Gun Mount (+ harness) | one unit in the game hears anything, while the acoustic table is fully applied to every unit's signature |
 | `UnitDef.CanReachHigh` | Gun Mount (+ harness) | everything else can reach the high band, including things that should not |
 | `UnitDef.SpoolLengthMetres` | Fiber FPV Team | plausible — one fiber airframe |
-| `UnitDef.HasCelestialHeading` | Jet Strike Drone | plausible — it costs a quarter of a million |
+| ~~`UnitDef.HasCelestialHeading`~~ | Jet Strike Drone, Cruise Jet Drone | **off the ledger.** A second turbojet carries it - the 90 m/s rung FINDINGS 41 said the roster was missing - so the field is no longer one unit's. |
 | `UnitDef.AutonomyQuality` | Autonomous Munition | correct by design, per FINDINGS 30 |
 | `UnitDef.NightOnly` | Night Bomber | plausible |
 | `UnitDef.MinesCarried` | Night Bomber | plausible |
