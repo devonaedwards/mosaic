@@ -3228,6 +3228,16 @@ nothing between 50 m/s and 140 m/s.** The mechanic that makes detection quality
 pay has no gradient to work over, because there is no airframe in the middle of
 it.
 
+**Amended by finding 43: filled, and the gradient turned out to have a shape
+nobody predicted.** A `Cruise Jet Drone` at 90 m/s now sits between them — the
+turbojet's *observed cruise* rather than its design figure, which the corpus
+gives in four places and which this catalogue had skipped every time. With it the
+three arms read 53/35/25, 40/18/16 and 100/78/46 at 50, 90 and 140 m/s. The new
+row is measured to be about speed and nothing else: the `cruise-jet-speed`
+mutation puts it back at 50 m/s and it reads 53%, identical to the rung above it.
+What was not expected is that **the mast is worth most in the middle** — the gap
+between the two arms is 13 points at 50 m/s and under, 17 at 90, and 9 at 140.
+
 ### The speed term, off its clamp at last
 
 Item 40 says this experiment would be "the first experiment in which
@@ -3545,6 +3555,20 @@ saying which way round.**
   asserting it. The **cross-fix** (F9) is still inert: the player's two listeners
   are still colinear.
 
+  **Amended by finding 43: the cross-fix is inert and the reason given here is
+  not the reason.** The colinearity is real and it is never reached. Measured
+  over the whole passive losing run, the player's two ESM listeners hold the
+  same emitter for **zero play-seconds**, so no crossing angle is ever computed
+  and the widest one the run ever produces is 0 degrees. The blocker is the
+  reach disparity: against the escort jammer the Radar Mast's passive reach is
+  5,915 m quiet and 9,957 m radiating while the Command Post's is 3,286 m and
+  5,532 m, so the only ground on which a pair can exist at all is inside about
+  5.5 km of the Command Post — and the mast is killed at T+338, roughly twenty
+  play-seconds before the escort gets there. Keep the mast alive and the pair
+  forms for 141 play-seconds and crosses by 20 degrees or more for 78 of them,
+  peaking at **46.2 degrees**. The geometry is already right, and moving a
+  listener fixes nothing.
+
 ### The interface, because a loss you cannot see coming is a cutscene
 
 `MatchLoop` now computes a `ThreatReport` — the nearest enemy ground vehicle, its
@@ -3705,6 +3729,16 @@ fitted), which is the shape a good decision has.
   consequence is that the last hundred and fifty play-seconds of a losing run
   have a threat panel that says nothing. I believe that is right. I would not be
   surprised to be told it feels like the game stopped working.
+
+  **Amended by finding 43 on both halves, and the number here is wrong.** It is
+  **61 play-seconds**, not a hundred and fifty: one unbroken window, T+339 to
+  T+399, measured second by second through `MatchLoop.StepOnce`. And the window
+  ends because the *opposition's* jammer switches its transmitter back on and the
+  player's Command Post hears it on ESM at 4.4 km, not because the player earned
+  anything back. The judgement was wrong too — though not in the direction of
+  revealing the enemy. The panel now reports the player's own last observation
+  and how old it is, and says in words that they are down from four things
+  watching that ground to one. Blank play-seconds after first contact: 61 to 0.
 - **Whether "kill the truck" is discoverable.** A player who reads the dome and
   the log will find it. A player who does not may fly twenty-four sorties at the
   tank instead, which also works — measured, 4,800 materiel against 3,200 — so
@@ -3737,3 +3771,282 @@ fitted), which is the shape a good decision has.
   losing condition wants measuring before a second is added.
 - **No airframe was added between 50 and 140 m/s.** Item 41 named that gap and it
   is real; it is a catalogue question and this was a scenario one.
+
+  **Done in finding 43.** A `Cruise Jet Drone` at 90 m/s, sourced to the observed
+  cruise of the turbojet whose design figure was the only one the catalogue had
+  ever taken.
+
+## 43. The panel that went blank, the rung that was missing, and one fix that would have fixed nothing
+
+KILL ZONE is a video game. Everything below is measured inside a fictional
+simulation against fictional factions; the numbers are the game's, not anyone's.
+
+Three pieces of work, and the useful thing they have in common is that each one
+started from a stated premise and two of the three premises were wrong. They are
+reported in that order rather than in the order of the work.
+
+### The threat panel: the judgement was right, the number behind it was not
+
+Item 42 built a threat readout that reports live contacts only, by the same
+`IsDetectedBy` rule the map draws by, and recorded as an open question whether a
+losing run's panel going silent "is either the best moment in the build or an
+interface that stopped working". It put the silence at **the last hundred and
+fifty play-seconds**.
+
+Measured second by second through `MatchLoop.StepOnce` on the shipped scenario,
+seed 20260917, nobody at the keyboard:
+
+| | |
+|---|---|
+| the run | LOST at T+489 |
+| play-seconds with nothing on the panel | **61** |
+| when | one unbroken window, **T+339 to T+399** |
+| what the column did over it | closed from 4,412 m to 2,610 m |
+| warning bands crossed inside it with nothing said | the 4 km and the 3 km |
+| of those, ever announced at all | one — the 3 km, at T+407, off a contact regained at 2.3 km |
+
+**Sixty-one, not a hundred and fifty, and one window rather than a tail.** The
+figure in item 42 was not measured; this one was, and the tick-resolution run
+also found a second gap of **nine ticks** — 0.28 of a real second — as the
+nearest held vehicle flips between the tank and the escort two kilometres behind
+it. The list of held vehicles changes name fifteen times over the match.
+
+**The window closes for a reason that is worse than the window.** At T+399 the
+enemy's escort jammer switches its transmitter back on, the player's Command Post
+hears it on passive RF at 4,428 m, and the panel lights up again. Nothing the
+player did brought it back. The instrument that was silent for a minute recovers
+because the opposition changed its emission state.
+
+So the design judgement in the brief for this work holds and the panel is
+rewritten — but **not** by revealing anything. The fog is the best thing in the
+build and a panel that saw through it would be worse than silence. It reports
+what the player already earned:
+
+- **the last position their own sensors held**, frozen at the observation. It
+  does not track the vehicle, and there is a test that walks every stale
+  play-second of the losing run asserting the number does not move;
+- **how many play-seconds old that is**, so the range visibly decays instead of
+  quietly lying;
+- **whether it is a hold or a memory**;
+- and **how many of the player's own ground sensors are left**, which is a count
+  over their own units and says nothing whatever about the enemy.
+
+Three log lines, all off facts the player owns. Losing the contact and what they
+are down to; the range going stale at thirty play-seconds — *"no eyes on the Main
+Tank for 30 seconds - it is not at 4.4 km any more"*; and a regained contact with
+how much ground it made up while nobody was watching, which is the difference
+between two of their own observations. The band warnings are gated on a live hold,
+because a warning fired off a thirty-second-old range is the one thing this panel
+exists not to do.
+
+The losing run, after:
+
+```
+T+338  we lost the Radar Mast
+T+344  we have lost the Main Tank at 4.4 km - we are down to 1 of the 4 things
+       we had watching that ground
+T+369  no eyes on the Main Tank for 30 seconds - it is not at 4.4 km any more
+T+400  we have the EW Truck again - 4.4 km
+T+408  the command post is inside a tank's gun - this is how the sector is lost
+T+489  your command post is gone
+```
+
+with the panel reading `Main Tank last seen 4.4 km · 51s ago · 1 eye left`
+throughout the window that used to be empty. **Blank play-seconds after first
+contact: 61 to 0. Stale play-seconds: 56, every one of them with the player down
+from four ground sensors to one.**
+
+**What it deliberately does not restore: the four-kilometre warning.** It was
+never given in the losing run before this change and it is still not given after
+it, because the band warnings now require a live hold and the contact is regained
+at 4.4 km on the escort and then at 2.0 km on the tank, skipping the band
+entirely. Firing it off a thirty-second-old range would have been the panel
+claiming to know where a vehicle is, which is the whole thing this rewrite exists
+not to do. The player is told the range has gone stale instead, which is true.
+
+**One thing was written as a flag and had to become a count, and the measurement
+is what caught it.** The first version of "you have lost your eyes" compared the
+sensor count now against the count at the last hold. It never fired once in the
+run it was written for: the Radar Mast dies at T+338 and the contact outlives it
+by a second, so the loss had already been folded into the baseline it compared
+against. Reading the code would not have found that. Two integers — how many are
+left and how many are gone — have no moment to be on the wrong side of, and they
+also state exactly what was checked, which a flag cannot.
+
+The panel holds a contact for five play-seconds past the last tick it was held,
+which is `SimConstants.TrackHoldTicks`' argument (audit F2) one layer up: a panel
+that re-decides thirty-two times a second is the same defect as a tracker that
+re-rolls thirty-two times a second. Five play-seconds of a 7.5 m/s tank is 37 m,
+so the range shown through the hold is not materially older than the one shown
+before it.
+
+**Acceptance, per WIRING-SPEC.** Three new tests, all through `MatchLoop.StepOnce`
+and `MatchLoop.Enqueue`. With the report returned to contacts only, all three
+fail, and the first reproduces the headline on its own: `expected 0, got 61`.
+
+### The roster's missing rung: the catalogue had the answer four times over
+
+Item 41 measured that every airframe from 28 to 50 m/s reads the same
+interception percentage in every cell, the 140 m/s jet reads a different world,
+and there is nothing between them — so item 36's vectoring had a cliff to work
+over rather than a curve. It is a catalogue question, so it was treated as one,
+and the answer was not an invention. The corpus names this airframe four times
+and the roster took the fast figure every time:
+
+| where | what it says |
+|---|---|
+| `point-defence.md` §"The target set these systems have to beat" | turbojet row: "designed 550–600 km/h; **observed 300–350 cruise** with terminal sprint" |
+| `point-defence.md` §"open questions" | "designed for 550–600 km/h, observed cruising at 300–350 ... **both numbers are real; they describe different phases**" |
+| `terrain.md` §8.4 | "a **Geran-4 class** target cruises at **300–350 km/h** at 4,000–5,000 m", and §8.6 reasons with 350 km/h (97 m/s) |
+| `economics.md` §5, `autonomy.md` §4 | that class is the one being built — ~3,000 a month, having overtaken piston — and is "the pressure point ... cruising at close to twice the speed of the propeller Shaheds", which against this catalogue's own 50 m/s piston airframe is 100 m/s |
+
+So the `Jet Strike Drone` is the sprint and the new **`Cruise Jet Drone`** is the
+cruise, at **90 m/s** — the midpoint of terrain.md's band. Thermal 92 and visual
+34 are `thermal-optical.md` §11's turbojet row unchanged, because §11 does not
+split that row by cruise setting. Cost, hit points, warhead, turn rate and build
+time are interpolations between its two neighbours and are marked in the source
+as designer estimates.
+
+**Its radar cross-section is deliberately its neighbour's 52 rather than a third
+number**, and that is a methodological choice rather than a content one. Item 41
+found that the Multirole Quad's row in this sweep is about its 26 of
+cross-section and not about its speed — the mast simply does not hold it — so a
+new rung whose signature also moved would have shipped with the same defect
+built in.
+
+What it does to the sweep:
+
+| arm | 50 m/s | **90 m/s** | 140 m/s |
+|---|---|---|---|
+| with a Radar Mast radiating | 53% | **35%** | 25% |
+| no radar at all | 40% | **18%** | 16% |
+| an Autocannon Mount, which shoots rather than intercepts | 100% | **78%** | 46% |
+
+**A gradient in all three arms where there was a step**, and one airframe
+produced it, so no second or third was added. Not one existing number in the
+experiment moved: the drift diff is one row added to each arm.
+
+Two things fell out that nobody predicted.
+
+**The mast is worth most in the middle.** The gap between the arms is 13 points
+at 50 m/s and under, **17 at 90**, and 9 at 140 — as a multiplier, 1.33, 1.94 and
+1.56. Against a slow target a radar track buys a better roll at a merge that was
+happening anyway. Against the jet it buys a great deal per merge and there are
+fewer merges to have it at. At 90 m/s both apply at once. **A radar mast is not
+bought against the fastest thing in the sky; it is bought against the fastest
+thing an interceptor can still catch.**
+
+**The offset columns are now a gradient in two variables.** At 50 m/s and under
+the pad may sit anywhere. At 90 it may sit anywhere with a mast up and no further
+than 1,800 m off without one. At 140 it is 1,800 m with a mast and 900 m without.
+The mast does not only improve the shot — it widens the ground the pad is allowed
+to stand on, and the faster the target the more of that width it is buying.
+
+**Coverage.** `cruise-jet-speed` is a claimed mutation and it is the one worth
+having: put the new airframe back at 50 m/s and its row reads 53%, identical to
+the rung above it. That is the evidence the row is about speed and not about
+anything else that arrived with it. One production-path test, asserted on where
+three airframes actually get to after `World.Step` rather than on what `Defs.cs`
+says; reverted to 50 m/s it reports *"2950 m against 2950 m"*.
+
+It also took `UnitDef.HasCelestialHeading` off the dead-symbol ledger without
+being asked — one unit carried it and now two do. 54 recorded symbols to 53.
+
+### The ESM cross-fix: the fix would have fixed nothing, and the stated reason is not the reason
+
+Item 42 records that the cross-fix (audit F9) is "still inert: the player's two
+listeners are still colinear", and the brief for this work put the remedy at
+"a scenario change of a few metres' thought" — move one listener off the line —
+conditional on being able to measure it firing. **It cannot be measured firing,
+and moving a listener is not what would make it fire.**
+
+Measured over the whole passive losing run, for every emitter the defence owns:
+
+| | |
+|---|---|
+| play-seconds the player holds an emitter on ESM **alone** | 170 — 137 of them the escort jammer |
+| play-seconds **two** of the player's listeners hold the same emitter | **0** |
+| widest crossing angle the run ever produces | **0 degrees**, because there is never a pair |
+
+The colinearity is real and it is never reached. The blocker is a reach
+disparity. Against the escort jammer the Radar Mast's passive reach is 5,915 m
+while the truck is quiet and 9,957 m while it radiates; the Command Post's is
+3,286 m and 5,532 m. The Command Post's listening disc sits entirely inside the
+mast's, so **the only ground on which a pair can exist at all is inside about
+5.5 km of the player's command post** — and the mast is killed at T+338, about
+twenty play-seconds before the escort closes to there.
+
+The counterfactual is what makes this a diagnosis rather than a story. Hold the
+Radar Mast's hit points up and change nothing else: the pair forms for **141
+play-seconds**, it crosses by 20 degrees or more for **78** of them, and the
+widest crossing is **46.2 degrees**. 1,800 m of baseline is an entirely adequate
+baseline against an emitter two to five kilometres away; the "under a degree"
+figure is true only of an emitter far to the east, and a pair can only ever exist
+when the emitter is close. **The scenario's geometry is already right.**
+
+Nor could a player prevent the mast's death in anything measured here. The
+defence aims a 140 m/s autonomous jet at it every hundred play-seconds — item
+42's deliberate design, and the sentence `ResolveInterception` has claimed for
+months. Against that, a player flying nothing but interceptors at the jets, from
+their own Relay Mast at x=9,360, which is *between* the raid and the mast:
+
+| seed | interceptors launched | jets that existed | jets the player killed | mast died |
+|---|---|---|---|---|
+| 20260917 | 20 | 4 | **0** | T+337 |
+| 11111 | 20 | 4 | **0** | T+337 |
+| 22222 | 24 | 4 | **0** | T+337 |
+
+**Sixty-four interceptor sorties across three seeds and not one jet stopped**,
+with zero launch refusals, so it is not a materiel or crew problem. That is worth
+recording as an open question rather than explained away here: item 41's sweep
+scores a radar-cued interceptor at 25% against a 140 m/s target, and this
+geometry — a head-on merge rather than the sweep's pad-ahead-of-the-raid — scores
+0 of 64. Either the merge is not being reached at all in this scenario or the
+25% does not transfer to it, and which of those it is has not been measured.
+
+So nothing in the scenario was moved. Item 38's lesson was that a correct
+mechanic nobody's geometry reaches is worth nothing; this is the case one step on
+from that — **a correct mechanic whose geometry is fine and whose schedule is
+not.** Moving a listener a few hundred metres would have produced a changed
+scenario, a changed world hash, and the same zero, and it would have looked like
+a fix in the history.
+
+The honest statement of what stands in the way, for whoever picks it up: the
+player's two listeners differ by 1.7:1 in passive reach, so the pair is confined
+to the inner disc; and the only emitter that ever comes into the inner disc is
+the escort jammer, which arrives after the longer-ranged listener has been killed
+on purpose. Either a third listener with the mast's reach, or an emitter that
+comes closer earlier, would do it. Both are larger decisions than this task.
+
+### One small thing, and why it is in here at all
+
+`tools/check_experiment_mutations.py` treated an argument it did not recognise as
+"do the default thing", and the default thing is a full sweep: `--help` rebuilt
+the tree once per mutation and ran the balance experiments for minutes before
+printing nothing resembling help, and a mistyped `--experimnet radar` swept
+everything while looking like it had swept one. It declares its flags now and
+refuses an unrecognised one with exit 2, which is the rule its own catalogue
+parser already lived by. Six cases in its self-test, including that a flag's
+value is not itself read as a flag.
+
+It is recorded because it is the same shape as the two findings above it: a tool
+that silently did something other than what was asked reads as evidence while
+being none, which is this repository's oldest complaint about itself.
+
+### The general form
+
+Item 30: a green suite proves nothing about the paths it does not walk. Item 32:
+a saturated experiment proves nothing about the variables it cannot move. Item
+40: an experiment proves nothing about a system it never instantiates. Item 41:
+a claim is worth what the mechanism that can falsify it is worth. This is the
+fifth and it is about the sentences either side of a measurement:
+
+**A number quoted in a finding is a measurement only if somebody took it.** Three
+premises were handed to this work as established. "The panel says nothing for a
+hundred and fifty play-seconds" was a hundred and fifty because it read like the
+right size — it is 61. "The listeners are colinear so they cross at under a
+degree" was a true statement about a pair that does not exist — they cross at 46.
+"The roster has nothing between 50 and 140 m/s" was exactly right, and it was the
+one of the three that had been measured. The two that were wrong were both
+written in the same entry as dozens that were right, by an author being careful,
+and the only thing that separated them was whether a run had been made.

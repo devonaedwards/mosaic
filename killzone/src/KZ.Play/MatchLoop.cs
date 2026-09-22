@@ -44,8 +44,9 @@ namespace KZ.Play
         /// map draws by, and went blank the moment the player's sensors died -
         /// measured, one unbroken window of 61 play-seconds from T+339 to T+399 in
         /// the passive losing run, during which the thing about to kill the player
-        /// closed from 4,483 m to 2,610 m and crossed two of the four warning
-        /// bands unannounced. A blank panel is not the player experiencing
+        /// closed from 4,412 m to 2,610 m and crossed the 4 km and 3 km warning
+        /// bands with nothing said - the 4 km warning is never given in that run
+        /// at all. A blank panel is not the player experiencing
         /// blindness; it is the player experiencing a panel that has stopped
         /// working, and the two look identical.
         ///
@@ -509,7 +510,7 @@ namespace KZ.Play
             // One line per pass, for the nearest band crossed, rather than one
             // per band. A player whose forward sensors have been shot off loses
             // the contact and regains it much closer - measured, at 2,280 m after
-            // losing it at 4,483 - and the first version announced "four
+            // losing it at 4,412 - and the first version announced "four
             // kilometres" and "inside a tank's gun" on the same play-second, which
             // reads as a stutter rather than as news.
             if (!live) return;

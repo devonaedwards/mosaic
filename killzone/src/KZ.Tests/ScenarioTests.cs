@@ -124,7 +124,7 @@ namespace KZ.Tests
             // FINDINGS 42 shipped a threat panel that reported live contacts only,
             // and measured it going blank for 61 unbroken play-seconds of the
             // passive losing run - T+339 to T+399, while the tank closed from
-            // 4,483 m to 2,610 m. A panel that stops is indistinguishable from a
+            // 4,412 m to 2,610 m. A panel that stops is indistinguishable from a
             // panel that has broken, so it now reports the player's last
             // observation and its age instead of nothing.
             //
